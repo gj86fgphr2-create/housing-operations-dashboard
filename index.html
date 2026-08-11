@@ -42,7 +42,11 @@
     .checkout-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.checkout-detail-grid .table-wrap{max-height:560px}.checkout-detail-grid table{min-width:620px}.checkout-risk{font-weight:600}.checkout-risk.risk-0{color:#256b45;background:var(--green-soft)}.checkout-risk.risk-1{color:#8a6500;background:#fff4cc}.checkout-risk.risk-2,.checkout-risk.risk-3{color:#9e3935;background:var(--red-soft)}.checkout-risk.risk-4,.checkout-risk.risk-5,.checkout-risk.risk-6,.checkout-risk.risk-7,.checkout-risk.risk-8,.checkout-risk.risk-9,.checkout-risk.risk-10{color:#fff;background:var(--red)}
     .footer{margin-top:26px;text-align:center;color:var(--muted);font-size:12px}
     @media(max-width:1180px){.kpis{grid-template-columns:repeat(3,1fr)}.grid-2,.checkout-detail-grid{grid-template-columns:1fr}.sidebar{display:none}.app{grid-template-columns:1fr}.main{padding:22px}.bar-row{grid-template-columns:135px 1fr 50px}}
-    @media(max-width:680px){.main{padding:16px}.topbar{display:block}.controls{margin-top:16px}.kpis{grid-template-columns:repeat(2,1fr)}.kpi .value{font-size:23px}.bar-row{grid-template-columns:100px 1fr 44px}.donut{width:160px}.search-row{align-items:stretch;flex-direction:column}.search-row input{width:100%}.checkout-bars{gap:6px;padding-left:0;padding-right:0}.checkout-label{white-space:normal;text-align:center}}
+    @media(max-width:680px){
+      body{overflow-x:hidden}.main{padding:14px 12px 28px}.topbar{display:block;margin-bottom:18px}h1{font-size:22px}.subtitle{line-height:1.65}.controls{margin-top:14px;display:grid;grid-template-columns:1fr;align-items:stretch}.controls .field,.controls select{width:100%;min-width:0}.segmented{width:100%}.segmented button{flex:1;min-height:40px}.section{margin-top:20px}.section-head{display:block}.section-head p{margin-top:5px;line-height:1.55}.kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.kpi{min-width:0;min-height:104px;padding:13px 11px}.kpi .label{margin-bottom:9px;line-height:1.45}.kpi .value{font-size:22px;overflow-wrap:anywhere}.kpi .hint{line-height:1.45}.grid-2,.checkout-detail-grid{gap:12px}.panel{min-width:0;padding:14px}.bar-row{grid-template-columns:100px minmax(0,1fr) 44px}.donut{width:160px}.search-row{align-items:stretch;flex-direction:column}.search-row input{width:100%}.checkout-bars{height:210px;gap:4px;padding-left:0;padding-right:0}.checkout-bar{width:min(54px,72%)}.checkout-label{white-space:normal;text-align:center;line-height:1.35}.checkout-detail-grid .table-wrap{max-height:none}
+      .table-wrap{overflow:visible;border:0;background:transparent}.table-wrap table,.checkout-detail-grid table{display:block;min-width:0;width:100%}.table-wrap thead{display:none}.table-wrap tbody{display:grid;gap:10px}.table-wrap tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:hidden;border:1px solid var(--line);border-radius:12px;background:var(--surface);box-shadow:0 4px 16px rgba(25,49,84,.06)}.table-wrap td{display:flex;min-width:0;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;text-align:right;border-bottom:1px solid var(--line);font-size:12px;overflow-wrap:anywhere}.table-wrap td::before{content:attr(data-label);flex:0 0 auto;color:var(--muted);font-weight:400;text-align:left}.table-wrap td:first-child{grid-column:1/-1;display:block;padding:11px 10px;text-align:left;font-size:14px;font-weight:700;background:#eef4f9}.table-wrap td:first-child::before{content:none}.table-wrap tbody tr:hover{background:var(--surface)}
+    }
+    @media(max-width:360px){.main{padding-left:10px;padding-right:10px}.kpis{grid-template-columns:1fr}.kpi{min-height:94px}.table-wrap tr{grid-template-columns:1fr}.table-wrap td{grid-column:1/-1}}
   </style>
 </head>
 <body>
@@ -139,22 +143,22 @@
     }
 
     function checkoutRisk(rate){ return 'risk-' + Math.min(10, Math.floor(Number(rate || 0) * 10)); }
-    function checkoutCell(item){ return '<td class="checkout-risk ' + checkoutRisk(item.rate) + '">' + int(item.count) + '（' + Math.round(item.rate * 100) + '%）</td>'; }
+    function checkoutCell(label,item){ return '<td data-label="' + label + '" class="checkout-risk ' + checkoutRisk(item.rate) + '">' + int(item.count) + '（' + Math.round(item.rate * 100) + '%）</td>'; }
     function renderCheckoutTables(){
-      const row = (d) => '<tr><td>' + d.name + '</td>' + checkoutCell(d.checkout.next7) + checkoutCell(d.checkout.days8to14) + checkoutCell(d.checkout.week) + checkoutCell(d.checkout.month) + '</tr>';
+      const row = (d) => '<tr><td data-label="统计范围">' + d.name + '</td>' + checkoutCell('未来7天',d.checkout.next7) + checkoutCell('未来7至14天',d.checkout.days8to14) + checkoutCell('本周',d.checkout.week) + checkoutCell('本月',d.checkout.month) + '</tr>';
       $('project-checkout-table').innerHTML = baseProjects.map(row).join('');
       $('building-checkout-table').innerHTML = DATA.buildingData.map(row).join('');
     }
 
     function renderProjectTable(){
-      $('project-table').innerHTML = baseProjects.map((d) => '<tr><td>' + d.name + '</td><td>' + int(d.rooms) + '</td><td>' + int(d.comprehensiveCount) + '</td><td class="rate ' + rateClass(d.comprehensiveRate) + '">' + pct(d.comprehensiveRate) + '</td><td>' + int(d.occupiedCount) + '</td><td class="rate ' + rateClass(d.occupancyRate) + '">' + pct(d.occupancyRate) + '</td><td>' + int(d.vacancyCount) + '</td><td>' + pct(d.lockRate) + '</td><td>' + int(d.checkout.month.count) + '（' + Math.round(d.checkout.month.rate*100) + '%）</td></tr>').join('');
+      $('project-table').innerHTML = baseProjects.map((d) => '<tr><td data-label="项目">' + d.name + '</td><td data-label="房源数">' + int(d.rooms) + '</td><td data-label="综合在租数">' + int(d.comprehensiveCount) + '</td><td data-label="综合在租率" class="rate ' + rateClass(d.comprehensiveRate) + '">' + pct(d.comprehensiveRate) + '</td><td data-label="入住数">' + int(d.occupiedCount) + '</td><td data-label="入住率" class="rate ' + rateClass(d.occupancyRate) + '">' + pct(d.occupancyRate) + '</td><td data-label="空房数">' + int(d.vacancyCount) + '</td><td data-label="锁房率">' + pct(d.lockRate) + '</td><td data-label="本月退租">' + int(d.checkout.month.count) + '（' + Math.round(d.checkout.month.rate*100) + '%）</td></tr>').join('');
     }
 
     function renderBuildingTable(){
       const q = state.query.trim().toLowerCase();
       const rows = DATA.buildingData.filter((d) => !q || d.name.toLowerCase().includes(q));
       $('building-count').textContent = '显示 ' + rows.length + ' 个楼栋';
-      $('building-table').innerHTML = rows.map((d) => '<tr><td>' + d.name + '</td><td>' + int(d.rooms) + '</td><td class="rate ' + rateClass(d.comprehensiveRate) + '">' + pct(d.comprehensiveRate) + '</td><td class="rate ' + rateClass(d.occupancyRate) + '">' + pct(d.occupancyRate) + '</td><td>' + int(d.vacancyCount) + '</td><td>' + int(d.lockCount) + '</td><td>' + int(d.checkout.next7.count) + '（' + Math.round(d.checkout.next7.rate*100) + '%）</td><td>' + int(d.checkout.month.count) + '（' + Math.round(d.checkout.month.rate*100) + '%）</td></tr>').join('');
+      $('building-table').innerHTML = rows.map((d) => '<tr><td data-label="楼栋">' + d.name + '</td><td data-label="房源数">' + int(d.rooms) + '</td><td data-label="综合在租率" class="rate ' + rateClass(d.comprehensiveRate) + '">' + pct(d.comprehensiveRate) + '</td><td data-label="入住率" class="rate ' + rateClass(d.occupancyRate) + '">' + pct(d.occupancyRate) + '</td><td data-label="空房数">' + int(d.vacancyCount) + '</td><td data-label="锁房数">' + int(d.lockCount) + '</td><td data-label="未来7天退租">' + int(d.checkout.next7.count) + '（' + Math.round(d.checkout.next7.rate*100) + '%）</td><td data-label="本月退租">' + int(d.checkout.month.count) + '（' + Math.round(d.checkout.month.rate*100) + '%）</td></tr>').join('');
     }
 
     function render(){ const d=current(); renderKpis(d); renderCheckout(d); }
