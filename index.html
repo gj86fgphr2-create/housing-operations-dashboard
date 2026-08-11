@@ -132,6 +132,7 @@
     const currencyInteger = (v) => '￥' + Math.round(Number(v || 0)).toLocaleString('zh-CN');
     const rateClass = (v) => v > .9 ? 'good' : v >= .8 ? 'warn' : 'bad';
     const baseProjects = DATA.baseProjectNames.map((name) => DATA.projectData.find((d) => d.name === name)).filter(Boolean);
+    const overallProject = DATA.projectData.find((d) => d.name === '全部房源汇总') || DATA.projectData[0];
     const projectParentNames = new Set(['北亭项目','小谷围项目','公司自持项目','小筑项目']);
     const projectChildNames = new Set(['北亭初期项目','北亭整体项目','北亭研寓项目','南亭研寓项目','城北小筑A','城北小筑B','城北小筑C']);
     function projectRowClass(name){ return projectParentNames.has(name) ? 'project-parent' : projectChildNames.has(name) ? 'project-child' : ''; }
@@ -173,14 +174,18 @@
     }
 
     function renderProjectTable(){
-      $('project-table').innerHTML = baseProjects.map((d) => '<tr class="' + projectRowClass(d.name) + '"><td data-label="项目">' + d.name + '</td><td data-label="房源数">' + int(d.rooms) + '</td><td data-label="综合在租数">' + int(d.comprehensiveCount) + '</td><td data-label="综合在租率" class="rate ' + rateClass(d.comprehensiveRate) + '">' + pct(d.comprehensiveRate) + '</td><td data-label="入住数">' + int(d.occupiedCount) + '</td><td data-label="入住率" class="rate ' + rateClass(d.occupancyRate) + '">' + pct(d.occupancyRate) + '</td><td data-label="空房数">' + int(d.vacancyCount) + '</td><td data-label="锁房率">' + pct(d.lockRate) + '</td><td data-label="本月退租">' + int(d.checkout.month.count) + '（' + Math.round(d.checkout.month.rate*100) + '%）</td></tr>').join('');
+      const rows = baseProjects.map((d) => '<tr class="' + projectRowClass(d.name) + '"><td data-label="项目">' + d.name + '</td><td data-label="房源数">' + int(d.rooms) + '</td><td data-label="综合在租数">' + int(d.comprehensiveCount) + '</td><td data-label="综合在租率" class="rate ' + rateClass(d.comprehensiveRate) + '">' + pct(d.comprehensiveRate) + '</td><td data-label="入住数">' + int(d.occupiedCount) + '</td><td data-label="入住率" class="rate ' + rateClass(d.occupancyRate) + '">' + pct(d.occupancyRate) + '</td><td data-label="空房数">' + int(d.vacancyCount) + '</td><td data-label="锁房率">' + pct(d.lockRate) + '</td><td data-label="本月退租">' + int(d.checkout.month.count) + '（' + Math.round(d.checkout.month.rate*100) + '%）</td></tr>').join('');
+      const total = '<tr class="summary-row"><td data-label="项目">汇总</td><td data-label="房源数">' + int(overallProject.rooms) + '</td><td data-label="综合在租数">' + int(overallProject.comprehensiveCount) + '</td><td data-label="综合在租率" class="rate ' + rateClass(overallProject.comprehensiveRate) + '">' + pct(overallProject.comprehensiveRate) + '</td><td data-label="入住数">' + int(overallProject.occupiedCount) + '</td><td data-label="入住率" class="rate ' + rateClass(overallProject.occupancyRate) + '">' + pct(overallProject.occupancyRate) + '</td><td data-label="空房数">' + int(overallProject.vacancyCount) + '</td><td data-label="锁房率">' + pct(overallProject.lockRate) + '</td><td data-label="本月退租">' + int(overallProject.checkout.month.count) + '（' + Math.round(overallProject.checkout.month.rate*100) + '%）</td></tr>';
+      $('project-table').innerHTML = rows + total;
     }
 
     function renderBuildingTable(){
       const q = state.query.trim().toLowerCase();
       const rows = DATA.buildingData.filter((d) => !q || d.name.toLowerCase().includes(q));
       $('building-count').textContent = '显示 ' + rows.length + ' 个楼栋';
-      $('building-table').innerHTML = rows.map((d) => '<tr><td data-label="楼栋">' + d.name + '</td><td data-label="房源数">' + int(d.rooms) + '</td><td data-label="综合在租率" class="rate ' + rateClass(d.comprehensiveRate) + '">' + pct(d.comprehensiveRate) + '</td><td data-label="入住率" class="rate ' + rateClass(d.occupancyRate) + '">' + pct(d.occupancyRate) + '</td><td data-label="空房数">' + int(d.vacancyCount) + '</td><td data-label="锁房数">' + int(d.lockCount) + '</td><td data-label="未来7天退租">' + int(d.checkout.next7.count) + '（' + Math.round(d.checkout.next7.rate*100) + '%）</td><td data-label="本月退租">' + int(d.checkout.month.count) + '（' + Math.round(d.checkout.month.rate*100) + '%）</td></tr>').join('');
+      const buildingRows = rows.map((d) => '<tr><td data-label="楼栋">' + d.name + '</td><td data-label="房源数">' + int(d.rooms) + '</td><td data-label="综合在租率" class="rate ' + rateClass(d.comprehensiveRate) + '">' + pct(d.comprehensiveRate) + '</td><td data-label="入住率" class="rate ' + rateClass(d.occupancyRate) + '">' + pct(d.occupancyRate) + '</td><td data-label="空房数">' + int(d.vacancyCount) + '</td><td data-label="锁房数">' + int(d.lockCount) + '</td><td data-label="未来7天退租">' + int(d.checkout.next7.count) + '（' + Math.round(d.checkout.next7.rate*100) + '%）</td><td data-label="本月退租">' + int(d.checkout.month.count) + '（' + Math.round(d.checkout.month.rate*100) + '%）</td></tr>').join('');
+      const total = '<tr class="summary-row"><td data-label="楼栋">汇总</td><td data-label="房源数">' + int(overallProject.rooms) + '</td><td data-label="综合在租率" class="rate ' + rateClass(overallProject.comprehensiveRate) + '">' + pct(overallProject.comprehensiveRate) + '</td><td data-label="入住率" class="rate ' + rateClass(overallProject.occupancyRate) + '">' + pct(overallProject.occupancyRate) + '</td><td data-label="空房数">' + int(overallProject.vacancyCount) + '</td><td data-label="锁房数">' + int(overallProject.lockCount) + '</td><td data-label="未来7天退租">' + int(overallProject.checkout.next7.count) + '（' + Math.round(overallProject.checkout.next7.rate*100) + '%）</td><td data-label="本月退租">' + int(overallProject.checkout.month.count) + '（' + Math.round(overallProject.checkout.month.rate*100) + '%）</td></tr>';
+      $('building-table').innerHTML = buildingRows + total;
     }
 
     function renderContracts(){
