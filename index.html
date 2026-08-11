@@ -58,7 +58,7 @@
   <div class="app">
     <aside class="sidebar" aria-label="工作台导航">
       <div class="brand"><div class="brand-mark">寓</div><div><strong>房源运营中心</strong><span>Operations Desk</span></div></div>
-      <nav class="nav"><a href="#overview">运营总览</a><a href="#checkout">退租预警</a><a href="#checkout-details">退租数量</a><a href="#contracts">合同统计</a><a href="#occupancy">入住率查看</a></nav>
+      <nav class="nav"><a href="#overview">运营总览</a><a href="#checkout-pressure">退租压力查看</a><a href="#contracts">业绩查看</a><a href="#occupancy">入住率查看</a></nav>
       <div class="side-note">数据日期 <b id="side-date">—</b><br>页面数据来自房源排期、入住率、退租及合同业务统计。</div>
     </aside>
     <main class="main">
@@ -82,13 +82,10 @@
         </div>
       </section>
 
-      <section class="section grid-2" id="checkout">
+      <section class="section" id="checkout-pressure">
+        <div class="section-head"><div><h2>退租压力查看</h2><p>统一查看预计退租压力，以及项目和楼栋预计退租数量</p></div></div>
         <article class="panel"><h3>预计退租压力</h3><p class="panel-note">按退租日期统计，柱高表示房源数量</p><div class="checkout-bars" id="checkout-bars"></div></article>
-        <article class="panel"><h3>当前范围摘要</h3><div class="status-lines" id="scope-summary"></div></article>
-      </section>
-
-      <section class="section" id="checkout-details">
-        <div class="section-head"><div><h2>预计退租数量</h2><p>退租比例：10%以下绿色，10%–20%黄色，20%–40%浅红色，40%以上红色</p></div></div>
+        <div class="section-head section"><div><h2>预计退租数量</h2><p>退租比例：10%以下绿色，10%–20%黄色，20%–40%浅红色，40%以上红色</p></div></div>
         <div class="checkout-detail-grid">
           <article class="panel"><h3>项目预计退租数量</h3><div class="table-wrap"><table><thead><tr><th>项目</th><th>未来7天</th><th>未来7至14天</th><th>本周</th><th>本月</th></tr></thead><tbody id="project-checkout-table"></tbody></table></div></article>
           <article class="panel"><h3>楼栋预计退租数量</h3><div class="table-wrap"><table><thead><tr><th>楼栋</th><th>未来7天</th><th>未来7至14天</th><th>本周</th><th>本月</th></tr></thead><tbody id="building-checkout-table"></tbody></table></div></article>
@@ -96,7 +93,7 @@
       </section>
 
       <section class="section" id="contracts">
-        <div class="section-head"><div><h2>合同业务统计</h2><p>按合同编号去重；新签与续租按签约时间统计，实际退租按“预退/实退”统计</p></div></div>
+        <div class="section-head"><div><h2>业绩查看</h2><p>合同业务统计：按合同编号去重；新签与续租按签约时间统计，实际退租按“预退/实退”统计</p></div></div>
         <div class="kpis contract-kpis">
           <article class="kpi blue"><div class="label">本月新签</div><div class="value" id="contract-new-count">—</div><div class="hint" id="contract-new-previous">—</div></article>
           <article class="kpi green"><div class="label">本月续租</div><div class="value" id="contract-renewal-count">—</div><div class="hint" id="contract-renewal-previous">—</div></article>
@@ -141,7 +138,6 @@
 
     function dataset(){ return state.scope === 'project' ? DATA.projectData : DATA.buildingData; }
     function current(){ return dataset().find((d) => d.name === state.selected) || dataset()[0]; }
-    function line(label, value, cls){ return '<div class="status-line"><span>' + label + '</span><b' + (cls ? ' class="' + cls + '"' : '') + '>' + value + '</b></div>'; }
 
     function fillSelect(){
       const select = $('entity-select');
@@ -166,7 +162,6 @@
       const rows = [['未来7天',d.checkout.next7],['未来7至14天',d.checkout.days8to14],['本周',d.checkout.week],['本月',d.checkout.month]];
       const max = Math.max(1,...rows.map((r) => r[1].count));
       $('checkout-bars').innerHTML = rows.map((r) => '<div class="checkout-item"><div class="checkout-count">' + int(r[1].count) + '</div><div class="checkout-rate">' + Math.round(r[1].rate*100) + '%</div><div class="checkout-bar" style="height:' + Math.max(4,r[1].count/max*175) + 'px"></div><div class="checkout-label">' + r[0] + '</div></div>').join('');
-      $('scope-summary').innerHTML = line('当前范围',d.name) + line('房源数',int(d.rooms) + ' 套') + line('综合在租率',pct(d.comprehensiveRate),rateClass(d.comprehensiveRate)) + line('当天入住率',pct(d.occupancyRate),rateClass(d.occupancyRate)) + line('空置率',pct(d.vacancyRate)) + line('锁房率',pct(d.lockRate)) + line('未来7天退租',int(d.checkout.next7.count) + ' 套') + line('本月退租',int(d.checkout.month.count) + ' 套');
     }
 
     function checkoutRisk(rate){ return 'risk-' + Math.min(10, Math.floor(Number(rate || 0) * 10)); }
