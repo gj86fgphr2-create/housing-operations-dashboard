@@ -227,7 +227,7 @@
       const svg = $('contract-daily-chart');
       const wrap = $('contract-daily-chart-wrap');
       if (!svg || !wrap) return;
-      const rows = DATA.contractStats.daily.slice(-14);
+      const rows = DATA.contractStats.daily.slice(-14).reverse();
       const width = Math.max(320,Math.floor(wrap.clientWidth || 900));
       const height = 280;
       const margin = { top:28, right:18, bottom:48, left:42 };
@@ -265,4 +265,3 @@
   </script>
 </body>
 </html>
-
