@@ -22,7 +22,7 @@
     .brand{display:flex;align-items:center;gap:12px;padding:0 8px}
     .brand-mark{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#46abc1,#8bd2d6);display:grid;place-items:center;font-weight:700;color:var(--nav)}
     .brand strong{display:block;font-size:16px}.brand span{font-size:12px;color:#b9cbe0}
-    .nav{display:grid;gap:6px}.nav a{color:#c9d7e8;text-decoration:none;padding:10px 12px;border-radius:9px;font-size:14px}.nav a:hover,.nav a:focus{background:var(--nav-soft);color:#fff}
+    .nav{display:grid;gap:6px}.nav a{color:#c9d7e8;text-decoration:none;padding:10px 12px;border-radius:9px;font-size:14px}.nav a:hover,.nav a:focus,.nav a.active{background:var(--nav-soft);color:#fff}[data-views][hidden]{display:none!important}
     .side-note{margin-top:auto;padding:12px;border:1px solid rgba(255,255,255,.14);border-radius:10px;color:#bfd0e4;font-size:12px;line-height:1.7}
     .main{min-width:0;padding:28px 30px 42px}
     .topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:22px}
@@ -48,7 +48,7 @@
     .footer{margin-top:26px;text-align:center;color:var(--muted);font-size:12px}
     @media(max-width:1180px){.kpis{grid-template-columns:repeat(3,1fr)}.grid-2,.checkout-detail-grid{grid-template-columns:1fr}.sidebar{display:none}.app{grid-template-columns:1fr}.main{padding:22px}.bar-row{grid-template-columns:135px 1fr 50px}}
     @media(max-width:680px){
-      body{overflow-x:hidden}.main{padding:14px 12px 28px}.topbar{display:block;margin-bottom:18px}h1{font-size:22px}.subtitle{line-height:1.65}.controls{margin-top:14px;display:grid;grid-template-columns:1fr;align-items:stretch}.controls .field,.controls select{width:100%;min-width:0}.segmented{width:100%}.segmented button{flex:1;min-height:40px}.section{margin-top:20px}.section-head{display:block}.section-head p{margin-top:5px;line-height:1.55}.section-head .detail-toggle{width:100%;margin-top:10px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.kpi{min-width:0;min-height:104px;padding:13px 11px}.kpi .label{margin-bottom:9px;line-height:1.45}.kpi .value{font-size:22px;overflow-wrap:anywhere}.kpi .hint{line-height:1.45}.grid-2,.checkout-detail-grid{gap:12px}.panel{min-width:0;padding:14px}.bar-row{grid-template-columns:100px minmax(0,1fr) 44px}.compare-row{grid-template-columns:72px minmax(0,1fr);gap:8px}.compare-line{grid-template-columns:34px minmax(0,1fr) 66px}.donut{width:160px}.search-row,.detail-search{align-items:stretch;flex-direction:column}.search-row input,.detail-search input{width:100%}.checkout-bars{height:210px;gap:4px;padding-left:0;padding-right:0}.checkout-bar{width:min(54px,72%)}.checkout-label{white-space:normal;text-align:center;line-height:1.35}.checkout-detail-grid .table-wrap{max-height:none}
+      body{overflow-x:hidden;padding-bottom:74px}.main{padding:14px 12px 32px}.sidebar{display:block;position:fixed;inset:auto 0 0 0;z-index:1000;width:100%;height:auto;padding:7px 8px calc(7px + env(safe-area-inset-bottom));background:rgba(16,43,78,.97);box-shadow:0 -5px 20px rgba(9,28,52,.2);backdrop-filter:blur(10px)}.sidebar .brand,.sidebar .side-note{display:none}.nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}.nav a{display:flex;align-items:center;justify-content:center;min-width:0;min-height:48px;padding:7px 3px;border-radius:9px;text-align:center;font-size:12px;line-height:1.25;white-space:normal}.topbar{display:block;margin-bottom:18px}h1{font-size:22px}.subtitle{line-height:1.65}.controls{margin-top:14px;display:grid;grid-template-columns:1fr;align-items:stretch}.controls .field,.controls select{width:100%;min-width:0}.segmented{width:100%}.segmented button{flex:1;min-height:40px}.section{margin-top:20px}.section-head{display:block}.section-head p{margin-top:5px;line-height:1.55}.section-head .detail-toggle{width:100%;margin-top:10px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.kpi{min-width:0;min-height:104px;padding:13px 11px}.kpi .label{margin-bottom:9px;line-height:1.45}.kpi .value{font-size:22px;overflow-wrap:anywhere}.kpi .hint{line-height:1.45}.grid-2,.checkout-detail-grid{gap:12px}.panel{min-width:0;padding:14px}.bar-row{grid-template-columns:100px minmax(0,1fr) 44px}.compare-row{grid-template-columns:72px minmax(0,1fr);gap:8px}.compare-line{grid-template-columns:34px minmax(0,1fr) 66px}.donut{width:160px}.search-row,.detail-search{align-items:stretch;flex-direction:column}.search-row input,.detail-search input{width:100%}.checkout-bars{height:210px;gap:4px;padding-left:0;padding-right:0}.checkout-bar{width:min(54px,72%)}.checkout-label{white-space:normal;text-align:center;line-height:1.35}.checkout-detail-grid .table-wrap{max-height:none}
       .table-wrap{overflow:visible;border:0;background:transparent}.table-wrap table,.checkout-detail-grid table{display:block;min-width:0;width:100%}.table-wrap thead{display:none}.table-wrap tbody{display:grid;gap:10px}.table-wrap tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:hidden;border:1px solid var(--line);border-radius:12px;background:var(--surface);box-shadow:0 4px 16px rgba(25,49,84,.06)}.table-wrap td{display:flex;min-width:0;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;text-align:right;border-bottom:1px solid var(--line);font-size:12px;overflow-wrap:anywhere}.table-wrap td::before{content:attr(data-label);flex:0 0 auto;color:var(--muted);font-weight:400;text-align:left}.table-wrap td:first-child{grid-column:1/-1;display:block;padding:11px 10px;text-align:left;font-size:14px;font-weight:700;background:#eef4f9}.table-wrap td:first-child::before{content:none}.table-wrap tbody tr:hover{background:var(--surface)}.table-wrap tr.project-child td{font-size:11px}.table-wrap tr.project-child td:first-child{padding-left:20px;font-size:12px;font-weight:500}
     }
     @media(max-width:360px){.main{padding-left:10px;padding-right:10px}.kpis{grid-template-columns:1fr}.kpi{min-height:94px}.table-wrap tr{grid-template-columns:1fr}.table-wrap td{grid-column:1/-1}}
@@ -58,7 +58,7 @@
   <div class="app">
     <aside class="sidebar" aria-label="工作台导航">
       <div class="brand"><div class="brand-mark">寓</div><div><strong>房源运营中心</strong><span>Operations Desk</span></div></div>
-      <nav class="nav"><a href="#overview">运营总览</a><a href="#checkout-pressure">退租压力查看</a><a href="#contracts">业绩查看</a><a href="#occupancy">入住率查看</a></nav>
+      <nav class="nav"><a href="#overview" data-dashboard-view="overview">运营总览</a><a href="#checkout-pressure" data-dashboard-view="checkout">退租压力查看</a><a href="#contracts" data-dashboard-view="performance">业绩查看</a><a href="#occupancy" data-dashboard-view="occupancy">入住率查看</a></nav>
       <div class="side-note">数据日期 <b id="side-date">—</b><br>页面数据来自房源排期、入住率、退租及合同业务统计。</div>
     </aside>
     <main class="main">
@@ -70,7 +70,7 @@
         </div>
       </header>
 
-      <section class="section" id="overview">
+      <section class="section" id="overview" data-views="overview occupancy">
         <div class="section-head"><div><h2 id="overview-title">运营总览</h2><p>入住数已包含当天预定并去重</p></div></div>
         <div class="kpis">
           <article class="kpi blue"><div class="label">房源总数</div><div class="value" id="kpi-rooms">—</div><div class="hint">纳入统计房源</div></article>
@@ -82,7 +82,7 @@
         </div>
       </section>
 
-      <section class="section" id="checkout-pressure">
+      <section class="section" id="checkout-pressure" data-views="checkout">
         <div class="section-head"><div><h2>退租压力查看</h2><p>统一查看预计退租压力，以及项目和楼栋预计退租数量</p></div></div>
         <article class="panel"><h3>预计退租压力</h3><p class="panel-note">按退租日期统计，柱高表示房源数量</p><div class="checkout-bars" id="checkout-bars"></div></article>
         <div class="section-head section"><div><h2>预计退租数量</h2><p>退租比例：10%以下绿色，10%–20%黄色，20%–40%浅红色，40%以上红色</p></div></div>
@@ -92,9 +92,9 @@
         </div>
       </section>
 
-      <section class="section" id="contracts">
-        <div class="section-head"><div><h2>业绩查看</h2><p>合同业务统计：按合同编号去重；新签与续租按签约时间统计，实际退租按“预退/实退”统计</p></div></div>
-        <div class="kpis contract-kpis">
+      <section class="section" id="contracts" data-views="overview performance">
+        <div class="section-head" data-views="overview performance"><div><h2>业绩查看</h2><p>合同业务统计：按合同编号去重；新签与续租按签约时间统计，实际退租按“预退/实退”统计</p></div></div>
+        <div class="kpis contract-kpis" data-views="overview performance">
           <article class="kpi blue"><div class="label">本月新签</div><div class="value" id="contract-new-count">—</div><div class="hint" id="contract-new-previous">—</div></article>
           <article class="kpi green"><div class="label">本月续租</div><div class="value" id="contract-renewal-count">—</div><div class="hint" id="contract-renewal-previous">—</div></article>
           <article class="kpi purple"><div class="label">本月新签业绩</div><div class="value" id="contract-new-performance">—</div><div class="hint" id="contract-new-performance-previous">—</div></article>
@@ -102,18 +102,18 @@
           <article class="kpi red"><div class="label">本月实际退房</div><div class="value" id="contract-current-checkout">—</div><div class="hint" id="contract-checkout-previous">—</div></article>
           <article class="kpi green"><div class="label">本月退租中（续租数量）</div><div class="value" id="contract-checkout-renewal">—</div><div class="hint" id="contract-checkout-renewal-previous">—</div></article>
         </div>
-        <div class="section">
+        <div class="section" data-views="overview performance">
           <article class="panel"><h3>实际与目标对比</h3><p class="panel-note">实际数据截至2026年8月11日；本月汇总目标为各周目标之和</p><div class="table-wrap"><table><thead><tr><th>周期</th><th>新签实际</th><th>新签目标</th><th>新签完成率</th><th>续租实际</th><th>续租目标</th><th>续租完成率</th></tr></thead><tbody id="contract-target-table"></tbody></table></div></article>
         </div>
-        <div class="section checkout-detail-grid">
+        <div class="section checkout-detail-grid" data-views="performance">
           <article class="panel"><h3>周期统计</h3><div class="table-wrap"><table><thead><tr><th>周期</th><th>新签</th><th>新签业绩</th><th>续租</th><th>续租业绩</th><th>签约合计</th></tr></thead><tbody id="contract-period-table"></tbody></table></div></article>
           <article class="panel"><h3>本月签约人统计</h3><div class="table-wrap"><table><thead><tr><th>签约人</th><th>新签</th><th>新签业绩</th><th>续租</th><th>续租业绩</th><th>数量合计</th><th>业绩合计</th></tr></thead><tbody id="contract-person-table"></tbody></table></div></article>
         </div>
-        <article class="panel section"><h3>近期每日合同净变化</h3><p class="panel-note">当日合计 = 新签数量 − 实际退租数量；展示最近14个有数据日期</p><div class="line-chart-wrap" id="contract-daily-chart-wrap"><svg class="line-chart" id="contract-daily-chart" role="img" aria-label="最近14日合同净变化折线图"></svg></div></article>
-        <article class="panel section"><h3>本月项目合同统计</h3><p class="panel-note">按房源地址归入既定项目；合同编号去重，小谷围项目为北亭研寓与南亭研寓汇总</p><div class="table-wrap"><table><thead><tr><th>项目</th><th>新签数量</th><th>续租数量</th><th>实际退租数量</th><th>退租中（续租数量）</th></tr></thead><tbody id="contract-project-month-table"></tbody></table></div></article>
+        <article class="panel section" data-views="overview"><h3>近期每日合同净变化</h3><p class="panel-note">当日合计 = 新签数量 − 实际退租数量；展示最近14个有数据日期</p><div class="line-chart-wrap" id="contract-daily-chart-wrap"><svg class="line-chart" id="contract-daily-chart" role="img" aria-label="最近14日合同净变化折线图"></svg></div></article>
+        <article class="panel section" data-views="performance"><h3>本月项目合同统计</h3><p class="panel-note">按房源地址归入既定项目；合同编号去重，小谷围项目为北亭研寓与南亭研寓汇总</p><div class="table-wrap"><table><thead><tr><th>项目</th><th>新签数量</th><th>续租数量</th><th>实际退租数量</th><th>退租中（续租数量）</th></tr></thead><tbody id="contract-project-month-table"></tbody></table></div></article>
       </section>
 
-      <section class="section" id="occupancy">
+      <section class="section" id="occupancy" data-views="occupancy">
         <div class="section-head"><div><h2>入住率查看</h2><p>统一查看项目与楼栋入住率；项目按父项目和子项目层级排列</p></div></div>
         <article class="panel"><h3>项目入住率</h3><div class="table-wrap"><table><thead><tr><th>项目</th><th>房源数</th><th>空房数</th><th>锁房数</th><th>入住数</th><th>综合在租数</th><th>入住率</th><th>综合在租率</th></tr></thead><tbody id="project-table"></tbody></table></div></article>
         <article class="panel section"><div class="detail-search"><div><h3>楼栋入住率</h3><div class="count-note" id="building-count"></div></div><div class="field"><label for="building-search">搜索楼栋</label><input id="building-search" type="search" placeholder="例如：北亭06座"></div></div><div class="table-wrap"><table><thead><tr><th>楼栋</th><th>房源数</th><th>空房数</th><th>锁房数</th><th>入住数</th><th>综合在租数</th><th>入住率</th><th>综合在租率</th></tr></thead><tbody id="building-table"></tbody></table></div></article>
@@ -257,12 +257,21 @@
     }
 
     function render(){ const d=current(); renderKpis(d); renderCheckout(d); }
+    const viewByHash = {'#overview':'overview','#checkout-pressure':'checkout','#contracts':'performance','#occupancy':'occupancy'};
+    function setDashboardView(view){
+      document.querySelectorAll('[data-views]').forEach((element) => { element.hidden = !element.dataset.views.split(/\s+/).includes(view); });
+      document.querySelectorAll('[data-dashboard-view]').forEach((link) => link.classList.toggle('active',link.dataset.dashboardView === view));
+      if (view === 'overview' || view === 'performance') requestAnimationFrame(renderDailyLineChart);
+    }
+    document.querySelectorAll('[data-dashboard-view]').forEach((link) => link.addEventListener('click',(event)=>{event.preventDefault();const view=link.dataset.dashboardView;history.replaceState(null,'',link.getAttribute('href'));setDashboardView(view);window.scrollTo({top:0,behavior:'smooth'});}));
+    window.addEventListener('hashchange',()=>setDashboardView(viewByHash[location.hash] || 'overview'));
     document.querySelectorAll('[data-scope]').forEach((button) => button.addEventListener('click', () => { document.querySelectorAll('[data-scope]').forEach((b) => b.classList.toggle('active',b===button)); state.scope=button.dataset.scope; state.selected=state.scope==='project'?'全部房源汇总':DATA.buildingData[0].name; fillSelect(); render(); }));
     $('entity-select').addEventListener('change',(e)=>{state.selected=e.target.value;render()});
     $('building-search').addEventListener('input',(e)=>{state.query=e.target.value;renderBuildingTable()});
     $('side-date').textContent=DATA.dataDate; $('page-subtitle').textContent='数据日期：'+DATA.dataDate+'　｜　生成日期：'+DATA.generatedDate+'　｜　支持项目与楼栋切换';
-    fillSelect(); renderCheckoutTables(); renderProjectTable(); renderBuildingTable(); renderContracts(); render();
+    setDashboardView(viewByHash[location.hash] || 'overview'); fillSelect(); renderCheckoutTables(); renderProjectTable(); renderBuildingTable(); renderContracts(); render();
     if ('ResizeObserver' in window) new ResizeObserver(renderDailyLineChart).observe($('contract-daily-chart-wrap'));
   </script>
 </body>
 </html>
+
