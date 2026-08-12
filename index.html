@@ -92,7 +92,7 @@
       <section class="section" id="checkout-pressure" data-views="checkout">
         <div class="section-head"><div><h2>退租压力查看</h2><p>统一查看预计退租压力，以及项目和楼栋预计退租数量</p></div></div>
         <article class="panel"><h3>预计退租压力</h3><p class="panel-note">按退租日期统计，柱高表示房源数量</p><div class="checkout-bars" id="checkout-bars"></div></article>
-        <div class="section-head section"><div><h2>预计退租数量</h2><p>退租比例：10%以下绿色，10%–20%黄色，20%–40%浅红色，40%以上红色</p></div></div>
+        <div class="section-head section"><div><h2>预计退租数量</h2><p>退租比例按每5%一个颜色档位，由低比例绿色逐步过渡至高比例红色</p></div></div>
         <div class="checkout-detail-grid">
           <article class="panel"><h3>项目预计退租数量</h3><div class="table-wrap checkout-forecast-wrap"><table class="checkout-forecast-table"><thead><tr><th>项目</th><th>8W1</th><th>8W2</th><th>8W3</th><th>8W4</th><th>8WE</th></tr></thead><tbody id="project-checkout-table"></tbody></table></div></article>
           <article class="panel"><h3>楼栋预计退租数量</h3><div class="table-wrap checkout-forecast-wrap"><table class="checkout-forecast-table"><thead><tr><th>楼栋</th><th>8W1</th><th>8W2</th><th>8W3</th><th>8W4</th><th>8WE</th></tr></thead><tbody id="building-checkout-table"></tbody></table></div></article>
@@ -181,8 +181,12 @@
       $('checkout-bars').innerHTML = rows.map((r) => '<div class="checkout-item"><div class="checkout-count">' + int(r[1].count) + '</div><div class="checkout-rate">' + Math.round(r[1].rate*100) + '%</div><div class="checkout-bar" style="height:' + Math.max(4,r[1].count/max*175) + 'px"></div><div class="checkout-label">' + r[0] + '</div></div>').join('');
     }
 
-    function checkoutRisk(rate){ return 'risk-' + Math.min(10, Math.floor(Number(rate || 0) * 10)); }
-    function checkoutCell(label,item){ return '<td data-label="' + label + '" class="checkout-risk ' + checkoutRisk(item.rate) + '">' + int(item.count) + '（' + Math.round(item.rate * 100) + '%）</td>'; }
+    function checkoutRiskStyle(rate){
+      const band = Math.min(20,Math.floor(Number(rate || 0) * 20));
+      const hue = Math.max(0,120-band*7.5), lightness = band >= 8 ? 48 : 90-band*2.5;
+      return 'background:hsl(' + hue + ' 65% ' + lightness + '%);color:' + (band >= 8 ? '#fff' : '#173b2c');
+    }
+    function checkoutCell(label,item){ return '<td data-label="' + label + '" class="checkout-risk" style="' + checkoutRiskStyle(item.rate) + '">' + int(item.count) + '（' + Math.round(item.rate * 100) + '%）</td>'; }
     function renderCheckoutTables(){
       const row = (d) => '<tr class="' + projectRowClass(d.name) + '"><td data-label="统计范围">' + projectDisplayName(d.name) + '</td>' + DATA.checkoutPeriods.map((period) => checkoutCell(period.label,d.checkout[period.key])).join('') + '</tr>';
       const regionRow = (d) => '<tr class="region-summary"><td data-label="统计范围">' + d.name + '</td>' + DATA.checkoutPeriods.map((period) => checkoutCell(period.label,d.checkout[period.key])).join('') + '</tr>';
