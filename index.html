@@ -148,7 +148,8 @@
       const rows = DATA.buildingData.filter((row) => row.name.includes(keyword));
       const sum = (field) => rows.reduce((total,row) => total + Number(row[field] || 0),0);
       const rooms = sum('rooms'), occupiedCount = sum('occupiedCount'), comprehensiveCount = sum('comprehensiveCount');
-      return { name, rooms, vacancyCount:sum('vacancyCount'), lockCount:sum('lockCount'), occupiedCount, comprehensiveCount, occupancyRate:rooms ? occupiedCount/rooms : 0, comprehensiveRate:rooms ? comprehensiveCount/rooms : 0 };
+      const checkout = Object.fromEntries(DATA.checkoutPeriods.map((period) => { const count = rows.reduce((total,row) => total + Number(row.checkout[period.key]?.count || 0),0); return [period.key,{count,rate:rooms ? count/rooms : 0}]; }));
+      return { name, rooms, vacancyCount:sum('vacancyCount'), lockCount:sum('lockCount'), occupiedCount, comprehensiveCount, occupancyRate:rooms ? occupiedCount/rooms : 0, comprehensiveRate:rooms ? comprehensiveCount/rooms : 0, checkout };
     }
 
     function dataset(){ return state.scope === 'project' ? DATA.projectData : DATA.buildingData; }
@@ -184,7 +185,9 @@
     function checkoutCell(label,item){ return '<td data-label="' + label + '" class="checkout-risk ' + checkoutRisk(item.rate) + '">' + int(item.count) + '（' + Math.round(item.rate * 100) + '%）</td>'; }
     function renderCheckoutTables(){
       const row = (d) => '<tr class="' + projectRowClass(d.name) + '"><td data-label="统计范围">' + projectDisplayName(d.name) + '</td>' + DATA.checkoutPeriods.map((period) => checkoutCell(period.label,d.checkout[period.key])).join('') + '</tr>';
-      $('project-checkout-table').innerHTML = baseProjects.map(row).join('');
+      const regionRow = (d) => '<tr class="region-summary"><td data-label="统计范围">' + d.name + '</td>' + DATA.checkoutPeriods.map((period) => checkoutCell(period.label,d.checkout[period.key])).join('') + '</tr>';
+      const totalRow = '<tr class="summary-row"><td data-label="统计范围">汇总</td>' + DATA.checkoutPeriods.map((period) => checkoutCell(period.label,overallProject.checkout[period.key])).join('') + '</tr>';
+      $('project-checkout-table').innerHTML = baseProjects.map(row).join('') + regionRow(aggregateRegion('南亭区域','南')) + regionRow(aggregateRegion('北亭区域','北')) + totalRow;
       $('building-checkout-table').innerHTML = DATA.buildingData.map(row).join('');
     }
 
