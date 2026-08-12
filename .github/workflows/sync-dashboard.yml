@@ -1,6 +1,8 @@
 name: Protect validated dashboard style
 
 on:
+  schedule:
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -19,12 +21,12 @@ jobs:
         run: |
           curl --fail --silent --show-error --retry 5 --retry-all-errors \
             https://wecom.xiyuan.chat/dashboard-sync/index.html -o index.html.new
-          grep -q '<title>鎴挎簮杩愯惀宸ヤ綔鍙?/title>' index.html.new
+          grep -q '<title>房源运营工作台</title>' index.html.new
           grep -q 'data-dashboard-view="overview"' index.html.new
           grep -q 'data-dashboard-view="checkout"' index.html.new
           grep -q 'data-dashboard-view="performance"' index.html.new
           grep -q 'data-dashboard-view="occupancy"' index.html.new
-          grep -q '5%浠ヤ笅缁胯壊' index.html.new
+          grep -q '5%以下绿色' index.html.new
           mv index.html.new index.html
       - name: Commit when data changed
         run: |
@@ -35,6 +37,6 @@ jobs:
           git config user.name "xiyuan-cloud-automation"
           git config user.email "actions@users.noreply.github.com"
           git add index.html
-          git commit -m "鑷姩鏇存柊绾夸笂宸ヤ綔鍙?$(date -u +'%Y-%m-%d %H:%M UTC')"
+          git commit -m "自动更新线上工作台 $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push
 
