@@ -61,7 +61,7 @@ async function buildStatusReport(job) {
     `> 发送失败：${failed}`,
     `> 本次消息及${job.files.length}份文件：发送成功`,
     '',
-    job.summary,
+    job.statusSummary || '',
   ].join('\n');
 }
 
@@ -138,6 +138,10 @@ async function processNotificationQueue() {
         }
         const report = await buildStatusReport(job);
         await client.sendMessage(ALLOWED_CHAT_ID, { msgtype: 'markdown', markdown: { content: report } });
+        await client.sendMessage(ALLOWED_CHAT_ID, {
+          msgtype: 'markdown',
+          markdown: { content: job.todaySummary || job.summary },
+        });
         await fs.promises.rename(processing, path.join(SENT_DIR, name));
         console.log(JSON.stringify({ at: new Date().toISOString(), type: 'export_notification', job: job.id, files: job.files.length, sent: true }));
       } catch (error) {
