@@ -20,7 +20,7 @@ jobs:
       - name: Download validated dashboard
         run: |
           curl --fail --silent --show-error --retry 5 --retry-all-errors \
-            https://wecom.xiyuan.chat/dashboard-sync/index.html -o index.html.new
+            http://43.129.196.22/dashboard-sync/index.html -o index.html.new
           grep -q '<title>房源运营工作台</title>' index.html.new
           mv index.html.new index.html
       - name: Commit when data changed
