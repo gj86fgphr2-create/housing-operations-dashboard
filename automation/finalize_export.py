@@ -50,15 +50,29 @@ def money(value):
         return text(value) or "未填写"
 
 
+def room_number(value):
+    value = text(value)
+    match = re.search(r"(\d+)", value)
+    return match.group(1) if match else (value or "未填写")
+
+
+def unit_price(value, unit=""):
+    label = money(value)
+    unit = text(unit).replace("元", "").strip()
+    if unit and not unit.startswith("/"):
+        unit = f"/{unit}"
+    return f"{label}{unit}" if unit else label
+
+
 def contract_detail(row, indexes):
     def field(name):
         return text(row[indexes[name]]) or "未填写"
     return {
         "customer": field("租客姓名"),
         "building": field("小区/公寓"),
-        "room": field("门牌号"),
+        "room": room_number(row[indexes["门牌号"]]),
         "leaseTerm": field("租期时长"),
-        "amount": money(row[indexes["总租金"]]),
+        "amount": unit_price(row[indexes["租金单价"]], row[indexes["租金单位"]]),
         "signer": field("签约人"),
     }
 
@@ -67,7 +81,7 @@ def today_contract_details(run_dir, data_date):
     details = {"new": [], "renewal": [], "actualCheckout": []}
     seen_signing = set()
     seen_checkout = set()
-    required = ("合同编号", "签约来源", "签约时间", "预退/实退", "租客姓名", "小区/公寓", "门牌号", "租期时长", "总租金", "签约人")
+    required = ("合同编号", "签约来源", "签约时间", "预退/实退", "租客姓名", "小区/公寓", "门牌号", "租期时长", "租金单价", "租金单位", "签约人")
     for filename in ("在租中合同.xlsx", "将搬入合同.xlsx", "已退租合同.xlsx"):
         ws = load_workbook(run_dir / filename, read_only=True, data_only=True).active
         headers = [cell.value for cell in ws[3]]
@@ -89,14 +103,39 @@ def today_contract_details(run_dir, data_date):
     return details
 
 
+def today_reservation_details(path, data_date):
+    ws = load_workbook(path, read_only=True, data_only=True).active
+    headers = [cell.value for cell in ws[1]]
+    required = ("预定ID", "姓名", "小区/公寓", "地址", "租期", "租金", "预定办理人", "录入日期")
+    indexes = {name: column(headers, name) for name in required}
+    details = []
+    seen = set()
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        reservation_id = norm(row[indexes["预定ID"]])
+        if not reservation_id or reservation_id in seen:
+            continue
+        seen.add(reservation_id)
+        if iso_date(row[indexes["录入日期"]]) != data_date:
+            continue
+        details.append({
+            "customer": text(row[indexes["姓名"]]) or "未填写",
+            "building": text(row[indexes["小区/公寓"]]) or "未填写",
+            "room": room_number(re.sub(r"^.*座", "", text(row[indexes["地址"]]))),
+            "leaseTerm": text(row[indexes["租期"]]) or "未填写",
+            "amount": f"{money(row[indexes['租金']])}/月",
+            "signer": text(row[indexes["预定办理人"]]) or "未填写",
+        })
+    return details
+
+
 def detail_lines(title, items):
     lines = [f"**{title}（{len(items)}份）**"]
     if not items:
         return lines + ["> 今日暂无记录"]
     for number, item in enumerate(items, 1):
         lines.append(
-            f"> {number}. 顾客：{item['customer']}｜楼栋：{item['building']}｜房间：{item['room']}｜"
-            f"租期：{item['leaseTerm']}｜金额：{item['amount']}｜签约人：{item['signer']}"
+            f"> {number}. {item['customer']}｜{item['building']}｜{item['room']}｜"
+            f"{item['leaseTerm']}｜{item['amount']}｜{item['signer']}"
         )
     return lines
 
@@ -206,6 +245,7 @@ def main():
     try:
         brief = dashboard_brief(dashboard_path)
         details = today_contract_details(run_dir, brief["date"])
+        reservation_details = today_reservation_details(run_dir / "预定合同.xlsx", brief["date"])
     except Exception as exc:
         raise SystemExit(f"Dashboard validation failed: {exc}")
 
@@ -218,33 +258,38 @@ def main():
     if mismatches:
         raise SystemExit(f"Today detail validation failed: {mismatches}; dashboard={brief}; details={detail_counts}")
 
-    lines = [
+    status_lines = [
         f"> 导出时间：{completed.strftime('%Y-%m-%d %H:%M:%S')}",
         "> 校验结果：✅ 5份文件全部通过",
         "",
     ]
     for item in checks:
         label = item["file"].removesuffix(".xlsx")
-        lines.append(f"> {label}：**{item['rows']}条**（{item['detail']}）")
-    lines.extend([
-        "",
+        status_lines.append(f"> {label}：**{item['rows']}条**（{item['detail']}）")
+
+    today_lines = [
         f"**今日情况（{brief['date']}）**",
-        f"> 新签 **{brief['newCount']}份** ｜ 续租 **{brief['renewalCount']}份** ｜ 实际退租 **{brief['actualCheckoutCount']}份**",
+        f"> 新签 **{brief['newCount']}份** ｜ 续租 **{brief['renewalCount']}份** ｜ 实际退租 **{brief['actualCheckoutCount']}份** ｜ 预定 **{len(reservation_details)}份**",
         "",
-    ])
-    lines.extend(detail_lines("新签合同明细", details["new"]))
-    lines.append("")
-    lines.extend(detail_lines("续租合同明细", details["renewal"]))
-    lines.append("")
-    lines.extend(detail_lines("实际退租合同明细", details["actualCheckout"]))
-    lines.extend(["", f"[查看最新在线工作台]({dashboard_url})"])
+    ]
+    today_lines.extend(detail_lines("新签合同明细", details["new"]))
+    today_lines.append("")
+    today_lines.extend(detail_lines("续租合同明细", details["renewal"]))
+    today_lines.append("")
+    today_lines.extend(detail_lines("实际退租合同明细", details["actualCheckout"]))
+    today_lines.append("")
+    today_lines.extend(detail_lines("预定合同明细", reservation_details))
+    today_lines.extend(["", f"[查看最新在线工作台]({dashboard_url})"])
 
     job = {
         "id": f"{completed.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:8]}",
         "chatid": "wrki7WEAAAYzG-hYJ4delzv_Y7Us71ow",
-        "summary": "\n".join(lines),
+        "statusSummary": "\n".join(status_lines),
+        "todaySummary": "\n".join(today_lines),
+        "summary": "\n".join(today_lines),
         "dashboard": {"url": dashboard_url, **brief},
         "todayDetails": details,
+        "reservationDetails": reservation_details,
         "files": [str(run_dir / filename) for filename in FILES],
         "validation": validation,
     }
