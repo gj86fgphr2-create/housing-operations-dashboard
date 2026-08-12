@@ -29,6 +29,48 @@ def idx(headers, *names):
         if norm(name) in cleaned: return cleaned.index(norm(name))
     raise RuntimeError(f"Missing column {names}")
 
+def recent_performance():
+    """Build a complete seven-calendar-day series from the hourly contract exports."""
+    start = as_of - timedelta(days=6)
+    rows = {start + timedelta(days=i): {"newCount":0,"renewalCount":0,"actualCheckoutCount":0,"checkoutRenewalCount":0} for i in range(7)}
+    seen_signing, seen_checkout = set(), set()
+    renewed_rooms = set()
+    contract_sheets = []
+    for filename in ("在租中合同.xlsx", "将搬入合同.xlsx", "已退租合同.xlsx"):
+        ws = load_workbook(run_dir/filename, read_only=True, data_only=True).active
+        headers = [cell.value for cell in ws[3]]
+        ci, ti, si, ri, fi = idx(headers,"合同编号"), idx(headers,"签约来源"), idx(headers,"签约时间"), idx(headers,"预退/实退"), idx(headers,"房源ID")
+        sheet_rows = list(ws.iter_rows(min_row=4, values_only=True))
+        contract_sheets.append((filename, headers, sheet_rows))
+        for row in sheet_rows:
+            contract = norm(row[ci])
+            if not contract: continue
+            sign_date, checkout_date = iso(row[si]), iso(row[ri])
+            if contract not in seen_signing and sign_date:
+                signed = datetime.strptime(sign_date,"%Y-%m-%d").date()
+                if signed in rows:
+                    source = norm(row[ti])
+                    is_renewal = source in {"续租","重签"}
+                    rows[signed]["renewalCount" if is_renewal else "newCount"] += 1
+                    if is_renewal: renewed_rooms.add(norm(row[fi]))
+                seen_signing.add(contract)
+            if filename == "已退租合同.xlsx" and contract not in seen_checkout and checkout_date:
+                checked_out = datetime.strptime(checkout_date,"%Y-%m-%d").date()
+                if checked_out in rows: rows[checked_out]["actualCheckoutCount"] += 1
+                seen_checkout.add(contract)
+    # 退租中续租：已退租合同的房源在本月又产生续租/重签合同，按原合同实际退租日分天统计。
+    for filename, headers, sheet_rows in contract_sheets:
+        if filename != "已退租合同.xlsx": continue
+        ci, ri, fi = idx(headers,"合同编号"), idx(headers,"预退/实退"), idx(headers,"房源ID")
+        seen = set()
+        for row in sheet_rows:
+            contract, checkout_date, room = norm(row[ci]), iso(row[ri]), norm(row[fi])
+            if not contract or contract in seen or room not in renewed_rooms or not checkout_date: continue
+            checked_out = datetime.strptime(checkout_date,"%Y-%m-%d").date()
+            if checked_out in rows: rows[checked_out]["checkoutRenewalCount"] += 1
+            seen.add(contract)
+    return [{"date":day.isoformat(),**values} for day,values in rows.items()]
+
 building_rows={row["name"]:row for row in current["buildingData"]}
 periods=[
     {"key":"w1","label":f"{as_of.month}W1","range":f"{as_of.month}月1日至7日"},
@@ -99,13 +141,14 @@ monthly["小谷围项目"]=sum_monthly("小谷围项目",["北亭研寓项目","
 monthly["小筑项目"]=sum_monthly("小筑项目",["城北小筑A","城北小筑B","城北小筑C"])
 base_names=[name for name,_ in project_specs[1:]]
 contract_stats={**old["contractStats"],**cs,"asOfDate":current["dataDate"],"projectMonthly":[monthly.get(n,{"name":n,"newCount":0,"renewalCount":0,"actualCheckoutCount":0,"checkoutRenewalCount":0}) for n in base_names]}
+contract_stats["recentPerformance"] = recent_performance()
 contract_stats.setdefault("projectMonthlyUnmapped",{"newCount":0,"renewalCount":0,"actualCheckoutCount":0,"checkoutRenewalCount":0})
 contract_stats.setdefault("totals",{})
 contract_stats["uniqueContracts"]=sum(1 for f in ("在租中合同.xlsx","将搬入合同.xlsx","已退租合同.xlsx") for _ in load_workbook(run_dir/f,read_only=True).active.iter_rows(min_row=4,values_only=True))
 
 payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods}
 rendered=template[:payload_span[0]]+json.dumps(payload,ensure_ascii=False,separators=(",",":"))+template[payload_span[1]:]
-required=['data-dashboard-view="overview"','data-dashboard-view="checkout"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','5%以下绿色']
+required=['data-dashboard-view="overview"','data-dashboard-view="checkout"','data-dashboard-view="performance"','data-dashboard-view="recent-performance"','data-dashboard-view="occupancy"','5%以下绿色','recent-performance-table']
 if any(x not in rendered for x in required): raise RuntimeError("Full dashboard style validation failed")
 if len(building_rows)<50 or project_data[0]["rooms"]!=692: raise RuntimeError("Data reconciliation failed")
 output_path.parent.mkdir(parents=True,exist_ok=True)
