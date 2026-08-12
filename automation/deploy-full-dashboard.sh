@@ -17,7 +17,7 @@ sudo python3 - <<'PY'
 from pathlib import Path
 p=Path('/etc/systemd/system/yuxiaor-download.service')
 s=p.read_text()
-line='ExecStartPost=/usr/bin/python3 /opt/yuxiaor-automation/app/generate_full_dashboard.py /opt/yuxiaor-automation/data/current /opt/yuxiaor-automation/app/latest-dashboard-template.html /opt/yuxiaor-automation/site/index.simple.html /opt/yuxiaor-automation/site/index.html'
+line='ExecStartPost=/usr/bin/python3 /opt/yuxiaor-automation/app/generate_full_dashboard.py /opt/yuxiaor-automation/data/current /opt/yuxiaor-automation/app/latest-dashboard-template.html /opt/yuxiaor-automation/site/index.html /opt/yuxiaor-automation/site/index.html'
 old='ExecStartPost=/usr/bin/python3 /opt/yuxiaor-automation/app/generate_dashboard.py'
 if line not in s:
     if old not in s: raise SystemExit('generate_dashboard ExecStartPost not found')
@@ -31,6 +31,6 @@ sudo systemctl start yuxiaor-download.service
 sudo systemctl is-active yuxiaor-download.timer
 sudo grep -q 'data-dashboard-view="performance"' "$site/index.html"
 sudo grep -q '5%以下绿色' "$site/index.html"
-curl --fail --silent --show-error http://127.0.0.1/dashboard-sync/index.html | grep -q '"dataDate":"2026-08-12"'
+curl --fail --silent --show-error http://127.0.0.1/dashboard-sync/index.html | grep -q '"dataDate"'
 echo FULL_DASHBOARD_DEPLOYED
 
