@@ -25,9 +25,11 @@ jobs:
           grep -q 'data-dashboard-view="overview"' index.html.new
           grep -q 'data-dashboard-view="checkout"' index.html.new
           grep -q 'data-dashboard-view="performance"' index.html.new
-          grep -q 'data-dashboard-view="recent-performance"' index.html.new
+          grep -q 'data-dashboard-view="operations-brief"' index.html.new
           grep -q 'data-dashboard-view="occupancy"' index.html.new
-          grep -q 'recent-performance-table' index.html.new
+          grep -q 'brief-daily-table' index.html.new
+          grep -q 'brief-project-table' index.html.new
+          grep -q 'brief-person-table' index.html.new
           grep -q '5%以下绿色' index.html.new
           mv index.html.new index.html
       - name: Commit when data changed
