@@ -10,10 +10,12 @@ stamp="$(date +%Y%m%d-%H%M%S)"
 sudo install -d -o ubuntu -g ubuntu "$app" "$site"
 sudo cp /etc/systemd/system/yuxiaor-download.service "/etc/systemd/system/yuxiaor-download.service.$stamp.bak"
 curl --fail --silent --show-error --retry 5 "$repo_raw/automation/generate_full_dashboard.py" -o /tmp/generate_full_dashboard.py
+curl --fail --silent --show-error --retry 5 "$repo_raw/automation/downloader.mjs" -o /tmp/downloader.mjs
 curl --fail --silent --show-error --retry 5 "$repo_raw/automation/latest-dashboard-template.html" -o /tmp/latest-dashboard-template.html
 curl --fail --silent --show-error --retry 5 "$repo_raw/automation/finalize_export.py" -o /tmp/finalize_export.py
 curl --fail --silent --show-error --retry 5 "$repo_raw/automation/aibot-server.mjs" -o /tmp/aibot-server.mjs
 sudo install -o ubuntu -g ubuntu -m 0755 /tmp/generate_full_dashboard.py "$app/generate_full_dashboard.py"
+sudo install -o ubuntu -g ubuntu -m 0644 /tmp/downloader.mjs "$app/downloader.mjs"
 sudo install -o ubuntu -g ubuntu -m 0644 /tmp/latest-dashboard-template.html "$app/latest-dashboard-template.html"
 sudo install -o ubuntu -g ubuntu -m 0755 /tmp/finalize_export.py "$app/finalize_export.py"
 sudo install -o ubuntu -g ubuntu -m 0644 /tmp/aibot-server.mjs "$bot_app/aibot-server.mjs"
