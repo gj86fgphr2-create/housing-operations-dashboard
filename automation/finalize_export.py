@@ -161,20 +161,29 @@ def inspect_house(path):
     id_col = headers.index("房源ID")
     estate_col = headers.index("小区/公寓")
     lock_col = headers.index("锁房备注")
+    status_col = headers.index("状态")
     rows = 0
     excluded = 0
     locked = 0
+    rentable = 0
+    unrentable = 0
     for row in ws.iter_rows(min_row=4, values_only=True):
         if not any(text(v) for v in row):
             continue
         rows += 1
         if text(row[lock_col]):
             locked += 1
+        if norm(row[status_col]) == "空房可租":
+            rentable += 1
+        elif norm(row[status_col]) == "空房不可租":
+            unrentable += 1
         if text(row[id_col]) == "117492563" or "物业租赁中心（路线指引）" in text(row[estate_col]):
             excluded += 1
     ok = rows > 0 and excluded == 0
-    detail = f"已删除指定排除项及空白尾行；锁房备注字段正常，识别{locked}间"
-    return rows, ok, detail if ok else f"发现{excluded}条应排除数据", locked
+    vacancy_ok = rentable + unrentable > 0
+    ok = ok and vacancy_ok
+    detail = f"已删除指定排除项及空白尾行；锁房{locked}间；空房可租{rentable}间、不可租{unrentable}间"
+    return rows, ok, detail if ok else f"发现{excluded}条应排除数据或空房状态缺失", locked, rentable, unrentable
 
 
 def inspect_reservation(path):
@@ -209,6 +218,9 @@ def dashboard_brief(path):
         "renewalCount": int(today.get("renewalCount", 0) or 0),
         "actualCheckoutCount": int(today.get("actualCheckoutCount", 0) or 0),
         "lockCount": int(next((row.get("lockCount", 0) for row in data.get("projectData", []) if row.get("name") == "全部房源汇总"), 0) or 0),
+        "rentableVacancyCount": int(next((row.get("rentableVacancyCount", 0) for row in data.get("projectData", []) if row.get("name") == "全部房源汇总"), 0) or 0),
+        "unrentableVacancyCount": int(next((row.get("unrentableVacancyCount", 0) for row in data.get("projectData", []) if row.get("name") == "全部房源汇总"), 0) or 0),
+        "vacancyCount": int(next((row.get("vacancyCount", 0) for row in data.get("projectData", []) if row.get("name") == "全部房源汇总"), 0) or 0),
     }
 
 
@@ -221,6 +233,8 @@ def main():
 
     checks = []
     source_lock_count = None
+    source_rentable_count = None
+    source_unrentable_count = None
     for filename in FILES:
         path = run_dir / filename
         if not path.exists() or path.stat().st_size == 0:
@@ -228,7 +242,7 @@ def main():
             continue
         try:
             if filename == "房源详情.xlsx":
-                rows, ok, detail, source_lock_count = inspect_house(path)
+                rows, ok, detail, source_lock_count, source_rentable_count, source_unrentable_count = inspect_house(path)
             elif filename == "预定合同.xlsx":
                 rows, ok, detail = inspect_reservation(path)
             else:
@@ -236,6 +250,8 @@ def main():
             item = {"file": filename, "rows": rows, "ok": ok, "detail": detail, "bytes": path.stat().st_size}
             if filename == "房源详情.xlsx":
                 item["lockCount"] = source_lock_count
+                item["rentableVacancyCount"] = source_rentable_count
+                item["unrentableVacancyCount"] = source_unrentable_count
             checks.append(item)
         except Exception as exc:
             checks.append({"file": filename, "rows": 0, "ok": False, "detail": f"无法读取：{exc}"})
@@ -266,10 +282,26 @@ def main():
         "dashboardCount": brief["lockCount"],
         "ok": lock_monitor_ok,
     }
-    validation["valid"] = validation["valid"] and lock_monitor_ok
+    vacancy_monitor_ok = (
+        source_rentable_count == brief["rentableVacancyCount"]
+        and source_unrentable_count == brief["unrentableVacancyCount"]
+        and source_rentable_count + source_unrentable_count == brief["vacancyCount"]
+    )
+    validation["vacancyMonitoring"] = {
+        "field": "状态",
+        "sourceRentableCount": source_rentable_count,
+        "sourceUnrentableCount": source_unrentable_count,
+        "dashboardRentableCount": brief["rentableVacancyCount"],
+        "dashboardUnrentableCount": brief["unrentableVacancyCount"],
+        "dashboardVacancyCount": brief["vacancyCount"],
+        "ok": vacancy_monitor_ok,
+    }
+    validation["valid"] = validation["valid"] and lock_monitor_ok and vacancy_monitor_ok
     (run_dir / "validation.json").write_text(json.dumps(validation, ensure_ascii=False, indent=2), encoding="utf-8")
     if not lock_monitor_ok:
         raise SystemExit(f"Lock monitoring validation failed: {validation['lockMonitoring']}")
+    if not vacancy_monitor_ok:
+        raise SystemExit(f"Vacancy monitoring validation failed: {validation['vacancyMonitoring']}")
 
     detail_counts = {
         "newCount": len(details["new"]),
@@ -284,6 +316,7 @@ def main():
         f"> 导出时间：{completed.strftime('%Y-%m-%d %H:%M:%S')}",
         "> 校验结果：✅ 5份文件全部通过",
         f"> 锁房监测：✅ 锁房备注字段正常，工作台识别 **{brief['lockCount']}间**，与房源表一致",
+        f"> 空房监测：✅ 共 **{brief['vacancyCount']}间**（可租 **{brief['rentableVacancyCount']}间**、不可租 **{brief['unrentableVacancyCount']}间**），与房源表一致",
         "",
     ]
     for item in checks:
