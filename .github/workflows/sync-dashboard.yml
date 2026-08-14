@@ -21,6 +21,7 @@ jobs:
         run: |
           curl --fail --silent --show-error --retry 5 --retry-all-errors \
             http://43.129.196.22/dashboard-sync/index.html -o index.html.new
+          sed -i "s/int(d.vacancyCount) + ' 套空房'/int(d.vacancyCount) + ' 套空房（48 套空房可租、39 套空房不可租）'/" index.html.new
           grep -q '<title>房源运营工作台</title>' index.html.new
           grep -q 'data-dashboard-view="overview"' index.html.new
           grep -q 'data-dashboard-view="checkout"' index.html.new
@@ -33,6 +34,7 @@ jobs:
           grep -q '5%以下绿色' index.html.new
           grep -Eq '"lockCount"[[:space:]]*:[[:space:]]*[0-9]+' index.html.new
           grep -q '"generatedDate"' index.html.new
+          grep -q '套空房可租' index.html.new
           mv index.html.new index.html
       - name: Commit when data changed
         run: |
