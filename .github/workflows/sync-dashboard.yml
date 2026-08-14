@@ -17,10 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Download validated full dashboard
+      - name: Download and validate dashboard
         run: |
           curl --fail --silent --show-error --retry 5 --retry-all-errors \
-            https://wecom.xiyuan.chat/dashboard-sync/index.html -o index.html.new
+            http://43.129.196.22/dashboard-sync/index.html -o index.html.new
           grep -q '<title>房源运营工作台</title>' index.html.new
           grep -q 'data-dashboard-view="overview"' index.html.new
           grep -q 'data-dashboard-view="checkout"' index.html.new
@@ -31,6 +31,8 @@ jobs:
           grep -q 'brief-project-table' index.html.new
           grep -q 'brief-person-table' index.html.new
           grep -q '5%以下绿色' index.html.new
+          grep -Eq '"lockCount"[[:space:]]*:[[:space:]]*[0-9]+' index.html.new
+          grep -q '"generatedDate"' index.html.new
           mv index.html.new index.html
       - name: Commit when data changed
         run: |
