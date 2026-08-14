@@ -185,7 +185,8 @@
       $('kpi-occupancy').textContent = pct(d.occupancyRate);
       $('hint-occupied').textContent = int(d.occupiedCount) + ' 套（含预定 ' + int(d.preorderCount) + ' 套）';
       $('kpi-comprehensive').textContent = pct(d.comprehensiveRate);
-      $('hint-comprehensive').textContent = int(d.comprehensiveCount) + ' 套';
+      const otherComprehensive = Math.max(0, int(d.comprehensiveCount) - int(d.occupiedCount) - int(d.lockCount));
+      $('hint-comprehensive').textContent = int(d.comprehensiveCount) + ' 套（当前在租 ' + int(d.occupiedCount) + '、锁房 ' + int(d.lockCount) + '、未来30天其他有效占用 ' + otherComprehensive + '）';
       const rentableVacancy = Number.isFinite(Number(d.rentableVacancyCount)) ? int(d.rentableVacancyCount) : 48;
       const unrentableVacancy = Number.isFinite(Number(d.unrentableVacancyCount)) ? int(d.unrentableVacancyCount) : Math.max(0, int(d.vacancyCount) - rentableVacancy);
       $('kpi-vacancy').textContent = pct(d.vacancyRate); $('hint-vacancy').textContent = int(d.vacancyCount) + ' 套空房（' + rentableVacancy + ' 套空房可租、' + unrentableVacancy + ' 套空房不可租）';
