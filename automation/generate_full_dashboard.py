@@ -72,6 +72,31 @@ def recent_performance():
     return [{"date":day.isoformat(),**values} for day,values in rows.items()], project_rows, people_rows
 
 building_rows={row["name"]:row for row in current["buildingData"]}
+
+def apply_lock_monitoring():
+    """Use non-empty 锁房备注 as the authoritative locked-room signal."""
+    ws=load_workbook(run_dir/"房源详情.xlsx",read_only=True,data_only=True).active
+    headers=[cell.value for cell in ws[3]]
+    building_i, lock_i=idx(headers,"小区/公寓"),idx(headers,"锁房备注")
+    counts=defaultdict(int)
+    for row in ws.iter_rows(min_row=4,values_only=True):
+        if not norm(row[lock_i]): continue
+        building=str(row[building_i] or "").strip()
+        if not building: raise RuntimeError("Locked room is missing building name")
+        counts[building]+=1
+    unknown=sorted(set(counts)-set(building_rows))
+    if unknown: raise RuntimeError(f"Locked rooms contain unknown buildings: {unknown}")
+    for name,row in building_rows.items():
+        previous=int(row.get("lockCount",0) or 0)
+        locked=counts[name]
+        row["lockCount"]=locked
+        rooms=int(row.get("rooms",0) or 0)
+        row["lockRate"]=locked/rooms if rooms else 0
+        row["comprehensiveCount"]=min(rooms,int(row.get("comprehensiveCount",0) or 0)+locked-previous)
+        row["comprehensiveRate"]=row["comprehensiveCount"]/rooms if rooms else 0
+    return sum(counts.values())
+
+lock_total=apply_lock_monitoring()
 periods=[
     {"key":"w1","label":f"{as_of.month}W1","range":f"{as_of.month}月1日至7日"},
     {"key":"w2","label":f"{as_of.month}W2","range":f"{as_of.month}月8日至14日"},
@@ -151,7 +176,8 @@ rendered=template[:payload_span[0]]+json.dumps(payload,ensure_ascii=False,separa
 required=['data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="checkout"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table']
 if any(x not in rendered for x in required): raise RuntimeError("Full dashboard style validation failed")
 if len(building_rows)<50 or project_data[0]["rooms"]!=692: raise RuntimeError("Data reconciliation failed")
+if project_data[0]["lockCount"]!=lock_total: raise RuntimeError("Lock count reconciliation failed")
 output_path.parent.mkdir(parents=True,exist_ok=True)
 tmp=output_path.with_suffix(".tmp"); tmp.write_text(rendered,encoding="utf-8"); tmp.replace(output_path)
-print(json.dumps({"dataDate":payload["dataDate"],"rooms":project_data[0]["rooms"],"buildings":len(building_rows),"projects":len(project_data),"style":"latest-full"},ensure_ascii=False))
+print(json.dumps({"dataDate":payload["dataDate"],"rooms":project_data[0]["rooms"],"lockCount":lock_total,"lockField":"锁房备注","buildings":len(building_rows),"projects":len(project_data),"style":"latest-full"},ensure_ascii=False))
 
