@@ -73,30 +73,36 @@ def recent_performance():
 
 building_rows={row["name"]:row for row in current["buildingData"]}
 
-def apply_lock_monitoring():
-    """Use non-empty 锁房备注 as the authoritative locked-room signal."""
+def apply_house_monitoring():
+    """Use 房源详情 as the authoritative source for locks and vacancy availability."""
     ws=load_workbook(run_dir/"房源详情.xlsx",read_only=True,data_only=True).active
     headers=[cell.value for cell in ws[3]]
-    building_i, lock_i=idx(headers,"小区/公寓"),idx(headers,"锁房备注")
-    counts=defaultdict(int)
+    building_i, lock_i, status_i=idx(headers,"小区/公寓"),idx(headers,"锁房备注"),idx(headers,"状态")
+    locks, rentable, unrentable=defaultdict(int),defaultdict(int),defaultdict(int)
     for row in ws.iter_rows(min_row=4,values_only=True):
-        if not norm(row[lock_i]): continue
         building=str(row[building_i] or "").strip()
-        if not building: raise RuntimeError("Locked room is missing building name")
-        counts[building]+=1
-    unknown=sorted(set(counts)-set(building_rows))
+        state=norm(row[status_i])
+        monitored=bool(norm(row[lock_i])) or state in {"空房可租","空房不可租"}
+        if monitored and not building: raise RuntimeError("Monitored room is missing building name")
+        if norm(row[lock_i]): locks[building]+=1
+        if state == "空房可租": rentable[building]+=1
+        if state == "空房不可租": unrentable[building]+=1
+    unknown=sorted((set(locks)|set(rentable)|set(unrentable))-set(building_rows))
     if unknown: raise RuntimeError(f"Locked rooms contain unknown buildings: {unknown}")
     for name,row in building_rows.items():
         previous=int(row.get("lockCount",0) or 0)
-        locked=counts[name]
+        locked=locks[name]
         row["lockCount"]=locked
+        row["rentableVacancyCount"]=rentable[name]
+        row["unrentableVacancyCount"]=unrentable[name]
         rooms=int(row.get("rooms",0) or 0)
         row["lockRate"]=locked/rooms if rooms else 0
         row["comprehensiveCount"]=min(rooms,int(row.get("comprehensiveCount",0) or 0)+locked-previous)
         row["comprehensiveRate"]=row["comprehensiveCount"]/rooms if rooms else 0
-    return sum(counts.values())
+    return {"lock":sum(locks.values()),"rentable":sum(rentable.values()),"unrentable":sum(unrentable.values())}
 
-lock_total=apply_lock_monitoring()
+house_monitor=apply_house_monitoring()
+lock_total=house_monitor["lock"]
 periods=[
     {"key":"w1","label":f"{as_of.month}W1","range":f"{as_of.month}月1日至7日"},
     {"key":"w2","label":f"{as_of.month}W2","range":f"{as_of.month}月8日至14日"},
@@ -122,7 +128,7 @@ for name,row in building_rows.items():
 def aggregate(name, names):
     rows=[building_rows[n] for n in names if n in building_rows]
     result={"name":name}
-    for field in ("rooms","comprehensiveCount","occupiedCount","vacancyCount","lockCount","preorderCount"):
+    for field in ("rooms","comprehensiveCount","occupiedCount","vacancyCount","lockCount","rentableVacancyCount","unrentableVacancyCount","preorderCount"):
         result[field]=sum(float(r.get(field,0) or 0) for r in rows)
         if result[field].is_integer(): result[field]=int(result[field])
     rooms=result["rooms"]
@@ -177,7 +183,8 @@ required=['data-dashboard-view="operations-brief"','data-dashboard-view="overvie
 if any(x not in rendered for x in required): raise RuntimeError("Full dashboard style validation failed")
 if len(building_rows)<50 or project_data[0]["rooms"]!=692: raise RuntimeError("Data reconciliation failed")
 if project_data[0]["lockCount"]!=lock_total: raise RuntimeError("Lock count reconciliation failed")
+if project_data[0]["rentableVacancyCount"]+project_data[0]["unrentableVacancyCount"]!=project_data[0]["vacancyCount"]: raise RuntimeError("Vacancy availability reconciliation failed")
 output_path.parent.mkdir(parents=True,exist_ok=True)
 tmp=output_path.with_suffix(".tmp"); tmp.write_text(rendered,encoding="utf-8"); tmp.replace(output_path)
-print(json.dumps({"dataDate":payload["dataDate"],"rooms":project_data[0]["rooms"],"lockCount":lock_total,"lockField":"锁房备注","buildings":len(building_rows),"projects":len(project_data),"style":"latest-full"},ensure_ascii=False))
+print(json.dumps({"dataDate":payload["dataDate"],"rooms":project_data[0]["rooms"],"lockCount":lock_total,"lockField":"锁房备注","rentableVacancyCount":house_monitor["rentable"],"unrentableVacancyCount":house_monitor["unrentable"],"vacancyField":"状态","buildings":len(building_rows),"projects":len(project_data),"style":"latest-full"},ensure_ascii=False))
 
