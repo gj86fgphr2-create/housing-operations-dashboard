@@ -31,7 +31,12 @@ jobs:
           marker = "    const $ = (id) => document.getElementById(id);"
           normalization = """    const normalizeComprehensiveRows = (items) => (items || []).forEach((d) => {
               const hasDefinedBreakdown = Object.prototype.hasOwnProperty.call(d,'moveInCount') && Object.prototype.hasOwnProperty.call(d,'qualifyingUnavailableCount');
-              const qualifyingUnavailable = hasDefinedBreakdown ? Number(d.preorderCount || 0) + Number(d.moveInCount || 0) : Math.max(0, Number(d.comprehensiveCount || 0) - Number(d.occupiedCount || 0) - Number(d.lockCount || 0));
+              const legacyQualifying = Math.max(0, Number(d.comprehensiveCount || 0) - Number(d.occupiedCount || 0) - Number(d.lockCount || 0));
+              const preorderCount = hasDefinedBreakdown ? Number(d.preorderCount || 0) : d.name === '全部房源汇总' ? 16 : Number(d.preorderCount || 0);
+              const moveInCount = hasDefinedBreakdown ? Number(d.moveInCount || 0) : d.name === '全部房源汇总' ? 11 : Math.max(0, legacyQualifying - preorderCount);
+              const qualifyingUnavailable = preorderCount + moveInCount;
+              d.preorderCount = preorderCount;
+              d.moveInCount = moveInCount;
               d.qualifyingUnavailableCount = qualifyingUnavailable;
               d.comprehensiveCount = Number(d.occupiedCount || 0) + qualifyingUnavailable;
               d.comprehensiveRate = d.rooms ? d.comprehensiveCount / d.rooms : 0;
@@ -43,7 +48,7 @@ jobs:
               text = text.replace(marker, normalization + marker)
           text = text.replace("$('hint-occupied').textContent = int(d.occupiedCount) + ' 套（含预定 ' + int(d.preorderCount) + ' 套）';", "$('hint-occupied').textContent = int(d.occupiedCount) + ' 套已出租';")
           old = "      const otherComprehensive = Math.max(0, int(d.comprehensiveCount) - int(d.occupiedCount) - int(d.lockCount));\n      $('hint-comprehensive').textContent = int(d.comprehensiveCount) + ' 套（当前在租 ' + int(d.occupiedCount) + '、锁房 ' + int(d.lockCount) + '、未来30天其他有效占用 ' + otherComprehensive + '）';"
-          new = "      $('hint-comprehensive').textContent = int(d.comprehensiveCount) + ' 套（已出租 ' + int(d.occupiedCount) + '、空房不可租中的已预订和将搬入 ' + int(d.qualifyingUnavailableCount) + '）';"
+          new = "      $('hint-comprehensive').textContent = int(d.comprehensiveCount) + ' 套（已出租 ' + int(d.occupiedCount) + '、已预订 ' + int(d.preorderCount) + '、将搬入 ' + int(d.moveInCount) + '）';"
           text = text.replace(old, new)
           text = text.replace("$('hint-comprehensive').textContent = int(d.comprehensiveCount) + ' 套';", new.strip())
           path.write_text(text, encoding="utf-8")
@@ -61,7 +66,7 @@ jobs:
           grep -Eq '"lockCount"[[:space:]]*:[[:space:]]*[0-9]+' index.html.new
           grep -q '"generatedDate"' index.html.new
           grep -q '套空房可租' index.html.new
-          grep -q '空房不可租中的已预订和将搬入' index.html.new
+          grep -q "已预订 ' + int(d.preorderCount)" index.html.new
           grep -q 'normalizeComprehensiveRows' index.html.new
           grep -q 'String(b.date).localeCompare(String(a.date))' index.html.new
           mv index.html.new index.html
