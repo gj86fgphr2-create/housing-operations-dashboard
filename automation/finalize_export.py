@@ -167,23 +167,34 @@ def inspect_house(path):
     locked = 0
     rentable = 0
     unrentable = 0
+    occupied = 0
+    preordered = 0
+    moving_in = 0
     for row in ws.iter_rows(min_row=4, values_only=True):
         if not any(text(v) for v in row):
             continue
         rows += 1
-        if text(row[lock_col]):
+        remark = norm(row[lock_col])
+        state = norm(row[status_col])
+        if remark:
             locked += 1
-        if norm(row[status_col]) == "空房可租":
+        if state == "已出租":
+            occupied += 1
+        elif state == "空房可租":
             rentable += 1
-        elif norm(row[status_col]) == "空房不可租":
+        elif state == "空房不可租":
             unrentable += 1
+            if any(word in remark for word in ("将搬入", "待搬入")):
+                moving_in += 1
+            elif any(word in remark for word in ("已预订", "已预定", "预订", "预定")):
+                preordered += 1
         if text(row[id_col]) == "117492563" or "物业租赁中心（路线指引）" in text(row[estate_col]):
             excluded += 1
     ok = rows > 0 and excluded == 0
     vacancy_ok = rentable + unrentable > 0
     ok = ok and vacancy_ok
-    detail = f"已删除指定排除项及空白尾行；锁房{locked}间；空房可租{rentable}间、不可租{unrentable}间"
-    return rows, ok, detail if ok else f"发现{excluded}条应排除数据或空房状态缺失", locked, rentable, unrentable
+    detail = f"已删除指定排除项及空白尾行；已出租{occupied}间；空房可租{rentable}间、不可租{unrentable}间；其中已预订{preordered}间、将搬入{moving_in}间"
+    return rows, ok, detail if ok else f"发现{excluded}条应排除数据或空房状态缺失", locked, rentable, unrentable, occupied, preordered, moving_in
 
 
 def inspect_reservation(path):
@@ -203,7 +214,7 @@ def inspect_reservation(path):
 
 def dashboard_brief(path):
     html = path.read_text(encoding="utf-8")
-    match = re.search(r"const DATA\s*=\s*(\{.*?\});\s*\n\s*const \$", html, re.S)
+    match = re.search(r"const DATA\s*=\s*(\{.*?\});", html, re.S)
     if not match:
         raise RuntimeError("工作台数据载荷不存在")
     data = json.loads(match.group(1))
@@ -221,6 +232,10 @@ def dashboard_brief(path):
         "rentableVacancyCount": int(next((row.get("rentableVacancyCount", 0) for row in data.get("projectData", []) if row.get("name") == "全部房源汇总"), 0) or 0),
         "unrentableVacancyCount": int(next((row.get("unrentableVacancyCount", 0) for row in data.get("projectData", []) if row.get("name") == "全部房源汇总"), 0) or 0),
         "vacancyCount": int(next((row.get("vacancyCount", 0) for row in data.get("projectData", []) if row.get("name") == "全部房源汇总"), 0) or 0),
+        "occupiedCount": int(next((row.get("occupiedCount", 0) for row in data.get("projectData", []) if row.get("name") == "全部房源汇总"), 0) or 0),
+        "preorderCount": int(next((row.get("preorderCount", 0) for row in data.get("projectData", []) if row.get("name") == "全部房源汇总"), 0) or 0),
+        "moveInCount": int(next((row.get("moveInCount", 0) for row in data.get("projectData", []) if row.get("name") == "全部房源汇总"), 0) or 0),
+        "comprehensiveCount": int(next((row.get("comprehensiveCount", 0) for row in data.get("projectData", []) if row.get("name") == "全部房源汇总"), 0) or 0),
     }
 
 
@@ -235,6 +250,9 @@ def main():
     source_lock_count = None
     source_rentable_count = None
     source_unrentable_count = None
+    source_occupied_count = None
+    source_preorder_count = None
+    source_move_in_count = None
     for filename in FILES:
         path = run_dir / filename
         if not path.exists() or path.stat().st_size == 0:
@@ -242,7 +260,7 @@ def main():
             continue
         try:
             if filename == "房源详情.xlsx":
-                rows, ok, detail, source_lock_count, source_rentable_count, source_unrentable_count = inspect_house(path)
+                rows, ok, detail, source_lock_count, source_rentable_count, source_unrentable_count, source_occupied_count, source_preorder_count, source_move_in_count = inspect_house(path)
             elif filename == "预定合同.xlsx":
                 rows, ok, detail = inspect_reservation(path)
             else:
@@ -252,6 +270,9 @@ def main():
                 item["lockCount"] = source_lock_count
                 item["rentableVacancyCount"] = source_rentable_count
                 item["unrentableVacancyCount"] = source_unrentable_count
+                item["occupiedCount"] = source_occupied_count
+                item["preorderCount"] = source_preorder_count
+                item["moveInCount"] = source_move_in_count
             checks.append(item)
         except Exception as exc:
             checks.append({"file": filename, "rows": 0, "ok": False, "detail": f"无法读取：{exc}"})
@@ -296,12 +317,28 @@ def main():
         "dashboardVacancyCount": brief["vacancyCount"],
         "ok": vacancy_monitor_ok,
     }
-    validation["valid"] = validation["valid"] and lock_monitor_ok and vacancy_monitor_ok
+    comprehensive_monitor_ok = (
+        source_occupied_count == brief["occupiedCount"]
+        and source_preorder_count == brief["preorderCount"]
+        and source_move_in_count == brief["moveInCount"]
+        and brief["comprehensiveCount"] == brief["occupiedCount"] + brief["preorderCount"] + brief["moveInCount"]
+    )
+    validation["comprehensiveMonitoring"] = {
+        "definition": "已出租+空房不可租中的已预订和将搬入",
+        "occupiedCount": source_occupied_count,
+        "preorderCount": source_preorder_count,
+        "moveInCount": source_move_in_count,
+        "dashboardComprehensiveCount": brief["comprehensiveCount"],
+        "ok": comprehensive_monitor_ok,
+    }
+    validation["valid"] = validation["valid"] and lock_monitor_ok and vacancy_monitor_ok and comprehensive_monitor_ok
     (run_dir / "validation.json").write_text(json.dumps(validation, ensure_ascii=False, indent=2), encoding="utf-8")
     if not lock_monitor_ok:
         raise SystemExit(f"Lock monitoring validation failed: {validation['lockMonitoring']}")
     if not vacancy_monitor_ok:
         raise SystemExit(f"Vacancy monitoring validation failed: {validation['vacancyMonitoring']}")
+    if not comprehensive_monitor_ok:
+        raise SystemExit(f"Comprehensive monitoring validation failed: {validation['comprehensiveMonitoring']}")
 
     detail_counts = {
         "newCount": len(details["new"]),
@@ -317,6 +354,7 @@ def main():
         "> 校验结果：✅ 5份文件全部通过",
         f"> 锁房监测：✅ 锁房备注字段正常，工作台识别 **{brief['lockCount']}间**，与房源表一致",
         f"> 空房监测：✅ 共 **{brief['vacancyCount']}间**（可租 **{brief['rentableVacancyCount']}间**、不可租 **{brief['unrentableVacancyCount']}间**），与房源表一致",
+        f"> 综合在租：✅ **{brief['comprehensiveCount']}间**（已出租 **{brief['occupiedCount']}间**、不可租中的已预订 **{brief['preorderCount']}间**、将搬入 **{brief['moveInCount']}间**）",
         "",
     ]
     for item in checks:
