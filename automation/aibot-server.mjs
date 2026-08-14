@@ -3,6 +3,7 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import AiBot, { generateReqId } from '@wecom/aibot-node-sdk';
+import { generateOperationsAnalysis, renderAnalysisMarkdown } from './operations-analysis.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -43,7 +44,7 @@ async function unitStatus(unit) {
   }
 }
 
-async function buildStatusReport(job) {
+async function buildStatusReport(job, analysisResult) {
   const [timer, bot, pending, failed] = await Promise.all([
     unitStatus('yuxiaor-download.timer'),
     unitStatus('yuxiaor-aibot.service'),
@@ -60,6 +61,7 @@ async function buildStatusReport(job) {
     `> 待发送：${pending}`,
     `> 发送失败：${failed}`,
     `> 本次消息及${job.files.length}份文件：发送成功`,
+    `> 运营分析：${analysisResult?.source === 'openai' ? 'GPT辅助分析' : analysisResult ? '规则分析（OpenAI未启用或暂时不可用）' : '未生成（旧任务）'}`,
     '',
     job.statusSummary || '',
   ].join('\n');
@@ -136,14 +138,38 @@ async function processNotificationQueue() {
           const uploaded = await client.uploadMedia(buffer, { type: 'file', filename: path.basename(filename) });
           await client.sendMediaMessage(ALLOWED_CHAT_ID, 'file', uploaded.media_id);
         }
-        const report = await buildStatusReport(job);
+        const analysisResult = job.analysisInput
+          ? await generateOperationsAnalysis(job.analysisInput, {
+              apiKey: env.OPENAI_API_KEY,
+              model: env.OPENAI_MODEL || 'gpt-5.6-luna',
+              timeoutMs: env.OPENAI_TIMEOUT_MS || 20000,
+            })
+          : null;
+        const report = await buildStatusReport(job, analysisResult);
         await client.sendMessage(ALLOWED_CHAT_ID, { msgtype: 'markdown', markdown: { content: report } });
         await client.sendMessage(ALLOWED_CHAT_ID, {
           msgtype: 'markdown',
           markdown: { content: job.todaySummary || job.summary },
         });
+        if (analysisResult) {
+          await client.sendMessage(ALLOWED_CHAT_ID, {
+            msgtype: 'markdown',
+            markdown: { content: renderAnalysisMarkdown(analysisResult, job.dashboard?.url) },
+          });
+        }
         await fs.promises.rename(processing, path.join(SENT_DIR, name));
-        console.log(JSON.stringify({ at: new Date().toISOString(), type: 'export_notification', job: job.id, files: job.files.length, sent: true }));
+        console.log(JSON.stringify({
+          at: new Date().toISOString(),
+          type: 'export_notification',
+          job: job.id,
+          files: job.files.length,
+          analysisSource: analysisResult?.source || 'none',
+          analysisModel: analysisResult?.model || '',
+          analysisResponseId: analysisResult?.responseId || '',
+          analysisUsage: analysisResult?.usage || null,
+          analysisError: analysisResult?.error || '',
+          sent: true,
+        }));
       } catch (error) {
         const failed = path.join(FAILED_DIR, name);
         await fs.promises.rename(processing, failed).catch(() => {});
