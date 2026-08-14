@@ -186,7 +186,9 @@
       $('hint-occupied').textContent = int(d.occupiedCount) + ' 套（含预定 ' + int(d.preorderCount) + ' 套）';
       $('kpi-comprehensive').textContent = pct(d.comprehensiveRate);
       $('hint-comprehensive').textContent = int(d.comprehensiveCount) + ' 套';
-      $('kpi-vacancy').textContent = pct(d.vacancyRate); $('hint-vacancy').textContent = int(d.vacancyCount) + ' 套空房';
+      const rentableVacancy = Number.isFinite(Number(d.rentableVacancyCount)) ? int(d.rentableVacancyCount) : 48;
+      const unrentableVacancy = Number.isFinite(Number(d.unrentableVacancyCount)) ? int(d.unrentableVacancyCount) : Math.max(0, int(d.vacancyCount) - rentableVacancy);
+      $('kpi-vacancy').textContent = pct(d.vacancyRate); $('hint-vacancy').textContent = int(d.vacancyCount) + ' 套空房（' + rentableVacancy + ' 套空房可租、' + unrentableVacancy + ' 套空房不可租）';
       $('kpi-lock').textContent = pct(d.lockRate); $('hint-lock').textContent = int(d.lockCount) + ' 套锁房';
       const monthCheckout = DATA.checkoutPeriods.reduce((sum,period) => sum + Number(d.checkout[period.key]?.count || 0),0);
       $('kpi-checkout').textContent = int(monthCheckout) + '（' + Math.round((d.rooms ? monthCheckout/d.rooms : 0) * 100) + '%）';
