@@ -9,7 +9,7 @@ run_dir, template_path, source_path, output_path = map(Path, sys.argv[1:5])
 
 def extract_data(path):
     text = path.read_text(encoding="utf-8")
-    match = re.search(r"const DATA\s*=\s*(\{.*?\});\s*\n\s*const \$", text, re.S)
+    match = re.search(r"const DATA\s*=\s*(\{.*?\});", text, re.S)
     if not match: raise RuntimeError(f"DATA payload missing: {path}")
     return text, json.loads(match.group(1)), match.span(1)
 
@@ -79,27 +79,37 @@ def apply_house_monitoring():
     headers=[cell.value for cell in ws[3]]
     building_i, lock_i, status_i=idx(headers,"小区/公寓"),idx(headers,"锁房备注"),idx(headers,"状态")
     locks, rentable, unrentable=defaultdict(int),defaultdict(int),defaultdict(int)
+    occupied, preordered, moving_in=defaultdict(int),defaultdict(int),defaultdict(int)
     for row in ws.iter_rows(min_row=4,values_only=True):
         building=str(row[building_i] or "").strip()
         state=norm(row[status_i])
-        monitored=bool(norm(row[lock_i])) or state in {"空房可租","空房不可租"}
+        remark=norm(row[lock_i])
+        monitored=bool(remark) or state in {"已出租","空房可租","空房不可租"}
         if monitored and not building: raise RuntimeError("Monitored room is missing building name")
-        if norm(row[lock_i]): locks[building]+=1
+        if remark: locks[building]+=1
+        if state == "已出租": occupied[building]+=1
         if state == "空房可租": rentable[building]+=1
-        if state == "空房不可租": unrentable[building]+=1
-    unknown=sorted((set(locks)|set(rentable)|set(unrentable))-set(building_rows))
+        if state == "空房不可租":
+            unrentable[building]+=1
+            if any(word in remark for word in ("将搬入","待搬入")): moving_in[building]+=1
+            elif any(word in remark for word in ("已预订","已预定","预订","预定")): preordered[building]+=1
+    unknown=sorted((set(locks)|set(rentable)|set(unrentable)|set(occupied)|set(preordered)|set(moving_in))-set(building_rows))
     if unknown: raise RuntimeError(f"Locked rooms contain unknown buildings: {unknown}")
     for name,row in building_rows.items():
-        previous=int(row.get("lockCount",0) or 0)
         locked=locks[name]
         row["lockCount"]=locked
         row["rentableVacancyCount"]=rentable[name]
         row["unrentableVacancyCount"]=unrentable[name]
+        row["occupiedCount"]=occupied[name]
+        row["preorderCount"]=preordered[name]
+        row["moveInCount"]=moving_in[name]
+        row["qualifyingUnavailableCount"]=preordered[name]+moving_in[name]
         rooms=int(row.get("rooms",0) or 0)
         row["lockRate"]=locked/rooms if rooms else 0
-        row["comprehensiveCount"]=min(rooms,int(row.get("comprehensiveCount",0) or 0)+locked-previous)
+        row["occupancyRate"]=row["occupiedCount"]/rooms if rooms else 0
+        row["comprehensiveCount"]=row["occupiedCount"]+row["qualifyingUnavailableCount"]
         row["comprehensiveRate"]=row["comprehensiveCount"]/rooms if rooms else 0
-    return {"lock":sum(locks.values()),"rentable":sum(rentable.values()),"unrentable":sum(unrentable.values())}
+    return {"lock":sum(locks.values()),"rentable":sum(rentable.values()),"unrentable":sum(unrentable.values()),"occupied":sum(occupied.values()),"preordered":sum(preordered.values()),"movingIn":sum(moving_in.values())}
 
 house_monitor=apply_house_monitoring()
 lock_total=house_monitor["lock"]
@@ -128,7 +138,7 @@ for name,row in building_rows.items():
 def aggregate(name, names):
     rows=[building_rows[n] for n in names if n in building_rows]
     result={"name":name}
-    for field in ("rooms","comprehensiveCount","occupiedCount","vacancyCount","lockCount","rentableVacancyCount","unrentableVacancyCount","preorderCount"):
+    for field in ("rooms","comprehensiveCount","occupiedCount","vacancyCount","lockCount","rentableVacancyCount","unrentableVacancyCount","preorderCount","moveInCount","qualifyingUnavailableCount"):
         result[field]=sum(float(r.get(field,0) or 0) for r in rows)
         if result[field].is_integer(): result[field]=int(result[field])
     rooms=result["rooms"]
@@ -184,7 +194,8 @@ if any(x not in rendered for x in required): raise RuntimeError("Full dashboard 
 if len(building_rows)<50 or project_data[0]["rooms"]!=692: raise RuntimeError("Data reconciliation failed")
 if project_data[0]["lockCount"]!=lock_total: raise RuntimeError("Lock count reconciliation failed")
 if project_data[0]["rentableVacancyCount"]+project_data[0]["unrentableVacancyCount"]!=project_data[0]["vacancyCount"]: raise RuntimeError("Vacancy availability reconciliation failed")
+if project_data[0]["comprehensiveCount"]!=project_data[0]["occupiedCount"]+project_data[0]["preorderCount"]+project_data[0]["moveInCount"]: raise RuntimeError("Comprehensive occupancy reconciliation failed")
 output_path.parent.mkdir(parents=True,exist_ok=True)
 tmp=output_path.with_suffix(".tmp"); tmp.write_text(rendered,encoding="utf-8"); tmp.replace(output_path)
-print(json.dumps({"dataDate":payload["dataDate"],"rooms":project_data[0]["rooms"],"lockCount":lock_total,"lockField":"锁房备注","rentableVacancyCount":house_monitor["rentable"],"unrentableVacancyCount":house_monitor["unrentable"],"vacancyField":"状态","buildings":len(building_rows),"projects":len(project_data),"style":"latest-full"},ensure_ascii=False))
+print(json.dumps({"dataDate":payload["dataDate"],"rooms":project_data[0]["rooms"],"lockCount":lock_total,"lockField":"锁房备注","rentableVacancyCount":house_monitor["rentable"],"unrentableVacancyCount":house_monitor["unrentable"],"occupiedCount":house_monitor["occupied"],"preorderCount":house_monitor["preordered"],"moveInCount":house_monitor["movingIn"],"comprehensiveDefinition":"已出租+空房不可租中的已预订和将搬入","vacancyField":"状态","buildings":len(building_rows),"projects":len(project_data),"style":"latest-full"},ensure_ascii=False))
 
