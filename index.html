@@ -277,7 +277,7 @@
     }
 
     function renderOperationsBrief(){
-      const rows = DATA.contractStats.recentPerformance || [];
+      const rows = [...(DATA.contractStats.recentPerformance || [])].sort((a,b) => String(b.date).localeCompare(String(a.date)));
       const totals = rows.reduce((sum,row) => ({newCount:sum.newCount+Number(row.newCount||0),renewalCount:sum.renewalCount+Number(row.renewalCount||0),actualCheckoutCount:sum.actualCheckoutCount+Number(row.actualCheckoutCount||0)}),{newCount:0,renewalCount:0,actualCheckoutCount:0});
       $('brief-new-total').textContent = int(totals.newCount) + ' 份'; $('brief-renewal-total').textContent = int(totals.renewalCount) + ' 份'; $('brief-checkout-total').textContent = int(totals.actualCheckoutCount) + ' 份';
       $('brief-daily-table').innerHTML = rows.map((r) => '<tr><td data-label="日期">' + r.date + '</td><td data-label="新签">' + int(r.newCount) + '</td><td data-label="续租">' + int(r.renewalCount) + '</td><td data-label="实际退租">' + int(r.actualCheckoutCount) + '</td></tr>').join('') + '<tr class="summary-row"><td data-label="日期">7天合计</td><td data-label="新签">' + int(totals.newCount) + '</td><td data-label="续租">' + int(totals.renewalCount) + '</td><td data-label="实际退租">' + int(totals.actualCheckoutCount) + '</td></tr>';
