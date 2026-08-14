@@ -212,6 +212,150 @@ def inspect_reservation(path):
     return rows, invalid == 0, "仅包含“已付定”" if invalid == 0 else f"发现{invalid}条非已付定数据"
 
 
+def as_int(value):
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def percentage(numerator, denominator):
+    return round(numerator / denominator * 100, 1) if denominator else 0
+
+
+def build_analysis_input(data, brief):
+    """Build an aggregate-only payload. Never send tenant or contract details to AI."""
+    contract_stats = data.get("contractStats", {})
+    recent_rows = sorted(
+        contract_stats.get("recentPerformance", []),
+        key=lambda row: str(row.get("date", "")),
+        reverse=True,
+    )[:7]
+    recent_new = sum(as_int(row.get("newCount")) for row in recent_rows)
+    recent_renewal = sum(as_int(row.get("renewalCount")) for row in recent_rows)
+    recent_checkout = sum(as_int(row.get("actualCheckoutCount")) for row in recent_rows)
+
+    current_month = contract_stats.get("currentMonth", {})
+    targets = contract_stats.get("targets", [])
+    target_new = sum(as_int(row.get("newCount")) for row in targets)
+    target_renewal = sum(as_int(row.get("renewalCount")) for row in targets)
+    month_new = as_int(current_month.get("newCount"))
+    month_renewal = as_int(current_month.get("renewalCount"))
+
+    current_period = next(
+        (
+            row for row in contract_stats.get("periods", [])
+            if row.get("startDate", "") <= brief["date"] <= row.get("endDate", "")
+            and row.get("period") not in {"本月", "上月"}
+        ),
+        None,
+    )
+    current_target = next(
+        (row for row in targets if current_period and row.get("period") == current_period.get("period")),
+        None,
+    )
+
+    overall = next(
+        (row for row in data.get("projectData", []) if row.get("name") == "全部房源汇总"),
+        {},
+    )
+    forecast = []
+    for period in data.get("checkoutPeriods", []):
+        item = overall.get("checkout", {}).get(period.get("key"), {})
+        forecast.append({
+            "period": period.get("label", period.get("key", "")),
+            "range": period.get("range", ""),
+            "count": as_int(item.get("count")),
+        })
+
+    base_names = set(data.get("baseProjectNames", []))
+    project_rows = [
+        row for row in data.get("projectData", [])
+        if row.get("name") in base_names
+    ]
+    risk_projects = sorted(
+        project_rows,
+        key=lambda row: (float(row.get("comprehensiveRate", 0) or 0), -as_int(row.get("vacancyCount"))),
+    )[:3]
+
+    return {
+        "schemaVersion": 1,
+        "dataDate": brief["date"],
+        "generatedAt": brief["generatedAt"],
+        "occupancy": {
+            "rooms": as_int(overall.get("rooms")),
+            "occupied": brief["occupiedCount"],
+            "reserved": brief["preorderCount"],
+            "moveIn": brief["moveInCount"],
+            "comprehensive": brief["comprehensiveCount"],
+            "comprehensiveRatePct": percentage(brief["comprehensiveCount"], as_int(overall.get("rooms"))),
+            "vacant": brief["vacancyCount"],
+            "rentableVacant": brief["rentableVacancyCount"],
+            "unrentableVacant": brief["unrentableVacancyCount"],
+            "unqualifiedUnrentable": max(
+                brief["unrentableVacancyCount"] - brief["preorderCount"] - brief["moveInCount"], 0
+            ),
+            "locked": brief["lockCount"],
+        },
+        "performance": {
+            "today": {
+                "new": brief["newCount"],
+                "renewal": brief["renewalCount"],
+                "actualCheckout": brief["actualCheckoutCount"],
+                "netChange": brief["newCount"] - brief["actualCheckoutCount"],
+            },
+            "recent7Days": {
+                "startDate": min((row.get("date", "") for row in recent_rows), default=brief["date"]),
+                "endDate": max((row.get("date", "") for row in recent_rows), default=brief["date"]),
+                "new": recent_new,
+                "renewal": recent_renewal,
+                "actualCheckout": recent_checkout,
+                "netChange": recent_new - recent_checkout,
+            },
+            "currentMonth": {
+                "new": month_new,
+                "renewal": month_renewal,
+                "actualCheckout": as_int(current_month.get("actualCheckoutCount")),
+            },
+        },
+        "targets": {
+            "monthly": {
+                "newTarget": target_new,
+                "newActual": month_new,
+                "newRemaining": max(target_new - month_new, 0),
+                "newCompletionPct": percentage(month_new, target_new),
+                "renewalTarget": target_renewal,
+                "renewalActual": month_renewal,
+                "renewalRemaining": max(target_renewal - month_renewal, 0),
+                "renewalCompletionPct": percentage(month_renewal, target_renewal),
+            },
+            "currentPeriod": ({
+                "period": current_period.get("period", ""),
+                "startDate": current_period.get("startDate", ""),
+                "endDate": current_period.get("endDate", ""),
+                "newTarget": as_int(current_target.get("newCount")) if current_target else 0,
+                "newActual": as_int(current_period.get("newCount")),
+                "renewalTarget": as_int(current_target.get("renewalCount")) if current_target else 0,
+                "renewalActual": as_int(current_period.get("renewalCount")),
+            } if current_period else None),
+        },
+        "checkoutForecast": {
+            "monthTotal": sum(row["count"] for row in forecast),
+            "periods": forecast,
+        },
+        "lowestComprehensiveProjects": [
+            {
+                "name": row.get("name", ""),
+                "rooms": as_int(row.get("rooms")),
+                "comprehensiveRatePct": round(float(row.get("comprehensiveRate", 0) or 0) * 100, 1),
+                "vacant": as_int(row.get("vacancyCount")),
+                "locked": as_int(row.get("lockCount")),
+            }
+            for row in risk_projects
+        ],
+    }
+
+
 def dashboard_brief(path):
     html = path.read_text(encoding="utf-8")
     match = re.search(r"const DATA\s*=\s*(\{.*?\});", html, re.S)
@@ -222,7 +366,7 @@ def dashboard_brief(path):
     today = next((row for row in rows if row.get("date") == data.get("dataDate")), None)
     if today is None:
         raise RuntimeError("工作台缺少当天运营简报")
-    return {
+    brief = {
         "date": data["dataDate"],
         "generatedAt": data.get("generatedDate", ""),
         "newCount": int(today.get("newCount", 0) or 0),
@@ -237,6 +381,7 @@ def dashboard_brief(path):
         "moveInCount": int(next((row.get("moveInCount", 0) for row in data.get("projectData", []) if row.get("name") == "全部房源汇总"), 0) or 0),
         "comprehensiveCount": int(next((row.get("comprehensiveCount", 0) for row in data.get("projectData", []) if row.get("name") == "全部房源汇总"), 0) or 0),
     }
+    return brief, build_analysis_input(data, brief)
 
 
 def main():
@@ -290,7 +435,7 @@ def main():
         raise SystemExit("Export validation failed: " + json.dumps(validation, ensure_ascii=False))
 
     try:
-        brief = dashboard_brief(dashboard_path)
+        brief, analysis_input = dashboard_brief(dashboard_path)
         details = today_contract_details(run_dir, brief["date"])
         reservation_details = today_reservation_details(run_dir / "预定合同.xlsx", brief["date"])
     except Exception as exc:
@@ -382,6 +527,7 @@ def main():
         "todaySummary": "\n".join(today_lines),
         "summary": "\n".join(today_lines),
         "dashboard": {"url": dashboard_url, **brief},
+        "analysisInput": analysis_input,
         "todayDetails": details,
         "reservationDetails": reservation_details,
         "files": [str(run_dir / filename) for filename in FILES],
