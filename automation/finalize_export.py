@@ -160,16 +160,21 @@ def inspect_house(path):
     headers = [text(c.value) for c in ws[3]]
     id_col = headers.index("房源ID")
     estate_col = headers.index("小区/公寓")
+    lock_col = headers.index("锁房备注")
     rows = 0
     excluded = 0
+    locked = 0
     for row in ws.iter_rows(min_row=4, values_only=True):
         if not any(text(v) for v in row):
             continue
         rows += 1
+        if text(row[lock_col]):
+            locked += 1
         if text(row[id_col]) == "117492563" or "物业租赁中心（路线指引）" in text(row[estate_col]):
             excluded += 1
     ok = rows > 0 and excluded == 0
-    return rows, ok, "已删除指定排除项及空白尾行" if ok else f"发现{excluded}条应排除数据"
+    detail = f"已删除指定排除项及空白尾行；锁房备注字段正常，识别{locked}间"
+    return rows, ok, detail if ok else f"发现{excluded}条应排除数据", locked
 
 
 def inspect_reservation(path):
@@ -203,6 +208,7 @@ def dashboard_brief(path):
         "newCount": int(today.get("newCount", 0) or 0),
         "renewalCount": int(today.get("renewalCount", 0) or 0),
         "actualCheckoutCount": int(today.get("actualCheckoutCount", 0) or 0),
+        "lockCount": int(next((row.get("lockCount", 0) for row in data.get("projectData", []) if row.get("name") == "全部房源汇总"), 0) or 0),
     }
 
 
@@ -214,6 +220,7 @@ def main():
     queue_dir.mkdir(parents=True, exist_ok=True)
 
     checks = []
+    source_lock_count = None
     for filename in FILES:
         path = run_dir / filename
         if not path.exists() or path.stat().st_size == 0:
@@ -221,12 +228,15 @@ def main():
             continue
         try:
             if filename == "房源详情.xlsx":
-                rows, ok, detail = inspect_house(path)
+                rows, ok, detail, source_lock_count = inspect_house(path)
             elif filename == "预定合同.xlsx":
                 rows, ok, detail = inspect_reservation(path)
             else:
                 rows, ok, detail = inspect_contract(path, EXPECTED_STATUS[filename])
-            checks.append({"file": filename, "rows": rows, "ok": ok, "detail": detail, "bytes": path.stat().st_size})
+            item = {"file": filename, "rows": rows, "ok": ok, "detail": detail, "bytes": path.stat().st_size}
+            if filename == "房源详情.xlsx":
+                item["lockCount"] = source_lock_count
+            checks.append(item)
         except Exception as exc:
             checks.append({"file": filename, "rows": 0, "ok": False, "detail": f"无法读取：{exc}"})
 
@@ -249,6 +259,18 @@ def main():
     except Exception as exc:
         raise SystemExit(f"Dashboard validation failed: {exc}")
 
+    lock_monitor_ok = source_lock_count is not None and source_lock_count == brief["lockCount"]
+    validation["lockMonitoring"] = {
+        "field": "锁房备注",
+        "sourceCount": source_lock_count,
+        "dashboardCount": brief["lockCount"],
+        "ok": lock_monitor_ok,
+    }
+    validation["valid"] = validation["valid"] and lock_monitor_ok
+    (run_dir / "validation.json").write_text(json.dumps(validation, ensure_ascii=False, indent=2), encoding="utf-8")
+    if not lock_monitor_ok:
+        raise SystemExit(f"Lock monitoring validation failed: {validation['lockMonitoring']}")
+
     detail_counts = {
         "newCount": len(details["new"]),
         "renewalCount": len(details["renewal"]),
@@ -261,6 +283,7 @@ def main():
     status_lines = [
         f"> 导出时间：{completed.strftime('%Y-%m-%d %H:%M:%S')}",
         "> 校验结果：✅ 5份文件全部通过",
+        f"> 锁房监测：✅ 锁房备注字段正常，工作台识别 **{brief['lockCount']}间**，与房源表一致",
         "",
     ]
     for item in checks:
