@@ -155,7 +155,19 @@ def inspect_contract(path, expected):
     return rows, invalid == 0, f"状态均为“{expected}”" if invalid == 0 else f"发现{invalid}条状态异常"
 
 
-def inspect_house(path):
+def contract_house_ids(path, header_row, required_status, status_name):
+    ws = load_workbook(path, read_only=True, data_only=True).active
+    headers = [cell.value for cell in ws[header_row]]
+    house_col = column(headers, "房源ID")
+    status_col = column(headers, status_name)
+    return {
+        norm(row[house_col])
+        for row in ws.iter_rows(min_row=header_row + 1, values_only=True)
+        if norm(row[house_col]) and norm(row[status_col]) == required_status
+    }
+
+
+def inspect_house(path, preorder_house_ids, move_in_house_ids):
     ws = load_workbook(path, read_only=True, data_only=True).active
     headers = [text(c.value) for c in ws[3]]
     id_col = headers.index("房源ID")
@@ -178,22 +190,23 @@ def inspect_house(path):
         state = norm(row[status_col])
         if remark:
             locked += 1
-        if state == "已出租":
+        room_id = norm(row[id_col])
+        if state in {"已出租", "在租中"}:
             occupied += 1
         elif state == "空房可租":
             rentable += 1
         elif state == "空房不可租":
             unrentable += 1
-            if any(word in remark for word in ("将搬入", "待搬入")):
+            if room_id in move_in_house_ids or any(word in remark for word in ("将搬入", "待搬入")):
                 moving_in += 1
-            elif any(word in remark for word in ("已预订", "已预定", "预订", "预定")):
+            elif room_id in preorder_house_ids or any(word in remark for word in ("已预订", "已预定", "预订", "预定")):
                 preordered += 1
         if text(row[id_col]) == "117492563" or "物业租赁中心（路线指引）" in text(row[estate_col]):
             excluded += 1
     ok = rows > 0 and excluded == 0
     vacancy_ok = rentable + unrentable > 0
     ok = ok and vacancy_ok
-    detail = f"已删除指定排除项及空白尾行；已出租{occupied}间；空房可租{rentable}间、不可租{unrentable}间；其中已预订{preordered}间、将搬入{moving_in}间"
+    detail = f"已删除指定排除项及空白尾行；在租中/已出租{occupied}间；空房可租{rentable}间、不可租{unrentable}间；其中已预订{preordered}间、将搬入{moving_in}间"
     return rows, ok, detail if ok else f"发现{excluded}条应排除数据或空房状态缺失", locked, rentable, unrentable, occupied, preordered, moving_in
 
 
@@ -253,6 +266,8 @@ def main():
     source_occupied_count = None
     source_preorder_count = None
     source_move_in_count = None
+    preorder_house_ids = contract_house_ids(run_dir / "预定合同.xlsx", 1, "已付定", "状态")
+    move_in_house_ids = contract_house_ids(run_dir / "将搬入合同.xlsx", 3, "将搬入", "合同状态")
     for filename in FILES:
         path = run_dir / filename
         if not path.exists() or path.stat().st_size == 0:
@@ -260,7 +275,7 @@ def main():
             continue
         try:
             if filename == "房源详情.xlsx":
-                rows, ok, detail, source_lock_count, source_rentable_count, source_unrentable_count, source_occupied_count, source_preorder_count, source_move_in_count = inspect_house(path)
+                rows, ok, detail, source_lock_count, source_rentable_count, source_unrentable_count, source_occupied_count, source_preorder_count, source_move_in_count = inspect_house(path, preorder_house_ids, move_in_house_ids)
             elif filename == "预定合同.xlsx":
                 rows, ok, detail = inspect_reservation(path)
             else:
@@ -324,7 +339,7 @@ def main():
         and brief["comprehensiveCount"] == brief["occupiedCount"] + brief["preorderCount"] + brief["moveInCount"]
     )
     validation["comprehensiveMonitoring"] = {
-        "definition": "已出租+空房不可租中的已预订和将搬入",
+        "definition": "在租中/已出租+空房不可租中的已预订和将搬入",
         "occupiedCount": source_occupied_count,
         "preorderCount": source_preorder_count,
         "moveInCount": source_move_in_count,
@@ -396,4 +411,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
