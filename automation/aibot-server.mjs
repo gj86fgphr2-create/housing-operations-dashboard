@@ -10,12 +10,29 @@ const execFileAsync = promisify(execFile);
 const env = Object.fromEntries(
   fs.readFileSync('/opt/yuxiaor-aibot/aibot.env', 'utf8')
     .split(/\r?\n/)
-    .filter(Boolean)
+    .filter(line => line.trim() && line.includes('='))
     .map(line => {
       const pos = line.indexOf('=');
-      return [line.slice(0, pos), line.slice(pos + 1)];
+      return [line.slice(0, pos).trim(), line.slice(pos + 1).trim()];
     })
 );
+
+function normalizeOpenAIModel(value) {
+  const candidate = String(value || '').trim();
+  if (!candidate || /sk-(?:proj-)?/i.test(candidate) || !/^[A-Za-z0-9._:-]+$/.test(candidate)) {
+    return 'gpt-5.6-luna';
+  }
+  return candidate;
+}
+
+function redactSecrets(value) {
+  return String(value || '').replace(/sk-[A-Za-z0-9_-]{8,}/gi, 'sk-REDACTED');
+}
+
+const openAIModel = normalizeOpenAIModel(env.OPENAI_MODEL);
+if (env.OPENAI_MODEL && openAIModel !== String(env.OPENAI_MODEL).trim()) {
+  console.warn('OPENAI_MODEL is invalid; using the safe default model');
+}
 
 // “数据汇报会员群”的企业微信群聊 ID。
 const ALLOWED_CHAT_ID = 'wrki7WEAAAYzG-hYJ4delzv_Y7Us71ow';
@@ -141,7 +158,7 @@ async function processNotificationQueue() {
         const analysisResult = job.analysisInput
           ? await generateOperationsAnalysis(job.analysisInput, {
               apiKey: env.OPENAI_API_KEY,
-              model: env.OPENAI_MODEL || 'gpt-5.6-luna',
+              model: openAIModel,
               timeoutMs: env.OPENAI_TIMEOUT_MS || 20000,
             })
           : null;
@@ -164,10 +181,10 @@ async function processNotificationQueue() {
           job: job.id,
           files: job.files.length,
           analysisSource: analysisResult?.source || 'none',
-          analysisModel: analysisResult?.model || '',
+          analysisModel: redactSecrets(analysisResult?.model || ''),
           analysisResponseId: analysisResult?.responseId || '',
           analysisUsage: analysisResult?.usage || null,
-          analysisError: analysisResult?.error || '',
+          analysisError: redactSecrets(analysisResult?.error || ''),
           sent: true,
         }));
       } catch (error) {
@@ -190,4 +207,5 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
     process.exit(0);
   });
 }
+
 
