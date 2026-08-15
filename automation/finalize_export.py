@@ -179,6 +179,7 @@ def inspect_house(path, preorder_house_ids, move_in_house_ids):
     locked = 0
     rentable = 0
     unrentable = 0
+    mapped_unknown = 0
     occupied = 0
     preordered = 0
     moving_in = 0
@@ -195,8 +196,10 @@ def inspect_house(path, preorder_house_ids, move_in_house_ids):
             occupied += 1
         elif state == "空房可租":
             rentable += 1
-        elif state == "空房不可租":
+        elif state in {"空房不可租", "未知状态"}:
             unrentable += 1
+            if state == "未知状态":
+                mapped_unknown += 1
             if room_id in move_in_house_ids or any(word in remark for word in ("将搬入", "待搬入")):
                 moving_in += 1
             elif room_id in preorder_house_ids or any(word in remark for word in ("已预订", "已预定", "预订", "预定")):
@@ -206,8 +209,8 @@ def inspect_house(path, preorder_house_ids, move_in_house_ids):
     ok = rows > 0 and excluded == 0
     vacancy_ok = rentable + unrentable > 0
     ok = ok and vacancy_ok
-    detail = f"已删除指定排除项及空白尾行；在租中/已出租{occupied}间；空房可租{rentable}间、不可租{unrentable}间；其中已预订{preordered}间、将搬入{moving_in}间"
-    return rows, ok, detail if ok else f"发现{excluded}条应排除数据或空房状态缺失", locked, rentable, unrentable, occupied, preordered, moving_in
+    detail = f"已删除指定排除项及空白尾行；在租中/已出租{occupied}间；空房可租{rentable}间、不可租{unrentable}间（含未知状态映射{mapped_unknown}间）；其中已预订{preordered}间、将搬入{moving_in}间"
+    return rows, ok, detail if ok else f"发现{excluded}条应排除数据或空房状态缺失", locked, rentable, unrentable, occupied, preordered, moving_in, mapped_unknown
 
 
 def inspect_reservation(path):
@@ -266,6 +269,7 @@ def main():
     source_occupied_count = None
     source_preorder_count = None
     source_move_in_count = None
+    source_mapped_unknown_count = None
     preorder_house_ids = contract_house_ids(run_dir / "预定合同.xlsx", 1, "已付定", "状态")
     move_in_house_ids = contract_house_ids(run_dir / "将搬入合同.xlsx", 3, "将搬入", "合同状态")
     for filename in FILES:
@@ -275,7 +279,7 @@ def main():
             continue
         try:
             if filename == "房源详情.xlsx":
-                rows, ok, detail, source_lock_count, source_rentable_count, source_unrentable_count, source_occupied_count, source_preorder_count, source_move_in_count = inspect_house(path, preorder_house_ids, move_in_house_ids)
+                rows, ok, detail, source_lock_count, source_rentable_count, source_unrentable_count, source_occupied_count, source_preorder_count, source_move_in_count, source_mapped_unknown_count = inspect_house(path, preorder_house_ids, move_in_house_ids)
             elif filename == "预定合同.xlsx":
                 rows, ok, detail = inspect_reservation(path)
             else:
@@ -288,6 +292,7 @@ def main():
                 item["occupiedCount"] = source_occupied_count
                 item["preorderCount"] = source_preorder_count
                 item["moveInCount"] = source_move_in_count
+                item["mappedUnknownCount"] = source_mapped_unknown_count
             checks.append(item)
         except Exception as exc:
             checks.append({"file": filename, "rows": 0, "ok": False, "detail": f"无法读取：{exc}"})
@@ -327,9 +332,11 @@ def main():
         "field": "状态",
         "sourceRentableCount": source_rentable_count,
         "sourceUnrentableCount": source_unrentable_count,
+        "sourceMappedUnknownCount": source_mapped_unknown_count,
         "dashboardRentableCount": brief["rentableVacancyCount"],
         "dashboardUnrentableCount": brief["unrentableVacancyCount"],
         "dashboardVacancyCount": brief["vacancyCount"],
+        "mapping": "未知状态计入空房不可租中的其他锁房",
         "ok": vacancy_monitor_ok,
     }
     comprehensive_monitor_ok = (

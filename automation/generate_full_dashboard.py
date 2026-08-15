@@ -91,31 +91,31 @@ def apply_house_monitoring():
     headers=[cell.value for cell in ws[3]]
     building_i, room_i, lock_i, status_i=idx(headers,"小区/公寓"),idx(headers,"房源ID"),idx(headers,"锁房备注"),idx(headers,"状态")
     locks, rentable, unrentable=defaultdict(int),defaultdict(int),defaultdict(int)
+    mapped_unknown=defaultdict(int)
     occupied, preordered, moving_in, unknown_status=defaultdict(int),defaultdict(int),defaultdict(int),defaultdict(int)
     for row in ws.iter_rows(min_row=4,values_only=True):
         building=str(row[building_i] or "").strip()
         room_id=norm(row[room_i])
         state=norm(row[status_i])
         remark=norm(row[lock_i])
-        monitored=bool(remark) or state in {"已出租","在租中","空房可租","空房不可租"}
+        monitored=bool(remark) or state in {"已出租","在租中","空房可租","空房不可租","未知状态"}
         if monitored and not building: raise RuntimeError("Monitored room is missing building name")
         if remark: locks[building]+=1
         if state in {"已出租","在租中"}: occupied[building]+=1
         if state == "空房可租": rentable[building]+=1
-        if state == "空房不可租":
+        if state in {"空房不可租","未知状态"}:
             unrentable[building]+=1
+            if state == "未知状态": mapped_unknown[building]+=1
             if room_id in moving_room_ids or any(word in remark for word in ("将搬入","待搬入")): moving_in[building]+=1
             elif room_id in preorder_room_ids or any(word in remark for word in ("已预订","已预定","预订","预定")): preordered[building]+=1
-        if state not in {"已出租","在租中","空房可租","空房不可租"}: unknown_status[building]+=1
-    unknown=sorted((set(locks)|set(rentable)|set(unrentable)|set(occupied)|set(preordered)|set(moving_in)|set(unknown_status))-set(building_rows))
+        if state not in {"已出租","在租中","空房可租","空房不可租","未知状态"}: unknown_status[building]+=1
+    unknown=sorted((set(locks)|set(rentable)|set(unrentable)|set(occupied)|set(preordered)|set(moving_in)|set(mapped_unknown)|set(unknown_status))-set(building_rows))
     if unknown: raise RuntimeError(f"Locked rooms contain unknown buildings: {unknown}")
     for name,row in building_rows.items():
         locked=locks[name]
         row["lockCount"]=locked
         row["rentableVacancyCount"]=rentable[name]
         row["unrentableVacancyCount"]=unrentable[name]
-        # 房源表的“状态”字段是空房口径的唯一数据源。不要沿用旧工作台
-        # 中可能滞后的 vacancyCount，否则可租/不可租之和会与总空房数不一致。
         row["vacancyCount"]=rentable[name]+unrentable[name]
         row["occupiedCount"]=occupied[name]
         row["preorderCount"]=preordered[name]
@@ -127,7 +127,7 @@ def apply_house_monitoring():
         row["vacancyRate"]=row["vacancyCount"]/rooms if rooms else 0
         row["comprehensiveCount"]=row["occupiedCount"]+row["qualifyingUnavailableCount"]
         row["comprehensiveRate"]=row["comprehensiveCount"]/rooms if rooms else 0
-    return {"lock":sum(locks.values()),"rentable":sum(rentable.values()),"unrentable":sum(unrentable.values()),"occupied":sum(occupied.values()),"preordered":sum(preordered.values()),"movingIn":sum(moving_in.values()),"unknownStatus":sum(unknown_status.values())}
+    return {"lock":sum(locks.values()),"rentable":sum(rentable.values()),"unrentable":sum(unrentable.values()),"occupied":sum(occupied.values()),"preordered":sum(preordered.values()),"movingIn":sum(moving_in.values()),"mappedUnknown":sum(mapped_unknown.values()),"unknownStatus":sum(unknown_status.values())}
 
 house_monitor=apply_house_monitoring()
 lock_total=house_monitor["lock"]
@@ -217,5 +217,4 @@ if house_monitor["occupied"]+house_monitor["rentable"]+house_monitor["unrentable
 if house_monitor["preordered"]+house_monitor["movingIn"]>house_monitor["unrentable"]: raise RuntimeError("Unavailable room classification failed")
 output_path.parent.mkdir(parents=True,exist_ok=True)
 tmp=output_path.with_suffix(".tmp"); tmp.write_text(rendered,encoding="utf-8"); tmp.replace(output_path)
-print(json.dumps({"dataDate":payload["dataDate"],"rooms":project_data[0]["rooms"],"lockCount":lock_total,"lockField":"锁房备注","rentableVacancyCount":house_monitor["rentable"],"unrentableVacancyCount":house_monitor["unrentable"],"occupiedCount":house_monitor["occupied"],"preorderCount":house_monitor["preordered"],"moveInCount":house_monitor["movingIn"],"unknownStatusCount":house_monitor["unknownStatus"],"comprehensiveDefinition":"在租中/已出租+空房不可租中的已预订和将搬入","vacancyField":"状态","buildings":len(building_rows),"projects":len(project_data),"style":"latest-full"},ensure_ascii=False))
-
+print(json.dumps({"dataDate":payload["dataDate"],"rooms":project_data[0]["rooms"],"lockCount":lock_total,"lockField":"锁房备注","rentableVacancyCount":house_monitor["rentable"],"unrentableVacancyCount":house_monitor["unrentable"],"mappedUnknownCount":house_monitor["mappedUnknown"],"occupiedCount":house_monitor["occupied"],"preorderCount":house_monitor["preordered"],"moveInCount":house_monitor["movingIn"],"unknownStatusCount":house_monitor["unknownStatus"],"comprehensiveDefinition":"在租中/已出租+空房不可租中的已预订和将搬入","vacancyField":"状态（未知状态映射为其他锁房）","buildings":len(building_rows),"projects":len(project_data),"style":"latest-full"},ensure_ascii=False))
