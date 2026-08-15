@@ -3,7 +3,6 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import AiBot, { generateReqId } from '@wecom/aibot-node-sdk';
-import { generateOperationsAnalysis, renderAnalysisMarkdown } from './operations-analysis.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -16,23 +15,6 @@ const env = Object.fromEntries(
       return [line.slice(0, pos).trim(), line.slice(pos + 1).trim()];
     })
 );
-
-function normalizeOpenAIModel(value) {
-  const candidate = String(value || '').trim();
-  if (!candidate || /sk-(?:proj-)?/i.test(candidate) || !/^[A-Za-z0-9._:-]+$/.test(candidate)) {
-    return 'gpt-5.6-luna';
-  }
-  return candidate;
-}
-
-function redactSecrets(value) {
-  return String(value || '').replace(/sk-[A-Za-z0-9_-]{8,}/gi, 'sk-REDACTED');
-}
-
-const openAIModel = normalizeOpenAIModel(env.OPENAI_MODEL);
-if (env.OPENAI_MODEL && openAIModel !== String(env.OPENAI_MODEL).trim()) {
-  console.warn('OPENAI_MODEL is invalid; using the safe default model');
-}
 
 // “数据汇报会员群”的企业微信群聊 ID。
 const ALLOWED_CHAT_ID = 'wrki7WEAAAYzG-hYJ4delzv_Y7Us71ow';
@@ -61,7 +43,7 @@ async function unitStatus(unit) {
   }
 }
 
-async function buildStatusReport(job, analysisResult) {
+async function buildStatusReport(job) {
   const [timer, bot, pending, failed] = await Promise.all([
     unitStatus('yuxiaor-download.timer'),
     unitStatus('yuxiaor-aibot.service'),
@@ -78,7 +60,6 @@ async function buildStatusReport(job, analysisResult) {
     `> 待发送：${pending}`,
     `> 发送失败：${failed}`,
     `> 本次消息及${job.files.length}份文件：发送成功`,
-    `> 运营分析：${analysisResult?.source === 'openai' ? 'GPT辅助分析' : analysisResult ? '规则分析（OpenAI未启用或暂时不可用）' : '未生成（旧任务）'}`,
     '',
     job.statusSummary || '',
   ].join('\n');
@@ -155,36 +136,18 @@ async function processNotificationQueue() {
           const uploaded = await client.uploadMedia(buffer, { type: 'file', filename: path.basename(filename) });
           await client.sendMediaMessage(ALLOWED_CHAT_ID, 'file', uploaded.media_id);
         }
-        const analysisResult = job.analysisInput
-          ? await generateOperationsAnalysis(job.analysisInput, {
-              apiKey: env.OPENAI_API_KEY,
-              model: openAIModel,
-              timeoutMs: env.OPENAI_TIMEOUT_MS || 20000,
-            })
-          : null;
-        const report = await buildStatusReport(job, analysisResult);
+        const report = await buildStatusReport(job);
         await client.sendMessage(ALLOWED_CHAT_ID, { msgtype: 'markdown', markdown: { content: report } });
         await client.sendMessage(ALLOWED_CHAT_ID, {
           msgtype: 'markdown',
           markdown: { content: job.todaySummary || job.summary },
         });
-        if (analysisResult) {
-          await client.sendMessage(ALLOWED_CHAT_ID, {
-            msgtype: 'markdown',
-            markdown: { content: renderAnalysisMarkdown(analysisResult, job.dashboard?.url) },
-          });
-        }
         await fs.promises.rename(processing, path.join(SENT_DIR, name));
         console.log(JSON.stringify({
           at: new Date().toISOString(),
           type: 'export_notification',
           job: job.id,
           files: job.files.length,
-          analysisSource: analysisResult?.source || 'none',
-          analysisModel: redactSecrets(analysisResult?.model || ''),
-          analysisResponseId: analysisResult?.responseId || '',
-          analysisUsage: analysisResult?.usage || null,
-          analysisError: redactSecrets(analysisResult?.error || ''),
           sent: true,
         }));
       } catch (error) {
