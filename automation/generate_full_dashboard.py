@@ -18,6 +18,54 @@ XHS_ACCOUNTS = [
     {"profile":"account-09","name":"番禺大学城租房-尚维特","operator":"余路","team":"管家团队"},
 ]
 
+def weekly_lead_targets(opened, copied):
+    return {
+        week_key: {"opened": opened[index], "copied": copied[index]}
+        for index, week_key in enumerate(("w1","w2","w3","w4","we"))
+    }
+
+XHS_LEAD_TARGET_NAMES = {
+    "account-02": "广州大学城租房-研寓",
+    "account-03": "广州研寓租房大学城",
+    "account-04": "大学城捞房",
+    "account-05": "暴走大学城",
+    "account-06": "广州大学城—研舍公寓",
+    "account-07": "大学城租房-小梦",
+    "account-08": "大学城租房｜研舍",
+    "account-09": "尚维特",
+}
+
+XHS_LEAD_TARGETS = {
+    "2026-08": {
+        "account-02": weekly_lead_targets([21,31,18,22,6], [12,18,11,13,4]),
+        "account-03": weekly_lead_targets([97,93,119,113,19], [71,69,88,83,14]),
+        "account-04": weekly_lead_targets([89,118,176,178,56], [65,87,129,130,41]),
+        "account-05": weekly_lead_targets([80,118,71,135,11], [62,92,55,105,8]),
+        "account-06": weekly_lead_targets([21,34,28,38,10], [14,22,18,25,7]),
+        "account-07": weekly_lead_targets([23,13,26,23,7], [16,9,18,16,5]),
+        "account-08": weekly_lead_targets([16,28,90,106,19], [0,1,1,1,0]),
+        "account-09": weekly_lead_targets([63,51,40,42,18], [45,36,28,30,13]),
+    },
+}
+
+def attach_xhs_lead_targets(payload):
+    month=payload.get("month","")
+    configured=XHS_LEAD_TARGETS.get(month,{})
+    accounts=[]
+    for account in payload.get("accounts",[]):
+        profile=account.get("profile","")
+        accounts.append({
+            **account,
+            "targetName":XHS_LEAD_TARGET_NAMES.get(profile,account.get("name",profile)),
+            "targets":configured.get(profile,{}),
+        })
+    return {
+        **payload,
+        "targetMonth":month if configured else "",
+        "targetWeeks":["w1","w2","w3","w4","we"] if configured else [],
+        "accounts":accounts,
+    }
+
 def latest_xhs_summary():
     """Locate the newest collector summary without coupling the dashboard to a dated folder."""
     candidates=[]
@@ -72,7 +120,7 @@ def latest_xhs_lead_summary():
 def build_xhs_leads(fallback):
     summary_path=latest_xhs_lead_summary()
     if not summary_path:
-        return fallback or {"generatedAt":"","month":"","weeks":[],"accounts":XHS_ACCOUNTS}
+        return attach_xhs_lead_targets(fallback or {"generatedAt":"","month":"","weeks":[],"accounts":XHS_ACCOUNTS})
     summary=json.loads(summary_path.read_text(encoding="utf-8"))
     end_date=datetime.strptime(summary["period"]["end_date"],"%Y-%m-%d").date()
     month_prefix=str(end_date.month)
@@ -90,7 +138,7 @@ def build_xhs_leads(fallback):
                 "copied":source.get("personal_wechat_copy_leads") if source else None,
             }
         accounts.append({**account,"metrics":metrics})
-    return {"generatedAt":summary.get("generated_at","")[:19].replace("T"," "),"month":f"{end_date.year:04d}-{end_date.month:02d}","weeks":weeks,"accounts":accounts}
+    return attach_xhs_lead_targets({"generatedAt":summary.get("generated_at","")[:19].replace("T"," "),"month":f"{end_date.year:04d}-{end_date.month:02d}","weeks":weeks,"accounts":accounts})
 
 def extract_data(path):
     text = path.read_text(encoding="utf-8")
@@ -292,9 +340,10 @@ contract_stats["uniqueContracts"]=sum(1 for f in ("在租中合同.xlsx","将搬
 
 payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods,"xhsContent":build_xhs_content(old.get("xhsContent")),"xhsLeads":build_xhs_leads(old.get("xhsLeads"))}
 rendered=template[:payload_span[0]]+json.dumps(payload,ensure_ascii=False,separators=(",",":"))+template[payload_span[1]:]
-required=['class="nav desktop-nav"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','邮箱密码不匹配','xhs-account-status-list','xhs-note-count-table','xhs-view-count-table','xhs-exposure-count-table','xhs-daily-reading-chart','id="xhs-leads"','xhs-lead-inbound-table','xhs-lead-opened-table','xhs-lead-copied-table','function renderXhsLeads()','"xhsLeads"']
+required=['class="nav desktop-nav"','data-desktop-module="xiaohongshu"','data-desktop-module="yuxiaor"','data-desktop-menu="xiaohongshu"','data-desktop-menu="yuxiaor"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','邮箱密码不匹配','xhs-account-status-list','xhs-note-count-table','xhs-view-count-table','xhs-exposure-count-table','xhs-daily-reading-chart','id="xhs-leads"','xhs-goal-table','xhs-lead-opened-table','xhs-lead-copied-table','function xhsGoalCell(','function renderXhsLeads()','"targetMonth"','"targets"','"xhsLeads"']
 if any(x not in rendered for x in required): raise RuntimeError("Full dashboard style validation failed")
 if 'data-dashboard-view="checkout"' in rendered: raise RuntimeError("Legacy checkout navigation detected")
+if 'id="xhs-lead-inbound-table"' in rendered: raise RuntimeError("Private-message inbound table must stay hidden")
 if len(building_rows)<50 or project_data[0]["rooms"]!=692: raise RuntimeError("Data reconciliation failed")
 if project_data[0]["lockCount"]!=lock_total: raise RuntimeError("Lock count reconciliation failed")
 if project_data[0]["rentableVacancyCount"]+project_data[0]["unrentableVacancyCount"]!=project_data[0]["vacancyCount"]: raise RuntimeError("Vacancy availability reconciliation failed")

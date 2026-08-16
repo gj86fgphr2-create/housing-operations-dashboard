@@ -20,7 +20,7 @@ jobs:
       - name: Download and validate dashboard
         run: |
           curl --fail --silent --show-error --retry 5 --retry-all-errors \
-            http://43.129.196.22/dashboard-sync/index.html -o index.html.new
+            http://43.128.67.69/dashboard-sync/index.html -o index.html.new
           python3 - <<'PY'
           from pathlib import Path
           path = Path("index.html.new")
@@ -84,6 +84,10 @@ jobs:
           grep -q 'data-dashboard-view="operations-brief"' index.html.new
           grep -q 'data-dashboard-view="occupancy"' index.html.new
           grep -q 'data-mobile-module="xiaohongshu"' index.html.new
+          grep -q 'data-desktop-module="xiaohongshu"' index.html.new
+          grep -q 'data-desktop-module="yuxiaor"' index.html.new
+          grep -q 'data-desktop-menu="xiaohongshu"' index.html.new
+          grep -q 'data-desktop-menu="yuxiaor"' index.html.new
           grep -q 'id="xhs-account"' index.html.new
           grep -q 'id="xhs-account-status-list"' index.html.new
           grep -q 'id="xhs-notes"' index.html.new
@@ -93,9 +97,13 @@ jobs:
           grep -q 'id="xhs-daily-reading-chart"' index.html.new
           grep -q 'id="xhs-leads"' index.html.new
           grep -q 'id="xhs-leads-updated"' index.html.new
-          grep -q 'id="xhs-lead-inbound-table"' index.html.new
+          ! grep -q 'id="xhs-lead-inbound-table"' index.html.new
           grep -q 'id="xhs-lead-opened-table"' index.html.new
           grep -q 'id="xhs-lead-copied-table"' index.html.new
+          grep -q 'xhs-goal-table' index.html.new
+          grep -q 'function xhsGoalCell(' index.html.new
+          grep -q '"targetMonth"' index.html.new
+          grep -q '"targets"' index.html.new
           grep -q 'function renderXhsLeads()' index.html.new
           grep -q '"xhsLeads"' index.html.new
           grep -q 'brief-daily-table' index.html.new
