@@ -53,12 +53,20 @@ jobs:
           text = text.replace("$('hint-comprehensive').textContent = int(d.comprehensiveCount) + ' 套';", new.strip())
           path.write_text(text, encoding="utf-8")
           PY
+          python3 automation/validate_dashboard_structure.py index.html.new
           grep -q '<title>房源运营工作台</title>' index.html.new
           grep -q 'data-dashboard-view="overview"' index.html.new
-          grep -q 'data-dashboard-view="checkout"' index.html.new
           grep -q 'data-dashboard-view="performance"' index.html.new
           grep -q 'data-dashboard-view="operations-brief"' index.html.new
           grep -q 'data-dashboard-view="occupancy"' index.html.new
+          grep -q 'data-mobile-module="xiaohongshu"' index.html.new
+          grep -q 'id="xhs-account"' index.html.new
+          grep -q 'id="xhs-account-status-list"' index.html.new
+          grep -q 'id="xhs-notes"' index.html.new
+          grep -q 'id="xhs-note-count-table"' index.html.new
+          grep -q 'id="xhs-view-count-table"' index.html.new
+          grep -q 'id="xhs-exposure-count-table"' index.html.new
+          grep -q 'id="xhs-daily-reading-chart"' index.html.new
           grep -q 'brief-daily-table' index.html.new
           grep -q 'brief-project-table' index.html.new
           grep -q 'brief-person-table' index.html.new
