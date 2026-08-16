@@ -15,6 +15,12 @@ REQUIRED = (
     'data-mobile-menu="yuxiaor"',
     'id="xhs-account"',
     'id="xhs-account-table"',
+    'id="xhs-account-status-list"',
+    'id="xhs-notes"',
+    'id="xhs-note-count-table"',
+    'id="xhs-view-count-table"',
+    'id="xhs-exposure-count-table"',
+    'id="xhs-daily-reading-chart"',
     'id="checkout-pressure"',
     'data-dashboard-view="occupancy"',
 )

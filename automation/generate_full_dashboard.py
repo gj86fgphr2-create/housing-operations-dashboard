@@ -1,11 +1,62 @@
 #!/usr/bin/env python3
-import json, re, sys
+import csv, json, os, re, sys
 from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
 from openpyxl import load_workbook
 
 run_dir, template_path, source_path, output_path = map(Path, sys.argv[1:5])
+
+XHS_ACCOUNTS = [
+    {"profile":"account-02","name":"广州大学城租房-研寓","operator":"孝西"},
+    {"profile":"account-03","name":"广州研寓租房大学城","operator":"嘉明"},
+    {"profile":"account-04","name":"大学城捞房长短租随意","operator":"梦琪"},
+    {"profile":"account-05","name":"暴走大学城探房版","operator":"淼淼"},
+    {"profile":"account-06","name":"广州大学城-研舍公寓","operator":"紫莹"},
+    {"profile":"account-07","name":"广州大学城租房-维特","operator":"珂珂"},
+    {"profile":"account-08","name":"大学城租房 | 研舍","operator":"传坤"},
+    {"profile":"account-09","name":"番禺大学城租房-尚维特","operator":"余路"},
+]
+
+def latest_xhs_summary():
+    """Locate the newest collector summary without coupling the dashboard to a dated folder."""
+    candidates=[]
+    configured=os.environ.get("XHS_CONTENT_WEEKLY_JSON","").strip()
+    if configured: candidates.append(Path(configured))
+    roots=[Path("/home/ubuntu/xhs-account-isolation/data"),Path("/opt/xhs-account-isolation/data")]
+    for root in roots:
+        if root.exists(): candidates.extend(root.glob("content-stats*/content-weekly-summary-latest.json"))
+    existing=[path for path in candidates if path.is_file()]
+    return max(existing,key=lambda path:path.stat().st_mtime) if existing else None
+
+def build_xhs_content(fallback):
+    summary_path=latest_xhs_summary()
+    if not summary_path: return fallback or {"generatedAt":"","month":"","weeks":[],"accounts":XHS_ACCOUNTS,"dailyReading":[]}
+    summary=json.loads(summary_path.read_text(encoding="utf-8"))
+    end_date=datetime.strptime(summary["period"]["end_date"],"%Y-%m-%d").date()
+    month_prefix=str(end_date.month)
+    week_rows=[row for row in summary.get("weekly_totals",[]) if row.get("week_label","").startswith(month_prefix+"W") and row.get("week_start","")<=end_date.isoformat()]
+    weeks=[{"key":row["week_label"][len(month_prefix):].lower(),"label":row["week_label"][len(month_prefix):],"start":row["week_start"],"end":row["week_end"]} for row in week_rows]
+    by_profile_week={(row.get("profile"),row.get("week_label")):row for row in summary.get("account_week_rows",[])}
+    accounts=[]
+    for account in XHS_ACCOUNTS:
+        metrics={}
+        for week in weeks:
+            source=by_profile_week.get((account["profile"],month_prefix+week["label"]))
+            metrics[week["key"]]={
+                "notes":source.get("note_count") if source else None,
+                "views":source.get("cumulative_views") if source else None,
+                "exposures":source.get("cumulative_exposures") if source else None,
+            }
+        accounts.append({**account,"metrics":metrics})
+    daily_totals=defaultdict(int)
+    daily_path=summary_path.with_name("daily-reading-latest.csv")
+    if daily_path.is_file():
+        with daily_path.open(encoding="utf-8-sig",newline="") as handle:
+            for row in csv.DictReader(handle):
+                if row.get("status") == "ok" and row.get("date"):
+                    daily_totals[row["date"]]+=int(row.get("reading_count") or 0)
+    return {"generatedAt":summary.get("generated_at","")[:19].replace("T"," "),"month":f"{end_date.year:04d}-{end_date.month:02d}","weeks":weeks,"accounts":accounts,"dailyReading":[{"date":date,"readingCount":count} for date,count in sorted(daily_totals.items(),reverse=True)]}
 
 def extract_data(path):
     text = path.read_text(encoding="utf-8")
@@ -205,9 +256,9 @@ contract_stats.setdefault("projectMonthlyUnmapped",{"newCount":0,"renewalCount":
 contract_stats.setdefault("totals",{})
 contract_stats["uniqueContracts"]=sum(1 for f in ("在租中合同.xlsx","将搬入合同.xlsx","已退租合同.xlsx") for _ in load_workbook(run_dir/f,read_only=True).active.iter_rows(min_row=4,values_only=True))
 
-payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods}
+payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods,"xhsContent":build_xhs_content(old.get("xhsContent"))}
 rendered=template[:payload_span[0]]+json.dumps(payload,ensure_ascii=False,separators=(",",":"))+template[payload_span[1]:]
-required=['class="nav desktop-nav"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','邮箱密码不匹配']
+required=['class="nav desktop-nav"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','邮箱密码不匹配','xhs-account-status-list','xhs-note-count-table','xhs-view-count-table','xhs-exposure-count-table','xhs-daily-reading-chart']
 if any(x not in rendered for x in required): raise RuntimeError("Full dashboard style validation failed")
 if 'data-dashboard-view="checkout"' in rendered: raise RuntimeError("Legacy checkout navigation detected")
 if len(building_rows)<50 or project_data[0]["rooms"]!=692: raise RuntimeError("Data reconciliation failed")
