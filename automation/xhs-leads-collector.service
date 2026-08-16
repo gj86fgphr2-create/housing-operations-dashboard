@@ -10,6 +10,7 @@ User=ubuntu
 Group=ubuntu
 WorkingDirectory=/home/ubuntu/xhs-account-isolation
 ExecStart=/home/ubuntu/xhs-account-isolation/automation/run-monthly-collector.sh
+ExecStartPost=/home/ubuntu/xhs-account-isolation/automation/sync-workbench-data.sh
 TimeoutStartSec=90min
 Nice=10
 IOSchedulingClass=best-effort
