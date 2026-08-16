@@ -17,10 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Download and validate dashboard
+      - name: Validate published dashboard
         run: |
-          curl --fail --silent --show-error --retry 5 --retry-all-errors \
-            http://43.128.67.69/dashboard-sync/index.html -o index.html.new
+          cp index.html index.html.new
           python3 - <<'PY'
           from pathlib import Path
           path = Path("index.html.new")
