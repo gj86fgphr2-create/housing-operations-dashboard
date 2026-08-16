@@ -25,6 +25,12 @@ REQUIRED = (
     'id="xhs-exposure-count-head"',
     'id="xhs-exposure-count-table"',
     'id="xhs-daily-reading-chart"',
+    'id="xhs-leads"',
+    'id="xhs-leads-updated"',
+    'id="xhs-lead-inbound-table"',
+    'id="xhs-lead-opened-table"',
+    'id="xhs-lead-copied-table"',
+    'function renderXhsLeads()',
     'id="checkout-pressure"',
     'data-dashboard-view="occupancy"',
 )

@@ -91,6 +91,13 @@ jobs:
           grep -q 'id="xhs-view-count-table"' index.html.new
           grep -q 'id="xhs-exposure-count-table"' index.html.new
           grep -q 'id="xhs-daily-reading-chart"' index.html.new
+          grep -q 'id="xhs-leads"' index.html.new
+          grep -q 'id="xhs-leads-updated"' index.html.new
+          grep -q 'id="xhs-lead-inbound-table"' index.html.new
+          grep -q 'id="xhs-lead-opened-table"' index.html.new
+          grep -q 'id="xhs-lead-copied-table"' index.html.new
+          grep -q 'function renderXhsLeads()' index.html.new
+          grep -q '"xhsLeads"' index.html.new
           grep -q 'brief-daily-table' index.html.new
           grep -q 'brief-project-table' index.html.new
           grep -q 'brief-person-table' index.html.new
