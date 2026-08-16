@@ -207,7 +207,7 @@ contract_stats["uniqueContracts"]=sum(1 for f in ("在租中合同.xlsx","将搬
 
 payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods}
 rendered=template[:payload_span[0]]+json.dumps(payload,ensure_ascii=False,separators=(",",":"))+template[payload_span[1]:]
-required=['data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="checkout"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table']
+required=['data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table']
 if any(x not in rendered for x in required): raise RuntimeError("Full dashboard style validation failed")
 if len(building_rows)<50 or project_data[0]["rooms"]!=692: raise RuntimeError("Data reconciliation failed")
 if project_data[0]["lockCount"]!=lock_total: raise RuntimeError("Lock count reconciliation failed")
