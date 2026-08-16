@@ -47,10 +47,34 @@ jobs:
           if "normalizeComprehensiveRows" not in text:
               text = text.replace(marker, normalization + marker)
           text = text.replace("$('hint-occupied').textContent = int(d.occupiedCount) + ' 套（含预定 ' + int(d.preorderCount) + ' 套）';", "$('hint-occupied').textContent = int(d.occupiedCount) + ' 套已出租';")
+          if "topbar-actions" not in text:
+              text = text.replace(
+                  "    .topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:22px}\n",
+                  "    .topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:22px}\n    .topbar-actions{display:flex;align-items:flex-start}\n    .home-button{height:38px;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:9px;padding:0 14px;font-weight:600;cursor:pointer}\n    .home-button:hover{background:var(--blue-soft);border-color:var(--blue)}\n"
+              )
           old = "      const otherComprehensive = Math.max(0, int(d.comprehensiveCount) - int(d.occupiedCount) - int(d.lockCount));\n      $('hint-comprehensive').textContent = int(d.comprehensiveCount) + ' 套（当前在租 ' + int(d.occupiedCount) + '、锁房 ' + int(d.lockCount) + '、未来30天其他有效占用 ' + otherComprehensive + '）';"
           new = "      $('hint-comprehensive').textContent = int(d.comprehensiveCount) + ' 套（已出租 ' + int(d.occupiedCount) + '、已预订 ' + int(d.preorderCount) + '、将搬入 ' + int(d.moveInCount) + '）';"
           text = text.replace(old, new)
           text = text.replace("$('hint-comprehensive').textContent = int(d.comprehensiveCount) + ' 套';", new.strip())
+          if "id=\"dashboard-home\"" not in text:
+              text = text.replace(
+                '        <div><h1 id="page-title">房源运营工作台</h1><p class="subtitle" id="page-subtitle">加载数据中…</p></div>\n',
+                '        <div><h1 id="page-title">房源运营工作台</h1><p class=\"subtitle\" id=\"page-subtitle\">加载数据中…</p></div>\n        <div class=\"topbar-actions\"><button type=\"button\" class=\"home-button\" id=\"dashboard-home\">返回首页</button></div>\n'
+              )
+          if "dashboard-home').addEventListener" not in text:
+              insert_after = "    function setDashboardView(view){\n      document.querySelectorAll('[data-views]').forEach((element) => { element.hidden = !element.dataset.views.split(/\\s+/).includes(view); });\n      document.querySelectorAll('[data-dashboard-view]').forEach((link) => link.classList.toggle('active',link.dataset.dashboardView === view));\n      const isXhs = view.startsWith('xhs-'); $('dashboard-controls').hidden = isXhs; $('page-title').textContent = isXhs ? '小红书运营工作台' : '房源运营工作台';\n      if (view === 'overview' || view === 'performance') requestAnimationFrame(renderDailyLineChart);\n      if (view === 'xhs-notes') requestAnimationFrame(renderXhsReadingChart);\n    }\n"
+              home_listener = """    $('dashboard-home').addEventListener('click', () => {\n      history.replaceState(null, '', '#overview');\n      setDashboardView('overview');\n      showMobileMenu('primary');\n      window.scrollTo({top:0,behavior:'smooth'});\n    });\n"""
+              if insert_after in text:
+                  text = text.replace(insert_after, insert_after + home_listener)
+              else:
+                  text = text.replace(
+                      "    if ('ResizeObserver' in window){ new ResizeObserver(renderDailyLineChart).observe($('contract-daily-chart-wrap')); new ResizeObserver(renderXhsReadingChart).observe($('xhs-daily-reading-chart-wrap')); }\n",
+                      home_listener + "    if ('ResizeObserver' in window){ new ResizeObserver(renderDailyLineChart).observe($('contract-daily-chart-wrap')); new ResizeObserver(renderXhsReadingChart).observe($('xhs-daily-reading-chart-wrap')); }\n"
+                  )
+          old_mobile = "    document.querySelectorAll('[data-mobile-home]').forEach((button) => button.addEventListener('click',()=>showMobileMenu('primary')));"
+          new_mobile = """    document.querySelectorAll('[data-mobile-home]').forEach((button) => button.addEventListener('click',()=>{\n      history.replaceState(null, '', '#overview');\n      setDashboardView('overview');\n      showMobileMenu('primary');\n      window.scrollTo({top:0,behavior:'smooth'});\n    }));\n"""
+          if "data-mobile-home').addEventListener('click',()=>{" not in text:
+              text = text.replace("    document.querySelectorAll('[data-mobile-home]').forEach((button) => button.addEventListener('click',()=>showMobileMenu('primary')));", new_mobile)
           path.write_text(text, encoding="utf-8")
           PY
           python3 automation/validate_dashboard_structure.py index.html.new
