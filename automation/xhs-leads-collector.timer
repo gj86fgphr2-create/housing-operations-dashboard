@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Xiaohongshu lead and content collector hourly
+
+[Timer]
+OnCalendar=*-*-* *:10:00 Asia/Shanghai
+Persistent=true
+AccuracySec=1min
+Unit=xhs-leads-collector.service
+
+[Install]
+WantedBy=timers.target

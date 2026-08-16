@@ -1,0 +1,23 @@
+[Unit]
+Description=Collect Xiaohongshu lead and content statistics
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/xhs-account-isolation
+ExecStart=/home/ubuntu/xhs-account-isolation/automation/run-monthly-collector.sh
+TimeoutStartSec=90min
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+NoNewPrivileges=true
+PrivateTmp=true
+StandardOutput=append:/home/ubuntu/xhs-account-isolation/logs/lead-collector.log
+StandardError=append:/home/ubuntu/xhs-account-isolation/logs/lead-collector.log
+
+[Install]
+WantedBy=multi-user.target
