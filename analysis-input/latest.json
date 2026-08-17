@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-17T11:01:35.337256+08:00",
+  "generatedAt": "2026-08-17T12:01:12.907532+08:00",
   "source": "yuxiaor-server-export",
   "snapshotDate": "2026-08-17",
   "dashboardUrl": "https://gj86fgphr2-create.github.io/housing-operations-dashboard/#operations-brief",
@@ -202,7 +202,7 @@
       "new": 0,
       "renewal": 0,
       "actualCheckout": 4,
-      "reservation": 0
+      "reservation": 1
     }
   },
   "today": {
@@ -210,6 +210,6 @@
     "newCount": 0,
     "renewalCount": 0,
     "actualCheckoutCount": 4,
-    "reservationCount": 0
+    "reservationCount": 1
   }
 }
