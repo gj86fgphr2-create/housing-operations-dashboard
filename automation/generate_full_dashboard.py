@@ -37,14 +37,14 @@ XHS_LEAD_TARGET_NAMES = {
 
 XHS_LEAD_TARGETS = {
     "2026-08": {
-        "account-02": weekly_lead_targets([21,31,18,22,6], [12,18,11,13,4]),
-        "account-03": weekly_lead_targets([97,93,119,113,19], [71,69,88,83,14]),
-        "account-04": weekly_lead_targets([89,118,176,178,56], [65,87,129,130,41]),
-        "account-05": weekly_lead_targets([80,118,71,135,11], [62,92,55,105,8]),
-        "account-06": weekly_lead_targets([21,34,28,38,10], [14,22,18,25,7]),
-        "account-07": weekly_lead_targets([23,13,26,23,7], [16,9,18,16,5]),
-        "account-08": weekly_lead_targets([16,28,90,106,19], [0,1,1,1,0]),
-        "account-09": weekly_lead_targets([63,51,40,42,18], [45,36,28,30,13]),
+        "account-02": weekly_lead_targets([16,24,14,16,5], [10,14,8,9,3]),
+        "account-03": weekly_lead_targets([74,71,92,87,14], [55,52,68,64,10]),
+        "account-04": weekly_lead_targets([68,91,135,136,42], [50,67,99,99,31]),
+        "account-05": weekly_lead_targets([62,90,54,103,9], [48,70,42,80,7]),
+        "account-06": weekly_lead_targets([16,26,21,29,8], [10,17,14,19,5]),
+        "account-07": weekly_lead_targets([17,10,20,17,6], [12,7,14,12,4]),
+        "account-08": weekly_lead_targets([13,21,69,81,14], [0,0,1,1,0]),
+        "account-09": weekly_lead_targets([48,40,31,32,13], [34,29,22,23,9]),
     },
 }
 
@@ -120,7 +120,7 @@ def latest_xhs_lead_summary():
 def build_xhs_leads(fallback):
     summary_path=latest_xhs_lead_summary()
     if not summary_path:
-        return attach_xhs_lead_targets(fallback or {"generatedAt":"","month":"","weeks":[],"accounts":XHS_ACCOUNTS})
+        return attach_xhs_lead_targets(fallback or {"generatedAt":"","month":"","weeks":[],"accounts":XHS_ACCOUNTS,"dailyRows":[]})
     summary=json.loads(summary_path.read_text(encoding="utf-8"))
     end_date=datetime.strptime(summary["period"]["end_date"],"%Y-%m-%d").date()
     month_prefix=str(end_date.month)
@@ -138,7 +138,20 @@ def build_xhs_leads(fallback):
                 "copied":source.get("personal_wechat_copy_leads") if source else None,
             }
         accounts.append({**account,"metrics":metrics})
-    return attach_xhs_lead_targets({"generatedAt":summary.get("generated_at","")[:19].replace("T"," "),"month":f"{end_date.year:04d}-{end_date.month:02d}","weeks":weeks,"accounts":accounts})
+    detail_start=(end_date-timedelta(days=20)).isoformat()
+    daily_rows=[]
+    for row in summary.get("account_time_rows",[]):
+        row_date=row.get("date","")
+        if detail_start <= row_date <= end_date.isoformat():
+            daily_rows.append({
+                "date":row_date,
+                "week":row.get("week_label",""),
+                "profile":row.get("profile",""),
+                "opened":row.get("private_message_opened_users",0),
+                "copied":row.get("personal_wechat_copy_leads",0),
+                "status":row.get("data_status",""),
+            })
+    return attach_xhs_lead_targets({"generatedAt":summary.get("generated_at","")[:19].replace("T"," "),"month":f"{end_date.year:04d}-{end_date.month:02d}","weeks":weeks,"accounts":accounts,"detailStart":detail_start,"detailEnd":end_date.isoformat(),"dailyRows":daily_rows})
 
 def extract_data(path):
     text = path.read_text(encoding="utf-8")
@@ -340,7 +353,7 @@ contract_stats["uniqueContracts"]=sum(1 for f in ("在租中合同.xlsx","将搬
 
 payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods,"xhsContent":build_xhs_content(old.get("xhsContent")),"xhsLeads":build_xhs_leads(old.get("xhsLeads"))}
 rendered=template[:payload_span[0]]+json.dumps(payload,ensure_ascii=False,separators=(",",":"))+template[payload_span[1]:]
-required=['class="nav desktop-nav"','data-desktop-module="xiaohongshu"','data-desktop-module="yuxiaor"','data-desktop-menu="xiaohongshu"','data-desktop-menu="yuxiaor"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','邮箱密码不匹配','xhs-account-status-list','xhs-note-count-table','xhs-view-count-table','xhs-exposure-count-table','xhs-daily-reading-chart','id="xhs-leads"','xhs-goal-table','xhs-lead-opened-table','xhs-lead-copied-table','function xhsGoalCell(','function renderXhsLeads()','"targetMonth"','"targets"','"xhsLeads"']
+required=['class="nav desktop-nav"','data-desktop-module="xiaohongshu"','data-desktop-module="yuxiaor"','data-desktop-menu="xiaohongshu"','data-desktop-menu="yuxiaor"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','邮箱密码不匹配','xhs-account-status-list','xhs-note-count-table','xhs-view-count-table','xhs-exposure-count-table','xhs-daily-reading-chart','id="xhs-leads"','xhs-goal-table','xhs-lead-opened-table','xhs-lead-copied-table','id="xhs-lead-details"','xhs-lead-detail-account','xhs-lead-detail-table','function xhsGoalCell(','function renderXhsLeads()','function renderXhsLeadDetails()','"targetMonth"','"targets"','"dailyRows"','"xhsLeads"']
 if any(x not in rendered for x in required): raise RuntimeError("Full dashboard style validation failed")
 if 'data-dashboard-view="checkout"' in rendered: raise RuntimeError("Legacy checkout navigation detected")
 if 'id="xhs-lead-inbound-table"' in rendered: raise RuntimeError("Private-message inbound table must stay hidden")

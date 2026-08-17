@@ -35,11 +35,16 @@ REQUIRED = (
     'id="xhs-leads-updated"',
     'id="xhs-lead-opened-table"',
     'id="xhs-lead-copied-table"',
+    'id="xhs-lead-details"',
+    'data-dashboard-view="xhs-lead-details"',
+    'id="xhs-lead-detail-account"',
+    'id="xhs-lead-detail-table"',
     'xhs-goal-table',
     'function xhsGoalCell(',
     '"targetMonth"',
     '"targets"',
     'function renderXhsLeads()',
+    'function renderXhsLeadDetails()',
     'id="checkout-pressure"',
     'data-dashboard-view="occupancy"',
 )
@@ -84,8 +89,12 @@ def main() -> int:
         if leads.get("targetMonth") != "2026-08" or len(accounts) != 8 or len(target_rows) != 40:
             print("XHS August target coverage invalid", file=sys.stderr)
             return 1
-        if (opened_total, copied_total) != (2267, 1462):
+        if (opened_total, copied_total) != (1735, 1119):
             print(f"XHS August target totals invalid: {(opened_total, copied_total)}", file=sys.stderr)
+            return 1
+        daily_rows = leads.get("dailyRows", [])
+        if len(daily_rows) != 168 or len({row.get("date") for row in daily_rows}) != 21:
+            print(f"XHS 21-day detail coverage invalid: {len(daily_rows)} rows", file=sys.stderr)
             return 1
 
     print(f"dashboard structure valid: {dashboard}")
