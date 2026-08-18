@@ -7,6 +7,7 @@ lead_dir="$data_dir/lead-stats"
 target="${XHS_WORKBENCH_TARGET:-ubuntu@43.128.67.69}"
 remote_data_root="${XHS_WORKBENCH_DATA_ROOT:-/opt/xhs-account-isolation/data}"
 identity_file="${XHS_WORKBENCH_IDENTITY_FILE:-/home/ubuntu/.ssh/xhs_dashboard_sync_ed25519}"
+registry_file="$data_dir/note-id-registry/xhs-note-ids.xlsx"
 
 content_dir="$(find "$data_dir" -mindepth 1 -maxdepth 1 -type d \
   -name 'content-stats-*-to-*' -printf '%T@ %p\n' \
@@ -34,7 +35,7 @@ content_files=(
   "$content_dir/content-weekly-summary-latest.csv"
 )
 
-for path in "${lead_files[@]}" "${content_files[@]}"; do
+for path in "${lead_files[@]}" "${content_files[@]}" "$registry_file"; do
   if [[ ! -f "$path" ]]; then
     printf 'Required synchronization file is missing: %s\n' "$path" >&2
     exit 1
@@ -48,14 +49,17 @@ ssh_options=(
   -o StrictHostKeyChecking=yes
 )
 remote_content_dir="$remote_data_root/$(basename "$content_dir")"
+remote_registry_dir="$remote_data_root/note-id-registry"
 
 ssh "${ssh_options[@]}" "$target" \
-  "install -d -m 0755 '$remote_data_root/lead-stats' '$remote_content_dir'"
+  "install -d -m 0755 '$remote_data_root/lead-stats' '$remote_content_dir' '$remote_registry_dir'"
 
 rsync -a -e "ssh -i $identity_file -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes" \
   "${lead_files[@]}" "$target:$remote_data_root/lead-stats/"
 rsync -a -e "ssh -i $identity_file -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes" \
   "${content_files[@]}" "$target:$remote_content_dir/"
+rsync -a -e "ssh -i $identity_file -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes" \
+  "$registry_file" "$target:$remote_registry_dir/"
 
 ssh "${ssh_options[@]}" "$target" \
   "/usr/bin/python3 /opt/yuxiaor-automation/app/generate_full_dashboard.py /opt/yuxiaor-automation/data/current /opt/yuxiaor-automation/app/latest-dashboard-template.html /opt/yuxiaor-automation/site/index.html /opt/yuxiaor-automation/site/index.html && /usr/bin/python3 /opt/yuxiaor-automation/app/validate_dashboard_structure.py /opt/yuxiaor-automation/site/index.html"
