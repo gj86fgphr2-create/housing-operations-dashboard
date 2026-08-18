@@ -21,6 +21,7 @@ REQUIRED = (
     'data-mobile-menu="xiaohongshu"',
     'data-mobile-menu="yuxiaor"',
     'id="xhs-account"',
+    'id="xhs-account-updated"',
     'id="xhs-account-table"',
     'id="xhs-account-status-list"',
     'id="xhs-notes"',
@@ -40,7 +41,9 @@ REQUIRED = (
     'id="xhs-lead-detail-account"',
     'id="xhs-lead-detail-table"',
     'xhs-goal-table',
+    'function renderXhsAccountStatus()',
     'function xhsGoalCell(',
+    '"xhsAccountAudit"',
     '"targetMonth"',
     '"targets"',
     'function renderXhsLeads()',
@@ -76,6 +79,11 @@ def main() -> int:
         print("dashboard DATA payload missing", file=sys.stderr)
         return 1
     payload = json.loads(payload_match.group(1))
+    account_audit = payload.get("xhsAccountAudit", {})
+    audit_accounts = account_audit.get("accounts", [])
+    if len(audit_accounts) != 8 or len({row.get("profile") for row in audit_accounts}) != 8:
+        print(f"XHS account audit coverage invalid: {len(audit_accounts)} rows", file=sys.stderr)
+        return 1
     leads = payload.get("xhsLeads", {})
     accounts = leads.get("accounts", [])
     target_rows = [

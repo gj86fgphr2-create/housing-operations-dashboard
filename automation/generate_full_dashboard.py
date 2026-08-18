@@ -117,6 +117,64 @@ def latest_xhs_lead_summary():
     existing=[path for path in candidates if path.is_file()]
     return max(existing,key=lambda path:path.stat().st_mtime) if existing else None
 
+def mask_xhs_email(value):
+    email=str(value or "").strip()
+    if "@" not in email: return "—"
+    local,domain=email.rsplit("@",1)
+    if local.isdigit() and len(local)>6:
+        masked=local[:4]+"****"+local[-2:]
+    else:
+        masked=local[:4]+"****"
+    return masked+"@"+domain
+
+def build_xhs_account_audit(fallback):
+    """Derive login health from the newest per-account collector rows."""
+    summary_path=latest_xhs_lead_summary()
+    if not summary_path: return fallback or {}
+    summary=json.loads(summary_path.read_text(encoding="utf-8"))
+    end_date=summary.get("period",{}).get("end_date","")
+    rows_by_profile=defaultdict(list)
+    for row in summary.get("account_time_rows",[]):
+        if row.get("profile") and row.get("date"):
+            rows_by_profile[row["profile"]].append(row)
+    accounts=[]
+    for account in XHS_ACCOUNTS:
+        rows=sorted(rows_by_profile.get(account["profile"],[]),key=lambda row:row.get("date",""))
+        latest=rows[-1] if rows else {}
+        successful=[row for row in rows if row.get("data_status")=="有数据"]
+        last_success=successful[-1].get("date","") if successful else ""
+        email=str(latest.get("email") or "").strip()
+        xhs_id=str(latest.get("xiaohongshu_id") or "").strip()
+        last_collected=latest.get("date","")
+        ok=bool(email and xhs_id and last_collected and last_collected==end_date)
+        if ok:
+            status_label="已登录并复核"
+            status_hint=f"采集至 {last_collected}"+(f"；最近有数据 {last_success}" if last_success else "")
+        elif not email or not xhs_id:
+            status_label="需要处理"
+            status_hint="缺少登录邮箱或小红书号"
+        else:
+            status_label="待复核"
+            status_hint=f"最近采集 {last_collected or '—'}"
+        accounts.append({
+            **account,
+            "email":mask_xhs_email(email),
+            "xiaohongshuId":xhs_id or "—",
+            "lastCollectedDate":last_collected,
+            "lastSuccessDate":last_success,
+            "status":"ok" if ok else "warn",
+            "statusLabel":status_label,
+            "statusHint":status_hint,
+        })
+    ok_count=sum(1 for account in accounts if account["status"]=="ok")
+    return {
+        "reviewedAt":summary.get("generated_at","")[:19].replace("T"," "),
+        "total":len(accounts),
+        "okCount":ok_count,
+        "needsAttentionCount":len(accounts)-ok_count,
+        "accounts":accounts,
+    }
+
 def build_xhs_leads(fallback):
     summary_path=latest_xhs_lead_summary()
     if not summary_path:
@@ -351,9 +409,9 @@ contract_stats.setdefault("projectMonthlyUnmapped",{"newCount":0,"renewalCount":
 contract_stats.setdefault("totals",{})
 contract_stats["uniqueContracts"]=sum(1 for f in ("在租中合同.xlsx","将搬入合同.xlsx","已退租合同.xlsx") for _ in load_workbook(run_dir/f,read_only=True).active.iter_rows(min_row=4,values_only=True))
 
-payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods,"xhsContent":build_xhs_content(old.get("xhsContent")),"xhsLeads":build_xhs_leads(old.get("xhsLeads"))}
+payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods,"xhsAccountAudit":build_xhs_account_audit(old.get("xhsAccountAudit")),"xhsContent":build_xhs_content(old.get("xhsContent")),"xhsLeads":build_xhs_leads(old.get("xhsLeads"))}
 rendered=template[:payload_span[0]]+json.dumps(payload,ensure_ascii=False,separators=(",",":"))+template[payload_span[1]:]
-required=['class="nav desktop-nav"','data-desktop-module="xiaohongshu"','data-desktop-module="yuxiaor"','data-desktop-menu="xiaohongshu"','data-desktop-menu="yuxiaor"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','邮箱密码不匹配','xhs-account-status-list','xhs-note-count-table','xhs-view-count-table','xhs-exposure-count-table','xhs-daily-reading-chart','id="xhs-leads"','xhs-goal-table','xhs-lead-opened-table','xhs-lead-copied-table','id="xhs-lead-details"','xhs-lead-detail-account','xhs-lead-detail-table','function xhsGoalCell(','function renderXhsLeads()','function renderXhsLeadDetails()','"targetMonth"','"targets"','"dailyRows"','"xhsLeads"']
+required=['class="nav desktop-nav"','data-desktop-module="xiaohongshu"','data-desktop-module="yuxiaor"','data-desktop-menu="xiaohongshu"','data-desktop-menu="yuxiaor"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','xhs-account-updated','xhs-account-status-list','xhs-note-count-table','xhs-view-count-table','xhs-exposure-count-table','xhs-daily-reading-chart','id="xhs-leads"','xhs-goal-table','xhs-lead-opened-table','xhs-lead-copied-table','id="xhs-lead-details"','xhs-lead-detail-account','xhs-lead-detail-table','function renderXhsAccountStatus()','function xhsGoalCell(','function renderXhsLeads()','function renderXhsLeadDetails()','"xhsAccountAudit"','"targetMonth"','"targets"','"dailyRows"','"xhsLeads"']
 if any(x not in rendered for x in required): raise RuntimeError("Full dashboard style validation failed")
 if 'data-dashboard-view="checkout"' in rendered: raise RuntimeError("Legacy checkout navigation detected")
 if 'id="xhs-lead-inbound-table"' in rendered: raise RuntimeError("Private-message inbound table must stay hidden")
