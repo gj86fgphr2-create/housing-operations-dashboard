@@ -81,7 +81,7 @@ def main() -> int:
     payload = json.loads(payload_match.group(1))
     account_audit = payload.get("xhsAccountAudit", {})
     audit_accounts = account_audit.get("accounts", [])
-    if len(audit_accounts) != 9 or len({row.get("profile") for row in audit_accounts}) != 9:
+    if len(audit_accounts) != 8 or len({row.get("profile") for row in audit_accounts}) != 8:
         print(f"XHS account audit coverage invalid: {len(audit_accounts)} rows", file=sys.stderr)
         return 1
     leads = payload.get("xhsLeads", {})
@@ -94,14 +94,14 @@ def main() -> int:
     opened_total = sum(int(target.get("opened", 0)) for target in target_rows)
     copied_total = sum(int(target.get("copied", 0)) for target in target_rows)
     if leads.get("month") == "2026-08":
-        if leads.get("targetMonth") != "2026-08" or len(accounts) != 9 or len(target_rows) != 40:
+        if leads.get("targetMonth") != "2026-08" or len(accounts) != 8 or len(target_rows) != 40:
             print("XHS August target coverage invalid", file=sys.stderr)
             return 1
         if (opened_total, copied_total) != (1735, 1119):
             print(f"XHS August target totals invalid: {(opened_total, copied_total)}", file=sys.stderr)
             return 1
         daily_rows = leads.get("dailyRows", [])
-        if len(daily_rows) != 189 or len({row.get("date") for row in daily_rows}) != 21:
+        if len(daily_rows) != 168 or len({row.get("date") for row in daily_rows}) != 21:
             print(f"XHS 21-day detail coverage invalid: {len(daily_rows)} rows", file=sys.stderr)
             return 1
 

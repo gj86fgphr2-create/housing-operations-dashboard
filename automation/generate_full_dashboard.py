@@ -16,7 +16,6 @@ XHS_ACCOUNTS = [
     {"profile":"account-07","name":"广州大学城租房-维特","operator":"珂珂","team":"管家团队"},
     {"profile":"account-08","name":"大学城租房 | 研舍","operator":"传坤","team":"管家团队"},
     {"profile":"account-09","name":"番禺大学城租房-尚维特","operator":"余路","team":"管家团队"},
-    {"profile":"account-10","name":"大学城租房-小梦","operator":"凤彩","team":"管家团队"},
 ]
 
 def weekly_lead_targets(opened, copied):
@@ -34,7 +33,6 @@ XHS_LEAD_TARGET_NAMES = {
     "account-07": "大学城租房-小梦",
     "account-08": "大学城租房｜研舍",
     "account-09": "尚维特",
-    "account-10": "大学城租房-小梦",
 }
 
 XHS_LEAD_TARGETS = {
