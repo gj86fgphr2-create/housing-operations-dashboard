@@ -130,6 +130,8 @@ def latest_xhs_ad_note_summary():
     roots=[Path("/home/ubuntu/xhs-account-isolation/data"),Path("/opt/xhs-account-isolation/data")]
     for root in roots:
         if not root.exists(): continue
+        history=root / "ad-note-history" / "latest.json"
+        if history.is_file(): return history
         latest=root / "ad-note-stats" / "latest.json"
         if latest.is_file(): candidates.append(latest)
         candidates.extend(root.glob("ad-note-stats/ad-note-stats-*.json"))
@@ -141,6 +143,26 @@ def build_xhs_ad_flow(fallback):
     if not summary_path:
         return fallback or {"generatedAt":"","date":"","accountRows":[],"ownerRows":[],"totalNoteCount":0}
     summary=json.loads(summary_path.read_text(encoding="utf-8"))
+    if summary.get("schema")=="xhs-ad-history-v1":
+        account_fields=("date","profile","accountName","team","noteCount","spend","opened","averageOpenCost","leads","averageLeadCost","status","statusLabel","error")
+        owner_fields=("date","ownerAccountName","ownerUserId","team","noteCount","spend","opened","averageOpenCost","leads","averageLeadCost","ownerStatus","ownerStatusLabel")
+        account_rows=[{key:row.get(key) for key in account_fields} for row in summary.get("accountRows",[]) if isinstance(row,dict)]
+        owner_rows=[{key:row.get(key) for key in owner_fields} for row in summary.get("ownerRows",[]) if isinstance(row,dict)]
+        owner_count=len({(row.get("ownerUserId") or row.get("ownerAccountName")) for row in owner_rows if row.get("ownerUserId") or row.get("ownerAccountName")})
+        return {
+            "generatedAt":str(summary.get("generated_at") or "")[:19].replace("T"," "),
+            "date":str(summary.get("end_date") or summary.get("date") or ""),
+            "periodLabel":str(summary.get("periodLabel") or ""),
+            "aggregation":"DAY",
+            "accountRows":account_rows,
+            "ownerRows":owner_rows,
+            "ownerAccountCount":owner_count,
+            "totalNoteCount":int(summary.get("totalNoteCount") or 0),
+            "totalSpend":round(float(summary.get("totalSpend") or 0),2),
+            "totalOpened":int(summary.get("totalOpened") or 0),
+            "totalLeads":int(summary.get("totalLeads") or 0),
+            "unresolvedOwnerCount":int(summary.get("unresolvedOwnerCount") or 0),
+        }
     report_date=str(summary.get("date") or "")
     account_rows=[]
     note_rows=[]

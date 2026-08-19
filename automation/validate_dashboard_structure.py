@@ -4,6 +4,7 @@
 import json
 import re
 import sys
+from datetime import date
 from pathlib import Path
 
 
@@ -109,6 +110,24 @@ def main() -> int:
         daily_rows = leads.get("dailyRows", [])
         if len(daily_rows) != 168 or len({row.get("date") for row in daily_rows}) != 21:
             print(f"XHS 21-day detail coverage invalid: {len(daily_rows)} rows", file=sys.stderr)
+            return 1
+    ad_flow = payload.get("xhsAdFlow", {})
+    if "noteRows" in ad_flow or "笔记ID" in html or "笔记标题" in html:
+        print("XHS ad-note private detail exposure detected", file=sys.stderr)
+        return 1
+    if ad_flow.get("periodLabel"):
+        try:
+            start_text, end_text = ad_flow["periodLabel"].split(" 至 ", 1)
+            expected_account_days = (date.fromisoformat(end_text) - date.fromisoformat(start_text)).days + 1
+            expected_account_days *= 8
+        except (TypeError, ValueError):
+            print(f"XHS ad history period invalid: {ad_flow.get('periodLabel')}", file=sys.stderr)
+            return 1
+        if len(ad_flow.get("accountRows", [])) != expected_account_days:
+            print(f"XHS ad history account-day coverage invalid: {len(ad_flow.get('accountRows', []))}/{expected_account_days}", file=sys.stderr)
+            return 1
+        if int(ad_flow.get("unresolvedOwnerCount") or 0):
+            print(f"XHS ad history unresolved owners: {ad_flow.get('unresolvedOwnerCount')}", file=sys.stderr)
             return 1
 
     print(f"dashboard structure valid: {dashboard}")

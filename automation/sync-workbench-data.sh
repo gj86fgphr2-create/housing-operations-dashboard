@@ -5,6 +5,7 @@ project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 data_dir="$project_dir/data"
 lead_dir="$data_dir/lead-stats"
 ad_note_dir="$data_dir/ad-note-stats"
+ad_history_dir="$data_dir/ad-note-history"
 target="${XHS_WORKBENCH_TARGET:-ubuntu@43.128.67.69}"
 remote_data_root="${XHS_WORKBENCH_DATA_ROOT:-/opt/xhs-account-isolation/data}"
 identity_file="${XHS_WORKBENCH_IDENTITY_FILE:-/home/ubuntu/.ssh/xhs_dashboard_sync_ed25519}"
@@ -39,8 +40,13 @@ ad_note_files=(
   "$ad_note_dir/latest.json"
   "$ad_note_dir/latest.csv"
 )
+ad_history_files=(
+  "$ad_history_dir/latest.json"
+  "$ad_history_dir/account-daily.csv"
+  "$ad_history_dir/owner-daily.csv"
+)
 
-for path in "${lead_files[@]}" "${content_files[@]}" "${ad_note_files[@]}" "$registry_file"; do
+for path in "${lead_files[@]}" "${content_files[@]}" "${ad_note_files[@]}" "${ad_history_files[@]}" "$registry_file"; do
   if [[ ! -f "$path" ]]; then
     printf 'Required synchronization file is missing: %s\n' "$path" >&2
     exit 1
@@ -56,9 +62,10 @@ ssh_options=(
 remote_content_dir="$remote_data_root/$(basename "$content_dir")"
 remote_registry_dir="$remote_data_root/note-id-registry"
 remote_ad_note_dir="$remote_data_root/ad-note-stats"
+remote_ad_history_dir="$remote_data_root/ad-note-history"
 
 ssh "${ssh_options[@]}" "$target" \
-  "install -d -m 0755 '$remote_data_root/lead-stats' '$remote_content_dir' '$remote_registry_dir' '$remote_ad_note_dir'"
+  "install -d -m 0755 '$remote_data_root/lead-stats' '$remote_content_dir' '$remote_registry_dir' '$remote_ad_note_dir' '$remote_ad_history_dir'"
 
 rsync -a -e "ssh -i $identity_file -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes" \
   "${lead_files[@]}" "$target:$remote_data_root/lead-stats/"
@@ -68,6 +75,8 @@ rsync -a -e "ssh -i $identity_file -o BatchMode=yes -o ConnectTimeout=15 -o Stri
   "$registry_file" "$target:$remote_registry_dir/"
 rsync -a -e "ssh -i $identity_file -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes" \
   "${ad_note_files[@]}" "$target:$remote_ad_note_dir/"
+rsync -a -e "ssh -i $identity_file -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes" \
+  "${ad_history_files[@]}" "$target:$remote_ad_history_dir/"
 
 ssh "${ssh_options[@]}" "$target" \
   "/usr/bin/python3 /opt/yuxiaor-automation/app/generate_full_dashboard.py /opt/yuxiaor-automation/data/current /opt/yuxiaor-automation/app/latest-dashboard-template.html /opt/yuxiaor-automation/site/index.html /opt/yuxiaor-automation/site/index.html && /usr/bin/python3 /opt/yuxiaor-automation/app/validate_dashboard_structure.py /opt/yuxiaor-automation/site/index.html"
