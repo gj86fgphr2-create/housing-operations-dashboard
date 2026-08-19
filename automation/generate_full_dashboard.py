@@ -93,8 +93,9 @@ def build_xhs_content(fallback):
             source=by_profile_week.get((account["profile"],month_prefix+week["label"]))
             metrics[week["key"]]={
                 "notes":source.get("note_count") if source else None,
-                "views":source.get("cumulative_views") if source else None,
-                "exposures":source.get("cumulative_exposures") if source else None,
+                "reads":source.get("note_reading_count") if source else None,
+                "interactions":source.get("interaction_count") if source else None,
+                "interactionRate":source.get("interaction_rate") if source else None,
             }
         accounts.append({**account,"metrics":metrics})
     daily_totals=defaultdict(int)
@@ -134,7 +135,7 @@ def latest_xhs_ad_note_summary():
 def build_xhs_ad_flow(fallback):
     summary_path=latest_xhs_ad_note_summary()
     if not summary_path:
-        return fallback or {"generatedAt":"","date":"","accountRows":[],"noteRows":[]}
+        return fallback or {"generatedAt":"","date":"","accountRows":[],"ownerRows":[],"totalNoteCount":0}
     summary=json.loads(summary_path.read_text(encoding="utf-8"))
     report_date=str(summary.get("date") or "")
     account_rows=[]
@@ -176,13 +177,31 @@ def build_xhs_ad_flow(fallback):
                 "opened":int(row.get("private_message_opens") or 0),
                 "leads":int(row.get("private_message_leads") or 0),
             })
-    note_rows.sort(key=lambda row:(row["date"],row["spend"],row["noteId"]),reverse=True)
+    owner_groups={}
+    for row in note_rows:
+        owner_key=(row["date"],row["ownerUserId"] or row["ownerAccountName"] or "unresolved")
+        owner=owner_groups.setdefault(owner_key,{
+            "date":row["date"],"ownerAccountName":row["ownerAccountName"],"ownerUserId":row["ownerUserId"],
+            "noteCount":0,"spend":0.0,"opened":0,"leads":0,
+            "ownerStatus":"confirmed","ownerStatusLabel":"已确认",
+        })
+        owner["noteCount"]+=1
+        owner["spend"]+=row["spend"]
+        owner["opened"]+=row["opened"]
+        owner["leads"]+=row["leads"]
+        if row["ownerStatus"]!="confirmed":
+            owner["ownerStatus"]="unresolved"
+            owner["ownerStatusLabel"]="待确认"
+    owner_rows=list(owner_groups.values())
+    for row in owner_rows: row["spend"]=round(row["spend"],2)
+    owner_rows.sort(key=lambda row:(row["date"],row["spend"],row["ownerAccountName"]),reverse=True)
     return {
         "generatedAt":str(summary.get("generated_at") or "")[:19].replace("T"," "),
         "date":report_date,
         "aggregation":str(summary.get("aggregation") or "DAY"),
         "accountRows":account_rows,
-        "noteRows":note_rows,
+        "ownerRows":owner_rows,
+        "totalNoteCount":len(note_rows),
         "totalSpend":round(sum(row["spend"] for row in note_rows),2),
         "totalOpened":sum(row["opened"] for row in note_rows),
         "totalLeads":sum(row["leads"] for row in note_rows),
