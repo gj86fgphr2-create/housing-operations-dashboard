@@ -77,7 +77,7 @@
       <div class="nav desktop-nav" aria-label="桌面端工作台导航">
         <nav class="desktop-primary-nav" aria-label="一级菜单"><button type="button" data-desktop-module="xiaohongshu"><span>一级菜单</span>小红书</button><button type="button" data-desktop-module="yuxiaor"><span>一级菜单</span>寓小二</button></nav>
         <nav class="desktop-secondary-nav" data-desktop-menu="xiaohongshu" aria-label="小红书二级菜单" hidden><span class="desktop-secondary-title">小红书 · 二级菜单</span><a href="#xhs-account" data-dashboard-view="xhs-account">账户</a><a href="#xhs-notes" data-dashboard-view="xhs-notes">笔记</a><button type="button" data-desktop-home>首页</button><a href="#xhs-leads" data-dashboard-view="xhs-leads">留资与目标</a><a href="#xhs-lead-details" data-dashboard-view="xhs-lead-details">留资明细</a></nav>
-        <nav class="desktop-secondary-nav" data-desktop-menu="yuxiaor" aria-label="寓小二二级菜单"><span class="desktop-secondary-title">寓小二 · 二级菜单</span><a href="#operations-brief" data-dashboard-view="operations-brief">简报</a><a href="#overview" data-dashboard-view="overview">总览</a><button type="button" data-desktop-home>首页</button><a href="#contracts" data-dashboard-view="performance">业绩</a><a href="#occupancy" data-dashboard-view="occupancy">入住率</a></nav>
+        <nav class="desktop-secondary-nav" data-desktop-menu="yuxiaor" aria-label="寓小二二级菜单"><span class="desktop-secondary-title">寓小二 · 二级菜单</span><a href="#operations-brief" data-dashboard-view="operations-brief">简报</a><a href="#overview" data-dashboard-view="overview">总览</a><button type="button" data-desktop-home>首页</button><a href="#contracts" data-dashboard-view="performance">业绩</a><a href="#occupancy" data-dashboard-view="occupancy">入住率</a><a href="#occupancy-ziyin" data-dashboard-view="occupancy-ziyin">入住率（紫茵）</a></nav>
       </div>
       <div class="mobile-nav-shell" aria-label="手机端工作台导航">
         <nav class="mobile-menu mobile-primary-nav" data-mobile-menu="primary"><button type="button" data-mobile-module="xiaohongshu">小红书</button><button type="button" data-mobile-module="yuxiaor">寓小二</button></nav>
@@ -199,6 +199,10 @@
           </div>
         </section>
       </section>
+      <section class="section" id="occupancy-ziyin" data-views="occupancy-ziyin">
+        <div class="section-head"><div><h2>入住率（紫茵）</h2><p>仅展示南亭区域、北亭区域和小筑项目；南亭、北亭区域均剔除小筑楼栋</p></div></div>
+        <article class="panel"><h3>项目入住率</h3><div class="table-wrap project-occupancy-wrap"><table class="project-occupancy-table"><thead><tr><th>项目</th><th>房源数</th><th>空房数</th><th>锁房数</th><th>入住数</th><th>综合在租数</th><th>入住率</th><th>综合在租率</th></tr></thead><tbody id="ziyin-project-table"></tbody></table></div></article>
+      </section>
       <div class="footer">房源运营工作台 · 数据以工作簿统计口径为准</div>
     </main>
   </div>
@@ -232,8 +236,8 @@
     const projectChildNames = new Set(['北亭初期项目','北亭整体项目','北亭研寓项目','南亭研寓项目','城北小筑A','城北小筑B','城北小筑C']);
     function projectRowClass(name){ return projectParentNames.has(name) ? 'project-parent' : projectChildNames.has(name) ? 'project-child' : ''; }
     function projectDisplayName(name){ return name === '城北小筑09座独立项目' ? '城北09座独立项目' : name; }
-    function aggregateRegion(name, keyword){
-      const rows = DATA.buildingData.filter((row) => row.name.includes(keyword));
+    function aggregateRegion(name, keyword, excludedKeyword){
+      const rows = DATA.buildingData.filter((row) => row.name.includes(keyword) && (!excludedKeyword || !row.name.includes(excludedKeyword)));
       const sum = (field) => rows.reduce((total,row) => total + Number(row[field] || 0),0);
       const rooms = sum('rooms'), occupiedCount = sum('occupiedCount'), comprehensiveCount = sum('comprehensiveCount');
       const checkout = Object.fromEntries(DATA.checkoutPeriods.map((period) => { const count = rows.reduce((total,row) => total + Number(row.checkout[period.key]?.count || 0),0); return [period.key,{count,rate:rooms ? count/rooms : 0}]; }));
@@ -293,6 +297,13 @@
       const regions = regionRow(aggregateRegion('南亭区域','南')) + regionRow(aggregateRegion('北亭区域','北'));
       const total = '<tr class="summary-row"><td data-label="项目">汇总</td><td data-label="房源数">' + int(overallProject.rooms) + '</td><td data-label="空房数">' + int(overallProject.vacancyCount) + '</td><td data-label="锁房数">' + int(overallProject.lockCount) + '</td><td data-label="入住数">' + int(overallProject.occupiedCount) + '</td><td data-label="综合在租数">' + int(overallProject.comprehensiveCount) + '</td><td data-label="入住率" class="rate ' + rateClass(overallProject.occupancyRate) + '">' + pct(overallProject.occupancyRate) + '</td><td data-label="综合在租率" class="rate ' + rateClass(overallProject.comprehensiveRate) + '">' + pct(overallProject.comprehensiveRate) + '</td></tr>';
       $('project-table').innerHTML = rows + regions + total;
+    }
+
+    function renderZiyinOccupancy(){
+      const row = (d) => '<tr class="region-summary"><td data-label="项目">' + d.name + '</td><td data-label="房源数">' + int(d.rooms) + '</td><td data-label="空房数">' + int(d.vacancyCount) + '</td><td data-label="锁房数">' + int(d.lockCount) + '</td><td data-label="入住数">' + int(d.occupiedCount) + '</td><td data-label="综合在租数">' + int(d.comprehensiveCount) + '</td><td data-label="入住率" class="rate ' + rateClass(d.occupancyRate) + '">' + pct(d.occupancyRate) + '</td><td data-label="综合在租率" class="rate ' + rateClass(d.comprehensiveRate) + '">' + pct(d.comprehensiveRate) + '</td></tr>';
+      const smallProject = DATA.projectData.find((d) => d.name === '小筑项目');
+      const rows = [aggregateRegion('南亭区域','南','小筑'),aggregateRegion('北亭区域','北','小筑'),smallProject].filter(Boolean);
+      $('ziyin-project-table').innerHTML = rows.map(row).join('');
     }
 
     function renderBuildingTable(){
@@ -518,7 +529,7 @@
     }
 
     function render(){ const d=current(); renderKpis(d); renderCheckout(d); }
-    const viewByHash = {'#operations-brief':'operations-brief','#overview':'overview','#checkout-pressure':'occupancy','#contracts':'performance','#occupancy':'occupancy','#xhs-account':'xhs-account','#xhs-notes':'xhs-notes','#xhs-leads':'xhs-leads','#xhs-lead-details':'xhs-lead-details'};
+    const viewByHash = {'#operations-brief':'operations-brief','#overview':'overview','#checkout-pressure':'occupancy','#contracts':'performance','#occupancy':'occupancy','#occupancy-ziyin':'occupancy-ziyin','#xhs-account':'xhs-account','#xhs-notes':'xhs-notes','#xhs-leads':'xhs-leads','#xhs-lead-details':'xhs-lead-details'};
     const moduleForView = (view) => view.startsWith('xhs-') ? 'xiaohongshu' : 'yuxiaor';
     function showMobileMenu(menu){ document.querySelectorAll('[data-mobile-menu]').forEach((element) => { element.hidden = element.dataset.mobileMenu !== menu; }); }
     function showDesktopMenu(menu){
@@ -528,7 +539,7 @@
     function setDashboardView(view){
       document.querySelectorAll('[data-views]').forEach((element) => { element.hidden = !element.dataset.views.split(/\s+/).includes(view); });
       document.querySelectorAll('[data-dashboard-view]').forEach((link) => link.classList.toggle('active',link.dataset.dashboardView === view));
-      const isXhs = view.startsWith('xhs-'); $('dashboard-controls').hidden = isXhs; $('page-title').textContent = isXhs ? '小红书运营工作台' : '房源运营工作台';
+      const isXhs = view.startsWith('xhs-'); $('dashboard-controls').hidden = isXhs || view === 'occupancy-ziyin'; $('page-title').textContent = isXhs ? '小红书运营工作台' : '房源运营工作台';
       if (view === 'overview' || view === 'performance') requestAnimationFrame(renderDailyLineChart);
       if (view === 'xhs-notes') requestAnimationFrame(renderXhsReadingChart);
     }
@@ -562,7 +573,7 @@
     $('building-search').addEventListener('input',(e)=>{state.query=e.target.value;renderBuildingTable()});
     $('xhs-lead-detail-account').addEventListener('change',renderXhsLeadDetails);
     $('side-date').textContent=DATA.dataDate; $('page-subtitle').textContent='数据日期：'+DATA.dataDate+'　｜　生成日期：'+DATA.generatedDate+'　｜　支持项目与楼栋切换';
-    const initialView=viewByHash[location.hash]||'overview'; setDashboardView(initialView); showMobileMenu(location.hash?moduleForView(initialView):'primary'); showDesktopMenu(moduleForView(initialView)); fillSelect(); renderCheckoutTables(); renderProjectTable(); renderBuildingTable(); renderContracts(); renderOperationsBrief(); renderXhsAccountStatus(); renderXhsContent(); renderXhsLeads(); renderXhsLeadDetails(); render();
+    const initialView=viewByHash[location.hash]||'overview'; setDashboardView(initialView); showMobileMenu(location.hash?moduleForView(initialView):'primary'); showDesktopMenu(moduleForView(initialView)); fillSelect(); renderCheckoutTables(); renderProjectTable(); renderZiyinOccupancy(); renderBuildingTable(); renderContracts(); renderOperationsBrief(); renderXhsAccountStatus(); renderXhsContent(); renderXhsLeads(); renderXhsLeadDetails(); render();
     if ('ResizeObserver' in window){ new ResizeObserver(renderDailyLineChart).observe($('contract-daily-chart-wrap')); new ResizeObserver(renderXhsReadingChart).observe($('xhs-daily-reading-chart-wrap')); }
   </script>
 </body>
