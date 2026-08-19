@@ -458,7 +458,7 @@ def build_ziyin_occupancy():
             if item["occupiedOverlap"]>item["count"]: raise RuntimeError("Ziyin overlap exceeds contract count")
         base=base_by_name[name]
         current_rooms=values["currentMoveIn"]["_rooms"]+values["currentPreorder"]["_rooms"]
-        next_rooms=values["nextMoveIn"]["_rooms"]+values["nextPreorder"]["_rooms"]
+        next_rooms=current_rooms+values["nextMoveIn"]["_rooms"]+values["nextPreorder"]["_rooms"]
         current_count=min(base["rooms"],base["occupiedCount"]+unique_non_active_rooms(current_rooms))
         next_count=min(base["rooms"],base["occupiedCount"]+unique_non_active_rooms(next_rooms))
         cleaned={key:{k:v for k,v in item.items() if k!="_rooms"} for key,item in values.items()}
