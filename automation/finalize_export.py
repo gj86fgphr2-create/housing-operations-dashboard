@@ -140,6 +140,65 @@ def detail_lines(title, items):
     return lines
 
 
+def locked_room_details(path):
+    ws = load_workbook(path, read_only=True, data_only=True).active
+    headers = [text(c.value) for c in ws[3]]
+    building_col = headers.index("小区/公寓")
+    room_col = headers.index("门牌号 (房间号)")
+    status_col = headers.index("状态")
+    remark_col = headers.index("锁房备注")
+    details = []
+    for row in ws.iter_rows(min_row=4, values_only=True):
+        remark = text(row[remark_col])
+        if not remark:
+            continue
+        details.append({
+            "building": text(row[building_col]) or "未填写楼栋",
+            "room": room_number(row[room_col]),
+            "status": text(row[status_col]) or "未知状态",
+            "remark": remark,
+        })
+    return sorted(details, key=lambda item: (item["building"], item["room"]))
+
+
+def lock_reminder_messages(items, collected):
+    status_counts = {}
+    for item in items:
+        status_counts[item["status"]] = status_counts.get(item["status"], 0) + 1
+    summary_parts = [f"锁房共 **{len(items)}间**"]
+    for status in ("空房不可租", "在租中"):
+        if status_counts.get(status):
+            summary_parts.append(f"{status} **{status_counts[status]}间**")
+    other = len(items) - sum(status_counts.get(status, 0) for status in ("空房不可租", "在租中"))
+    if other:
+        summary_parts.append(f"其他状态 **{other}间**")
+    header = [
+        f"**锁房提醒｜{collected.strftime('%Y-%m-%d %H:%M')}**",
+        f"> 数据采集时间：{collected.strftime('%Y-%m-%d %H:%M:%S')}",
+        "> " + " ｜ ".join(summary_parts),
+        "",
+    ]
+    if not items:
+        return ["\n".join(header + ["> 当前无锁房记录"])]
+    messages = []
+    lines = list(header)
+    for number, item in enumerate(items, 1):
+        entry = [
+            f"**{number}. {item['building']}-{item['room']}｜{item['status']}**",
+            f"> 备注：{item['remark']}",
+        ]
+        if len("\n".join(lines + entry).encode("utf-8")) > 3500 and len(lines) > len(header):
+            messages.append("\n".join(lines))
+            lines = [
+                f"**锁房提醒（续）｜{collected.strftime('%Y-%m-%d %H:%M')}**",
+                f"> 数据采集时间：{collected.strftime('%Y-%m-%d %H:%M:%S')}",
+                "",
+            ]
+        lines.extend(entry)
+    messages.append("\n".join(lines))
+    return messages
+
+
 def inspect_contract(path, expected):
     ws = load_workbook(path, read_only=True, data_only=True).active
     headers = [text(c.value) for c in ws[3]]
@@ -314,6 +373,7 @@ def main():
         brief = dashboard_brief(dashboard_path)
         details = today_contract_details(run_dir, brief["date"])
         reservation_details = today_reservation_details(run_dir / "预定合同.xlsx", brief["date"])
+        lock_details = locked_room_details(run_dir / "房源详情.xlsx")
     except Exception as exc:
         raise SystemExit(f"Dashboard validation failed: {exc}")
 
@@ -358,6 +418,8 @@ def main():
     (run_dir / "validation.json").write_text(json.dumps(validation, ensure_ascii=False, indent=2), encoding="utf-8")
     if not lock_monitor_ok:
         raise SystemExit(f"Lock monitoring validation failed: {validation['lockMonitoring']}")
+    if len(lock_details) != source_lock_count:
+        raise SystemExit(f"Lock reminder validation failed: details={len(lock_details)}, source={source_lock_count}")
     if not vacancy_monitor_ok:
         raise SystemExit(f"Vacancy monitoring validation failed: {validation['vacancyMonitoring']}")
     if not comprehensive_monitor_ok:
@@ -415,6 +477,18 @@ def main():
     target = queue_dir / f"{job['id']}.json"
     temp.write_text(json.dumps(job, ensure_ascii=False, indent=2), encoding="utf-8")
     os.replace(temp, target)
+    lock_job = {
+        "id": f"{job['id']}-lock",
+        "kind": "lock-reminder",
+        "chatid": job["chatid"],
+        "messages": lock_reminder_messages(lock_details, collected),
+        "lockCount": len(lock_details),
+        "collectedAt": collected.isoformat(),
+    }
+    lock_temp = queue_dir / f".{job['id']}.lock.tmp"
+    lock_target = queue_dir / f"{job['id']}.lock.json"
+    lock_temp.write_text(json.dumps(lock_job, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(lock_temp, lock_target)
     print(json.dumps(validation, ensure_ascii=False))
 
 

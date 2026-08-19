@@ -131,6 +131,15 @@ async function processNotificationQueue() {
         await fs.promises.rename(source, processing);
         const job = JSON.parse(await fs.promises.readFile(processing, 'utf8'));
         if (job.chatid !== ALLOWED_CHAT_ID) throw new Error('Notification chat is not allowlisted');
+        if (job.kind === 'lock-reminder') {
+          if (!Array.isArray(job.messages) || !job.messages.length) throw new Error('Lock reminder has no messages');
+          for (const content of job.messages) {
+            await client.sendMessage(ALLOWED_CHAT_ID, { msgtype: 'markdown', markdown: { content } });
+          }
+          await fs.promises.rename(processing, path.join(SENT_DIR, name));
+          console.log(JSON.stringify({ at: new Date().toISOString(), type: 'lock_notification', job: job.id, messages: job.messages.length, sent: true }));
+          continue;
+        }
         for (const filename of job.files) {
           const buffer = await fs.promises.readFile(filename);
           const uploaded = await client.uploadMedia(buffer, { type: 'file', filename: path.basename(filename) });
