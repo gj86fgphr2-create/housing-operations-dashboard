@@ -389,6 +389,59 @@ project_specs=[
 project_data=[aggregate(name,names) for name,names in project_specs]
 project_data += [aggregate("南亭区域汇总",[n for n in all_names if "南" in n]),aggregate("北亭区域汇总",[n for n in all_names if "北" in n])]
 
+def build_ziyin_occupancy():
+    """Future move-in/reservation counts used only by 入住率（紫茵）."""
+    current_month=f"{as_of.year:04d}-{as_of.month:02d}"
+    next_start=(as_of.replace(day=28)+timedelta(days=4)).replace(day=1)
+    next_month=f"{next_start.year:04d}-{next_start.month:02d}"
+    scope_buildings={
+        "南亭区域":{n for n in all_names if "南" in n and "小筑" not in n},
+        "北亭区域":{n for n in all_names if "北" in n and "小筑" not in n},
+        "小筑项目":set(small_a+small_b+small_c),
+    }
+    result={name:{key:{"count":0,"occupiedOverlap":0} for key in ("currentMoveIn","currentPreorder","nextMoveIn","nextPreorder")} for name in scope_buildings}
+    active_ws=load_workbook(run_dir/"在租中合同.xlsx",read_only=True,data_only=True).active
+    active_headers=[cell.value for cell in active_ws[3]]
+    active_room_i,active_address_i=idx(active_headers,"房源ID"),idx(active_headers,"房源地址")
+    def room_keys(room_id,address):
+        keys=set()
+        if norm(room_id): keys.add("id:"+norm(room_id))
+        if norm(address): keys.add("address:"+norm(address))
+        return keys
+    active_keys=set()
+    for row in active_ws.iter_rows(min_row=4,values_only=True): active_keys.update(room_keys(row[active_room_i],row[active_address_i]))
+    specs=[
+        ("将搬入合同.xlsx",3,4,"合同编号","合同状态","将搬入","起租时间","小区/公寓","房源ID","房源地址","MoveIn"),
+        ("预定合同.xlsx",1,2,"预定ID","状态","已付定","合同开始","小区/公寓","房源ID","地址","Preorder"),
+    ]
+    for filename,header_row,data_row,id_name,status_name,status_value,date_name,building_name,room_name,address_name,suffix in specs:
+        ws=load_workbook(run_dir/filename,read_only=True,data_only=True).active
+        headers=[cell.value for cell in ws[header_row]]
+        unique_i,status_i,date_i,building_i,room_i,address_i=(idx(headers,id_name),idx(headers,status_name),idx(headers,date_name),idx(headers,building_name),idx(headers,room_name),idx(headers,address_name))
+        seen=set()
+        for row_number,row in enumerate(ws.iter_rows(min_row=data_row,values_only=True),start=data_row):
+            if norm(row[status_i])!=status_value: continue
+            unique_key=norm(row[unique_i]) or f"{filename}:{row_number}"
+            if unique_key in seen: continue
+            seen.add(unique_key)
+            date_value=iso(row[date_i])
+            month=date_value[:7]
+            if month not in {current_month,next_month}: continue
+            building=str(row[building_i] or "").strip()
+            scope=next((name for name,names in scope_buildings.items() if building in names),None)
+            if not scope: continue
+            period="current" if month==current_month else "next"
+            key=period+suffix
+            keys=room_keys(row[room_i],row[address_i])
+            result[scope][key]["count"]+=1
+            if keys & active_keys: result[scope][key]["occupiedOverlap"]+=1
+    for values in result.values():
+        for item in values.values():
+            if item["occupiedOverlap"]>item["count"]: raise RuntimeError("Ziyin overlap exceeds contract count")
+    return {"asOfDate":as_of.isoformat(),"currentMonth":current_month,"nextMonth":next_month,"rows":[{"name":name,**values} for name,values in result.items()]}
+
+ziyin_occupancy=build_ziyin_occupancy()
+
 mapping={
  "整体项目-北亭初期框架":"北亭初期项目","整体项目-北亭整体框架":"北亭整体项目","整体项目-北亭研寓框架":"北亭研寓项目",
  "整体项目-南亭研寓框架":"南亭研寓项目","整体项目-自持物业框架":"公司自持项目","整体项目-城北小筑A":"城北小筑A",
@@ -409,9 +462,9 @@ contract_stats.setdefault("projectMonthlyUnmapped",{"newCount":0,"renewalCount":
 contract_stats.setdefault("totals",{})
 contract_stats["uniqueContracts"]=sum(1 for f in ("在租中合同.xlsx","将搬入合同.xlsx","已退租合同.xlsx") for _ in load_workbook(run_dir/f,read_only=True).active.iter_rows(min_row=4,values_only=True))
 
-payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods,"xhsAccountAudit":build_xhs_account_audit(old.get("xhsAccountAudit")),"xhsContent":build_xhs_content(old.get("xhsContent")),"xhsLeads":build_xhs_leads(old.get("xhsLeads"))}
+payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods,"ziyinOccupancy":ziyin_occupancy,"xhsAccountAudit":build_xhs_account_audit(old.get("xhsAccountAudit")),"xhsContent":build_xhs_content(old.get("xhsContent")),"xhsLeads":build_xhs_leads(old.get("xhsLeads"))}
 rendered=template[:payload_span[0]]+json.dumps(payload,ensure_ascii=False,separators=(",",":"))+template[payload_span[1]:]
-required=['class="nav desktop-nav"','data-desktop-module="xiaohongshu"','data-desktop-module="yuxiaor"','data-desktop-menu="xiaohongshu"','data-desktop-menu="yuxiaor"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','data-dashboard-view="occupancy-ziyin"','id="occupancy-ziyin"','ziyin-project-table','function renderZiyinOccupancy()','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','xhs-account-updated','xhs-account-status-list','xhs-note-count-table','xhs-view-count-table','xhs-exposure-count-table','xhs-daily-reading-chart','id="xhs-leads"','xhs-goal-table','xhs-lead-opened-table','xhs-lead-copied-table','id="xhs-lead-details"','xhs-lead-detail-account','xhs-lead-detail-table','function renderXhsAccountStatus()','function xhsGoalCell(','function renderXhsLeads()','function renderXhsLeadDetails()','"xhsAccountAudit"','"targetMonth"','"targets"','"dailyRows"','"xhsLeads"']
+required=['class="nav desktop-nav"','data-desktop-module="xiaohongshu"','data-desktop-module="yuxiaor"','data-desktop-menu="xiaohongshu"','data-desktop-menu="yuxiaor"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','data-dashboard-view="occupancy-ziyin"','id="occupancy-ziyin"','ziyin-project-table','function renderZiyinOccupancy()','"ziyinOccupancy"','occupiedOverlap','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','xhs-account-updated','xhs-account-status-list','xhs-note-count-table','xhs-view-count-table','xhs-exposure-count-table','xhs-daily-reading-chart','id="xhs-leads"','xhs-goal-table','xhs-lead-opened-table','xhs-lead-copied-table','id="xhs-lead-details"','xhs-lead-detail-account','xhs-lead-detail-table','function renderXhsAccountStatus()','function xhsGoalCell(','function renderXhsLeads()','function renderXhsLeadDetails()','"xhsAccountAudit"','"targetMonth"','"targets"','"dailyRows"','"xhsLeads"']
 if any(x not in rendered for x in required): raise RuntimeError("Full dashboard style validation failed")
 if 'data-dashboard-view="checkout"' in rendered: raise RuntimeError("Legacy checkout navigation detected")
 mobile_yuxiaor=re.search(r'<nav class="mobile-menu mobile-secondary-nav" data-mobile-menu="yuxiaor".*?</nav>',rendered,re.S)
