@@ -117,6 +117,78 @@ def latest_xhs_lead_summary():
     existing=[path for path in candidates if path.is_file()]
     return max(existing,key=lambda path:path.stat().st_mtime) if existing else None
 
+def latest_xhs_ad_note_summary():
+    """Locate the newest official Aurora note-ad snapshot synchronized to the workbench."""
+    candidates=[]
+    configured=os.environ.get("XHS_AD_NOTE_JSON","").strip()
+    if configured: candidates.append(Path(configured))
+    roots=[Path("/home/ubuntu/xhs-account-isolation/data"),Path("/opt/xhs-account-isolation/data")]
+    for root in roots:
+        if not root.exists(): continue
+        latest=root / "ad-note-stats" / "latest.json"
+        if latest.is_file(): candidates.append(latest)
+        candidates.extend(root.glob("ad-note-stats/ad-note-stats-*.json"))
+    existing=[path for path in candidates if path.is_file()]
+    return max(existing,key=lambda path:path.stat().st_mtime) if existing else None
+
+def build_xhs_ad_flow(fallback):
+    summary_path=latest_xhs_ad_note_summary()
+    if not summary_path:
+        return fallback or {"generatedAt":"","date":"","accountRows":[],"noteRows":[]}
+    summary=json.loads(summary_path.read_text(encoding="utf-8"))
+    report_date=str(summary.get("date") or "")
+    account_rows=[]
+    note_rows=[]
+    for account in summary.get("accounts",[]):
+        rows=account.get("rows") or []
+        spend=sum(float(row.get("spend") or 0) for row in rows)
+        opened=sum(int(row.get("private_message_opens") or 0) for row in rows)
+        leads=sum(int(row.get("private_message_leads") or 0) for row in rows)
+        status=str(account.get("status") or "")
+        account_rows.append({
+            "date":str(account.get("date") or report_date),
+            "profile":str(account.get("profile") or ""),
+            "accountName":str(account.get("account_name") or account.get("profile") or ""),
+            "noteCount":len(rows),
+            "spend":round(spend,2),
+            "opened":opened,
+            "leads":leads,
+            "status":status,
+            "statusLabel":"采集成功" if status=="ok" else "采集失败" if status=="error" else "未登录" if status=="not_logged_in" else "待采集",
+            "error":str(account.get("error") or ""),
+        })
+        for row in rows:
+            owner_name=str(row.get("owner_account_name") or "").strip()
+            owner_status=str(row.get("owner_status") or "").strip()
+            confirmed=bool(owner_name and owner_status=="confirmed")
+            note_rows.append({
+                "date":str(row.get("date") or account.get("date") or report_date),
+                "noteId":str(row.get("note_id") or ""),
+                "noteTitle":str(row.get("note_title") or ""),
+                "ownerAccountName":owner_name,
+                "ownerUserId":str(row.get("owner_user_id") or ""),
+                "ownerSource":str(row.get("owner_source") or ""),
+                "ownerStatus":"confirmed" if confirmed else "unresolved",
+                "ownerStatusLabel":"已确认" if confirmed else "待确认",
+                "adProfile":str(account.get("profile") or ""),
+                "adAccountName":str(account.get("account_name") or account.get("profile") or ""),
+                "spend":round(float(row.get("spend") or 0),2),
+                "opened":int(row.get("private_message_opens") or 0),
+                "leads":int(row.get("private_message_leads") or 0),
+            })
+    note_rows.sort(key=lambda row:(row["date"],row["spend"],row["noteId"]),reverse=True)
+    return {
+        "generatedAt":str(summary.get("generated_at") or "")[:19].replace("T"," "),
+        "date":report_date,
+        "aggregation":str(summary.get("aggregation") or "DAY"),
+        "accountRows":account_rows,
+        "noteRows":note_rows,
+        "totalSpend":round(sum(row["spend"] for row in note_rows),2),
+        "totalOpened":sum(row["opened"] for row in note_rows),
+        "totalLeads":sum(row["leads"] for row in note_rows),
+        "unresolvedOwnerCount":sum(row["ownerStatus"]!="confirmed" for row in note_rows),
+    }
+
 def mask_xhs_email(value):
     email=str(value or "").strip()
     if "@" not in email: return "—"
@@ -504,9 +576,9 @@ contract_stats.setdefault("projectMonthlyUnmapped",{"newCount":0,"renewalCount":
 contract_stats.setdefault("totals",{})
 contract_stats["uniqueContracts"]=sum(1 for f in ("在租中合同.xlsx","将搬入合同.xlsx","已退租合同.xlsx") for _ in load_workbook(run_dir/f,read_only=True).active.iter_rows(min_row=4,values_only=True))
 
-payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods,"ziyinOccupancy":ziyin_occupancy,"xhsAccountAudit":build_xhs_account_audit(old.get("xhsAccountAudit")),"xhsContent":build_xhs_content(old.get("xhsContent")),"xhsLeads":build_xhs_leads(old.get("xhsLeads"))}
+payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods,"ziyinOccupancy":ziyin_occupancy,"xhsAccountAudit":build_xhs_account_audit(old.get("xhsAccountAudit")),"xhsContent":build_xhs_content(old.get("xhsContent")),"xhsLeads":build_xhs_leads(old.get("xhsLeads")),"xhsAdFlow":build_xhs_ad_flow(old.get("xhsAdFlow"))}
 rendered=template[:payload_span[0]]+json.dumps(payload,ensure_ascii=False,separators=(",",":"))+template[payload_span[1]:]
-required=['class="nav desktop-nav"','data-desktop-module="xiaohongshu"','data-desktop-module="yuxiaor"','data-desktop-menu="xiaohongshu"','data-desktop-menu="yuxiaor"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','data-dashboard-view="occupancy-ziyin"','id="occupancy-ziyin"','ziyin-project-table','function renderZiyinOccupancy()','"ziyinOccupancy"','occupiedOverlap','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','xhs-account-updated','xhs-account-status-list','xhs-note-count-table','xhs-view-count-table','xhs-exposure-count-table','xhs-daily-reading-chart','id="xhs-leads"','xhs-goal-table','xhs-lead-opened-table','xhs-lead-copied-table','id="xhs-lead-details"','xhs-lead-detail-account','xhs-lead-detail-table','function renderXhsAccountStatus()','function xhsGoalCell(','function renderXhsLeads()','function renderXhsLeadDetails()','"xhsAccountAudit"','"targetMonth"','"targets"','"dailyRows"','"xhsLeads"']
+required=['class="nav desktop-nav"','data-desktop-module="xiaohongshu"','data-desktop-module="yuxiaor"','data-desktop-menu="xiaohongshu"','data-desktop-menu="yuxiaor"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','data-dashboard-view="occupancy-ziyin"','id="occupancy-ziyin"','ziyin-project-table','function renderZiyinOccupancy()','"ziyinOccupancy"','occupiedOverlap','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','xhs-account-updated','xhs-account-status-list','xhs-note-count-table','xhs-view-count-table','xhs-exposure-count-table','xhs-daily-reading-chart','id="xhs-leads"','xhs-goal-table','xhs-lead-opened-table','xhs-lead-copied-table','id="xhs-lead-details"','xhs-lead-detail-account','xhs-lead-detail-table','id="xhs-ad-flow"','xhs-ad-account-table','xhs-ad-note-table','function renderXhsAdFlow()','function renderXhsAccountStatus()','function xhsGoalCell(','function renderXhsLeads()','function renderXhsLeadDetails()','"xhsAccountAudit"','"targetMonth"','"targets"','"dailyRows"','"xhsLeads"','"xhsAdFlow"']
 if any(x not in rendered for x in required): raise RuntimeError("Full dashboard style validation failed")
 if 'data-dashboard-view="checkout"' in rendered: raise RuntimeError("Legacy checkout navigation detected")
 mobile_yuxiaor=re.search(r'<nav class="mobile-menu mobile-secondary-nav" data-mobile-menu="yuxiaor".*?</nav>',rendered,re.S)
