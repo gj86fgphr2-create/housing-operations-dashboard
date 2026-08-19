@@ -390,7 +390,7 @@ project_data=[aggregate(name,names) for name,names in project_specs]
 project_data += [aggregate("南亭区域汇总",[n for n in all_names if "南" in n]),aggregate("北亭区域汇总",[n for n in all_names if "北" in n])]
 
 def build_ziyin_occupancy():
-    """Future move-in/reservation counts used only by 入住率（紫茵）."""
+    """Future contracts and month-specific occupancy used only by 入住率（紫茵）."""
     current_month=f"{as_of.year:04d}-{as_of.month:02d}"
     next_start=(as_of.replace(day=28)+timedelta(days=4)).replace(day=1)
     next_month=f"{next_start.year:04d}-{next_start.month:02d}"
@@ -399,7 +399,8 @@ def build_ziyin_occupancy():
         "北亭区域":{n for n in all_names if "北" in n and "小筑" not in n},
         "小筑项目":set(small_a+small_b+small_c),
     }
-    result={name:{key:{"count":0,"occupiedOverlap":0} for key in ("currentMoveIn","currentPreorder","nextMoveIn","nextPreorder")} for name in scope_buildings}
+    future_keys=("currentMoveIn","currentPreorder","nextMoveIn","nextPreorder")
+    result={name:{key:{"count":0,"occupiedOverlap":0,"_rooms":[]} for key in future_keys} for name in scope_buildings}
     active_ws=load_workbook(run_dir/"在租中合同.xlsx",read_only=True,data_only=True).active
     active_headers=[cell.value for cell in active_ws[3]]
     active_room_i,active_address_i=idx(active_headers,"房源ID"),idx(active_headers,"房源地址")
@@ -435,10 +436,51 @@ def build_ziyin_occupancy():
             keys=room_keys(row[room_i],row[address_i])
             result[scope][key]["count"]+=1
             if keys & active_keys: result[scope][key]["occupiedOverlap"]+=1
-    for values in result.values():
+            if keys: result[scope][key]["_rooms"].append(keys)
+
+    def unique_non_active_rooms(items):
+        groups=[]
+        for keys in items:
+            if keys & active_keys: continue
+            merged=set(keys)
+            remaining=[]
+            for group in groups:
+                if merged & group: merged.update(group)
+                else: remaining.append(group)
+            remaining.append(merged)
+            groups=remaining
+        return len(groups)
+
+    rows=[]
+    base_by_name={name:aggregate(name,names) for name,names in scope_buildings.items()}
+    for name,values in result.items():
         for item in values.values():
             if item["occupiedOverlap"]>item["count"]: raise RuntimeError("Ziyin overlap exceeds contract count")
-    return {"asOfDate":as_of.isoformat(),"currentMonth":current_month,"nextMonth":next_month,"rows":[{"name":name,**values} for name,values in result.items()]}
+        base=base_by_name[name]
+        current_rooms=values["currentMoveIn"]["_rooms"]+values["currentPreorder"]["_rooms"]
+        next_rooms=values["nextMoveIn"]["_rooms"]+values["nextPreorder"]["_rooms"]
+        current_count=min(base["rooms"],base["occupiedCount"]+unique_non_active_rooms(current_rooms))
+        next_count=min(base["rooms"],base["occupiedCount"]+unique_non_active_rooms(next_rooms))
+        cleaned={key:{k:v for k,v in item.items() if k!="_rooms"} for key,item in values.items()}
+        rows.append({
+            "name":name,**cleaned,
+            "currentComprehensiveCount":current_count,
+            "currentComprehensiveRate":current_count/base["rooms"] if base["rooms"] else 0,
+            "nextComprehensiveCount":next_count,
+            "nextComprehensiveRate":next_count/base["rooms"] if base["rooms"] else 0,
+        })
+
+    summary_base=aggregate("汇总",set().union(*scope_buildings.values()))
+    summary={**summary_base}
+    for key in future_keys:
+        summary[key]={field:sum(row[key][field] for row in rows) for field in ("count","occupiedOverlap")}
+    summary["currentComprehensiveCount"]=sum(row["currentComprehensiveCount"] for row in rows)
+    summary["nextComprehensiveCount"]=sum(row["nextComprehensiveCount"] for row in rows)
+    summary["currentComprehensiveRate"]=summary["currentComprehensiveCount"]/summary["rooms"] if summary["rooms"] else 0
+    summary["nextComprehensiveRate"]=summary["nextComprehensiveCount"]/summary["rooms"] if summary["rooms"] else 0
+    if any(row[key]>base_by_name[row["name"]]["rooms"] for row in rows for key in ("currentComprehensiveCount","nextComprehensiveCount")):
+        raise RuntimeError("Ziyin comprehensive count exceeds room count")
+    return {"asOfDate":as_of.isoformat(),"currentMonth":current_month,"nextMonth":next_month,"rows":rows,"summary":summary}
 
 ziyin_occupancy=build_ziyin_occupancy()
 

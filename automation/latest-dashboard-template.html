@@ -202,7 +202,7 @@
       </section>
       <section class="section" id="occupancy-ziyin" data-views="occupancy-ziyin">
         <div class="section-head"><div><h2>入住率（紫茵）</h2><p>仅展示南亭区域、北亭区域和小筑项目；南亭、北亭区域均剔除小筑楼栋。未来合同数量后的括号表示该房源当前仍有在租合同。</p></div></div>
-        <article class="panel"><h3>项目入住率</h3><div class="table-wrap project-occupancy-wrap"><table class="project-occupancy-table ziyin-occupancy-table"><thead><tr><th>项目</th><th>房源数</th><th>空房数</th><th>锁房数</th><th>入住数</th><th>综合在租数</th><th>入住率</th><th>综合在租率</th><th>本月将搬入</th><th>本月预定</th><th>次月将搬入</th><th>次月预定</th></tr></thead><tbody id="ziyin-project-table"></tbody></table></div></article>
+        <article class="panel"><h3>项目入住率</h3><div class="table-wrap project-occupancy-wrap"><table class="project-occupancy-table ziyin-occupancy-table"><thead><tr><th>项目</th><th>房源数</th><th>空房数</th><th>锁房数</th><th>入住数</th><th>综合在租数</th><th>入住率</th><th>综合在租率</th><th>本月将搬入</th><th>本月预定</th><th>次月将搬入</th><th>次月预定</th><th>本月综合在租率</th><th>次月综合在租率</th></tr></thead><tbody id="ziyin-project-table"></tbody></table></div></article>
       </section>
       <div class="footer">房源运营工作台 · 数据以工作簿统计口径为准</div>
     </main>
@@ -304,10 +304,12 @@
       const dedicated = DATA.ziyinOccupancy || {rows:[]};
       const statsByName = Object.fromEntries((dedicated.rows || []).map((row) => [row.name,row]));
       const futureCell = (item) => { const value=item || {count:0,occupiedOverlap:0}; return int(value.count) + (Number(value.occupiedOverlap || 0)>0 ? '（'+int(value.occupiedOverlap)+'）' : ''); };
-      const row = (d) => { const stats=statsByName[d.name] || {}; return '<tr class="region-summary"><td data-label="项目">' + d.name + '</td><td data-label="房源数">' + int(d.rooms) + '</td><td data-label="空房数">' + int(d.vacancyCount) + '</td><td data-label="锁房数">' + int(d.lockCount) + '</td><td data-label="入住数">' + int(d.occupiedCount) + '</td><td data-label="综合在租数">' + int(d.comprehensiveCount) + '</td><td data-label="入住率" class="rate ' + rateClass(d.occupancyRate) + '">' + pct(d.occupancyRate) + '</td><td data-label="综合在租率" class="rate ' + rateClass(d.comprehensiveRate) + '">' + pct(d.comprehensiveRate) + '</td><td data-label="本月将搬入">'+futureCell(stats.currentMoveIn)+'</td><td data-label="本月预定">'+futureCell(stats.currentPreorder)+'</td><td data-label="次月将搬入">'+futureCell(stats.nextMoveIn)+'</td><td data-label="次月预定">'+futureCell(stats.nextPreorder)+'</td></tr>'; };
+      const row = (d,stats,rowClass='region-summary') => '<tr class="'+rowClass+'"><td data-label="项目">' + d.name + '</td><td data-label="房源数">' + int(d.rooms) + '</td><td data-label="空房数">' + int(d.vacancyCount) + '</td><td data-label="锁房数">' + int(d.lockCount) + '</td><td data-label="入住数">' + int(d.occupiedCount) + '</td><td data-label="综合在租数">' + int(d.comprehensiveCount) + '</td><td data-label="入住率" class="rate ' + rateClass(d.occupancyRate) + '">' + pct(d.occupancyRate) + '</td><td data-label="综合在租率" class="rate ' + rateClass(d.comprehensiveRate) + '">' + pct(d.comprehensiveRate) + '</td><td data-label="本月将搬入">'+futureCell(stats.currentMoveIn)+'</td><td data-label="本月预定">'+futureCell(stats.currentPreorder)+'</td><td data-label="次月将搬入">'+futureCell(stats.nextMoveIn)+'</td><td data-label="次月预定">'+futureCell(stats.nextPreorder)+'</td><td data-label="本月综合在租率" class="rate '+rateClass(stats.currentComprehensiveRate)+'">'+pct(stats.currentComprehensiveRate)+'</td><td data-label="次月综合在租率" class="rate '+rateClass(stats.nextComprehensiveRate)+'">'+pct(stats.nextComprehensiveRate)+'</td></tr>';
       const smallProject = DATA.projectData.find((d) => d.name === '小筑项目');
       const rows = [aggregateRegion('南亭区域','南','小筑'),aggregateRegion('北亭区域','北','小筑'),smallProject].filter(Boolean);
-      $('ziyin-project-table').innerHTML = rows.map(row).join('');
+      const detailRows = rows.map((d) => row(d,statsByName[d.name] || {})).join('');
+      const summary = dedicated.summary;
+      $('ziyin-project-table').innerHTML = detailRows + (summary ? row(summary,summary,'summary-row') : '');
     }
 
     function renderBuildingTable(){
