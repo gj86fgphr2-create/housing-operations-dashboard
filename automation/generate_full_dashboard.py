@@ -153,7 +153,9 @@ def build_xhs_ad_flow(fallback):
             "noteCount":len(rows),
             "spend":round(spend,2),
             "opened":opened,
+            "averageOpenCost":round(spend/opened,2) if opened else None,
             "leads":leads,
+            "averageLeadCost":round(spend/leads,2) if leads else None,
             "status":status,
             "statusLabel":"采集成功" if status=="ok" else "采集失败" if status=="error" else "未登录" if status=="not_logged_in" else "待采集",
             "error":str(account.get("error") or ""),
@@ -193,7 +195,10 @@ def build_xhs_ad_flow(fallback):
             owner["ownerStatus"]="unresolved"
             owner["ownerStatusLabel"]="待确认"
     owner_rows=list(owner_groups.values())
-    for row in owner_rows: row["spend"]=round(row["spend"],2)
+    for row in owner_rows:
+        row["spend"]=round(row["spend"],2)
+        row["averageOpenCost"]=round(row["spend"]/row["opened"],2) if row["opened"] else None
+        row["averageLeadCost"]=round(row["spend"]/row["leads"],2) if row["leads"] else None
     owner_rows.sort(key=lambda row:(row["date"],row["spend"],row["ownerAccountName"]),reverse=True)
     return {
         "generatedAt":str(summary.get("generated_at") or "")[:19].replace("T"," "),
