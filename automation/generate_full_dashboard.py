@@ -18,6 +18,10 @@ XHS_ACCOUNTS = [
     {"profile":"account-09","name":"番禺大学城租房-尚维特","operator":"余路","team":"管家团队"},
 ]
 
+def xhs_owner_team(name):
+    text=str(name or "")
+    return "运营团队" if "大学城捞房" in text or "暴走大学城" in text else "管家团队"
+
 def weekly_lead_targets(opened, copied):
     return {
         week_key: {"opened": opened[index], "copied": copied[index]}
@@ -150,6 +154,7 @@ def build_xhs_ad_flow(fallback):
             "date":str(account.get("date") or report_date),
             "profile":str(account.get("profile") or ""),
             "accountName":str(account.get("account_name") or account.get("profile") or ""),
+            "team":next((item["team"] for item in XHS_ACCOUNTS if item["profile"]==account.get("profile")),"管家团队"),
             "noteCount":len(rows),
             "spend":round(spend,2),
             "opened":opened,
@@ -184,6 +189,7 @@ def build_xhs_ad_flow(fallback):
         owner_key=(row["date"],row["ownerUserId"] or row["ownerAccountName"] or "unresolved")
         owner=owner_groups.setdefault(owner_key,{
             "date":row["date"],"ownerAccountName":row["ownerAccountName"],"ownerUserId":row["ownerUserId"],
+            "team":xhs_owner_team(row["ownerAccountName"]),
             "noteCount":0,"spend":0.0,"opened":0,"leads":0,
             "ownerStatus":"confirmed","ownerStatusLabel":"已确认",
         })
