@@ -299,6 +299,7 @@ def main():
 
     valid = all(item["ok"] for item in checks)
     completed = datetime.now().astimezone()
+    collected = datetime.fromtimestamp(max((run_dir / filename).stat().st_mtime for filename in FILES), tz=completed.tzinfo)
     validation = {
         "valid": valid,
         "runDirectory": str(run_dir),
@@ -385,7 +386,7 @@ def main():
 
     today_lines = [
         f"**今日情况（{brief['date']}）**",
-        f"> 数据采集时间：{completed.strftime('%Y-%m-%d %H:%M:%S')}",
+        f"> 数据采集时间：{collected.strftime('%Y-%m-%d %H:%M:%S')}",
         f"> 新签 **{brief['newCount']}份** ｜ 续租 **{brief['renewalCount']}份** ｜ 实际退租 **{brief['actualCheckoutCount']}份** ｜ 预定 **{len(reservation_details)}份**",
         "",
     ]
