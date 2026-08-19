@@ -385,6 +385,7 @@ def main():
 
     today_lines = [
         f"**今日情况（{brief['date']}）**",
+        f"> 数据采集时间：{completed.strftime('%Y-%m-%d %H:%M:%S')}",
         f"> 新签 **{brief['newCount']}份** ｜ 续租 **{brief['renewalCount']}份** ｜ 实际退租 **{brief['actualCheckoutCount']}份** ｜ 预定 **{len(reservation_details)}份**",
         "",
     ]
