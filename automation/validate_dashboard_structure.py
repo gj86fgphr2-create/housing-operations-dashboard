@@ -55,6 +55,7 @@ REQUIRED = (
     'id="xhs-ad-trend-chart"',
     'id="xhs-ad-chart-tooltip"',
     'id="xhs-ad-chart-guide"',
+    'class="panel xhs-ad-detail-panel"',
     'class="xhs-ad-date-tools xhs-ad-detail-date-tools"',
     'id="xhs-ad-week-month-filter"',
     'id="xhs-ad-week-team-filter"',
@@ -78,6 +79,17 @@ REQUIRED = (
     '"targets"',
     'function renderXhsLeads()',
     'function renderXhsLeadDetails()',
+    'id="xhs-traffic"',
+    'data-dashboard-view="xhs-traffic"',
+    'id="xhs-traffic-updated"',
+    'id="xhs-traffic-total"',
+    'id="xhs-traffic-paid"',
+    'id="xhs-traffic-organic"',
+    'id="xhs-traffic-spend"',
+    'id="xhs-traffic-table"',
+    'function xhsTrafficBuildRows(',
+    'organicLeads:totalLeads-paidLeads',
+    'function renderXhsTraffic()',
     '"xhsAdFlow"',
     'id="checkout-pressure"',
     'data-dashboard-view="occupancy"',
@@ -114,6 +126,9 @@ def main() -> int:
     audit_accounts = account_audit.get("accounts", [])
     if len(audit_accounts) != 8 or len({row.get("profile") for row in audit_accounts}) != 8:
         print(f"XHS account audit coverage invalid: {len(audit_accounts)} rows", file=sys.stderr)
+        return 1
+    if html.count('data-dashboard-view="xhs-traffic"') < 2:
+        print("XHS traffic menu missing from desktop or mobile navigation", file=sys.stderr)
         return 1
     leads = payload.get("xhsLeads", {})
     accounts = leads.get("accounts", [])
