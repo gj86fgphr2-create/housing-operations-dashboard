@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-21T02:01:46.133347+08:00",
+  "generatedAt": "2026-08-21T03:01:32.410127+08:00",
   "source": "yuxiaor-server-export",
   "snapshotDate": "2026-08-21",
   "dashboardUrl": "https://gj86fgphr2-create.github.io/housing-operations-dashboard/#operations-brief",
@@ -14,7 +14,7 @@
     "comprehensiveRate": 0.9075144508670521
   },
   "riskSignals": {
-    "lockCount": 26,
+    "lockCount": 25,
     "preorderCount": 27,
     "moveInCount": 14,
     "mappedUnknownCount": 0
@@ -24,8 +24,8 @@
     "reconciliation": {
       "lockMonitoring": {
         "field": "锁房备注",
-        "sourceCount": 26,
-        "dashboardCount": 26,
+        "sourceCount": 25,
+        "dashboardCount": 25,
         "ok": true
       },
       "vacancyMonitoring": {
