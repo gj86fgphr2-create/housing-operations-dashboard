@@ -735,7 +735,7 @@
     function renderXhsAdFlow(){
       const content=DATA.xhsAdFlow || {},bounds=xhsAdDateBounds(content);
       $('xhs-ad-flow-updated').textContent=content.generatedAt ? '数据更新：'+content.generatedAt : '暂无采集数据';
-      renderXhsAdChart(content,bounds);
+      renderXhsAdChart(content,{start:bounds.min,end:bounds.max});
       renderXhsAdWeeklyTable(content);
       renderXhsAdDetailTables(content);
     }
@@ -787,8 +787,8 @@
     $('xhs-ad-start-date').addEventListener('change',()=>{const start=$('xhs-ad-start-date'),end=$('xhs-ad-end-date');if(start.value&&end.value&&start.value>end.value)end.value=start.value;renderXhsAdDetailTables(DATA.xhsAdFlow || {});});
     $('xhs-ad-end-date').addEventListener('change',()=>{const start=$('xhs-ad-start-date'),end=$('xhs-ad-end-date');if(start.value&&end.value&&end.value<start.value)start.value=end.value;renderXhsAdDetailTables(DATA.xhsAdFlow || {});});
     $('xhs-ad-date-reset').addEventListener('click',()=>{const bounds=xhsAdDateBounds(DATA.xhsAdFlow || {});$('xhs-ad-start-date').value=bounds.min;$('xhs-ad-end-date').value=bounds.max;renderXhsAdDetailTables(DATA.xhsAdFlow || {});});
-    $('xhs-ad-team-filter').addEventListener('change',()=>{const content=DATA.xhsAdFlow || {};renderXhsAdChart(content,xhsAdDateBounds(content));});
-    $('xhs-ad-account-filter').addEventListener('change',()=>{const content=DATA.xhsAdFlow || {};renderXhsAdChart(content,xhsAdDateBounds(content));});
+    $('xhs-ad-team-filter').addEventListener('change',()=>{const content=DATA.xhsAdFlow || {},bounds=xhsAdDateBounds(content);renderXhsAdChart(content,{start:bounds.min,end:bounds.max});});
+    $('xhs-ad-account-filter').addEventListener('change',()=>{const content=DATA.xhsAdFlow || {},bounds=xhsAdDateBounds(content);renderXhsAdChart(content,{start:bounds.min,end:bounds.max});});
     $('xhs-ad-week-month-filter').addEventListener('change',()=>renderXhsAdWeeklyTable(DATA.xhsAdFlow || {}));
     $('xhs-ad-week-team-filter').addEventListener('change',()=>renderXhsAdWeeklyTable(DATA.xhsAdFlow || {}));
     $('xhs-ad-week-account-filter').addEventListener('change',()=>renderXhsAdWeeklyTable(DATA.xhsAdFlow || {}));
