@@ -646,8 +646,8 @@
       const values=periods.map((period)=>{const periodRows=rows.filter((row)=>row.date>=period.start&&row.date<=period.end),total=xhsAdAggregate(periodRows,period.label);return {...total,status:dataEnd>=period.end?'complete':dataEnd>=period.start?'collecting':'pending'};});
       const valueCell=(value,formatter)=>value.status==='pending'?'—':formatter(value);
       const statusBadge=(status)=>status==='complete'?'<span class="xhs-ad-week-status complete">已完成</span>':status==='collecting'?'<span class="xhs-ad-week-status collecting">采集中</span>':'<span class="xhs-ad-week-status pending">待采集</span>';
-      $('xhs-ad-week-head').innerHTML='<tr><th>周期</th><th>日期范围</th><th>消耗</th><th>私信留资</th><th>周期状态</th></tr>';
-      $('xhs-ad-week-table').innerHTML=periods.map((period,index)=>{const value=values[index];return '<tr><td data-label="周期">'+period.label+'</td><td data-label="日期范围">'+period.start+' 至 '+period.end+'</td><td data-label="消耗" class="currency">'+valueCell(value,(item)=>xhsAdMoney(item.spend))+'</td><td data-label="私信留资">'+valueCell(value,(item)=>int(item.leads))+'</td><td data-label="周期状态">'+statusBadge(value.status)+'</td></tr>';}).join('');
+      $('xhs-ad-week-head').innerHTML='<tr><th>周期</th><th>日期范围</th><th>消耗</th><th>私信留资</th><th>平均留资成本</th><th>周期状态</th></tr>';
+      $('xhs-ad-week-table').innerHTML=periods.map((period,index)=>{const value=values[index];return '<tr><td data-label="周期">'+period.label+'</td><td data-label="日期范围">'+period.start.slice(5)+' 至 '+period.end.slice(5)+'</td><td data-label="消耗" class="currency">'+valueCell(value,(item)=>xhsAdMoney(item.spend))+'</td><td data-label="私信留资">'+valueCell(value,(item)=>int(item.leads))+'</td><td data-label="平均留资成本" class="currency">'+valueCell(value,(item)=>xhsAdCost(item.averageLeadCost))+'</td><td data-label="周期状态">'+statusBadge(value.status)+'</td></tr>';}).join('');
     }
     function bindXhsAdChartHover(svg,dates,byDate,x,margin,height){
       const wrap=$('xhs-ad-chart-wrap'), tooltip=$('xhs-ad-chart-tooltip'), guide=svg.querySelector('#xhs-ad-chart-guide');
