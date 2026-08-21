@@ -31,6 +31,16 @@ REQUIRED = (
     'id="xhs-account-updated"',
     'id="xhs-account-table"',
     'id="xhs-account-status-list"',
+    'adCollectedAt',
+    'adCollectedOk',
+    'leadCollectedOk',
+    'noteCollectedOk',
+    'function xhsCollectedBadge(',
+    'class="xhs-collection-badge ok"',
+    'leadCollectedAt',
+    'noteCollectedAt',
+    'function xhsCollectedHour(',
+    '<th>聚光</th><th>留资</th><th>笔记</th>',
     'id="xhs-notes"',
     'id="xhs-note-count-head"',
     'id="xhs-note-count-table"',
@@ -39,6 +49,37 @@ REQUIRED = (
     'id="xhs-exposure-count-head"',
     'id="xhs-exposure-count-table"',
     'id="xhs-daily-reading-chart"',
+    'id="xhs-note-published"',
+    'data-dashboard-view="xhs-note-published"',
+    'id="xhs-note-published-updated"',
+    'id="xhs-note-published-account"',
+    'id="xhs-note-published-type"',
+    'id="xhs-note-published-count"',
+    'id="xhs-note-published-table"',
+    'function renderXhsNotePublished()',
+    '"xhsNotePublished"',
+    '图文数量',
+    '视频数量',
+    '待识别数量',
+    'graphicCount',
+    'videoCount',
+    'pendingCount',
+    '数据明细',
+    '笔记发布明细',
+    '留资数据明细',
+    '聚光投放明细',
+    'data-mobile-menu="xhs-details"',
+    'data-mobile-submenu="xhs-details"',
+    'id="xhs-ad-details"',
+    'data-dashboard-view="xhs-ad-details"',
+    'id="xhs-ad-details-updated"',
+    'id="xhs-ad-detail-account-filter"',
+    'id="xhs-ad-detail-start-date"',
+    'id="xhs-ad-detail-end-date"',
+    'id="xhs-ad-detail-date-reset"',
+    'id="xhs-ad-details-count"',
+    'id="xhs-ad-details-table"',
+    'function renderXhsAdDetails(',
     'id="xhs-leads"',
     'id="xhs-leads-updated"',
     'id="xhs-lead-opened-table"',
@@ -53,6 +94,10 @@ REQUIRED = (
     'id="xhs-ad-note-table"',
     'id="xhs-ad-start-date"',
     'id="xhs-ad-end-date"',
+    'function xhsAdSummarizeAccountRows(',
+    'function xhsAdSummarizeOwnerRows(',
+    '汇总为每个投流账号一行',
+    '汇总为每个归属账号一行',
     'function xhsAdPrepareDateControls(',
     'id="xhs-ad-team-filter"',
     'id="xhs-ad-account-filter"',
@@ -113,7 +158,10 @@ REQUIRED = (
     'id="xhs-traffic-week-month"',
     'id="xhs-traffic-week-table"',
     'id="xhs-traffic-team-table"',
-    'function xhsTrafficBuildAccountRows(',
+    'class="panel-note xhs-traffic-footnote"',
+    '仅汇总两套数据共同覆盖日期',
+    'adContent.ownerRows || []',
+    'xhsTrafficState.initialized','function xhsTrafficBuildAccountRows(',
     'function xhsTrafficBuildRows(',
     'organicLeads=totalLeads-paidLeads',
     'function xhsTrafficWeekPeriods(',
@@ -163,6 +211,32 @@ def main() -> int:
     if html.count('data-dashboard-view="xhs-traffic"') < 2:
         print("XHS traffic menu missing from desktop or mobile navigation", file=sys.stderr)
         return 1
+    if html.count('data-dashboard-view="xhs-note-published"') < 2:
+        print("XHS note-published menu missing from desktop or mobile navigation", file=sys.stderr)
+        return 1
+    if html.count('data-dashboard-view="xhs-lead-details"') < 2:
+        print("XHS lead-details menu missing from desktop or mobile navigation", file=sys.stderr)
+        return 1
+    if html.count('data-dashboard-view="xhs-ad-details"') < 2:
+        print("XHS ad-details menu missing from desktop or mobile navigation", file=sys.stderr)
+        return 1
+    note_published_rows = payload.get("xhsNotePublished", {}).get("rows", [])
+    note_published_keys = {
+        (row.get("profile"), row.get("publishedDate"))
+        for row in note_published_rows
+    }
+    if len(note_published_rows) < 232 or len(note_published_keys) != len(note_published_rows):
+        print(f"XHS note-published history coverage invalid: {len(note_published_rows)} rows", file=sys.stderr)
+        return 1
+    if any(
+        int(row.get("graphicCount") or 0)
+        + int(row.get("videoCount") or 0)
+        + int(row.get("pendingCount") or 0)
+        != int(row.get("publishedCount") or 0)
+        for row in note_published_rows
+    ):
+        print("XHS note type totals do not reconcile", file=sys.stderr)
+        return 1
     leads = payload.get("xhsLeads", {})
     accounts = leads.get("accounts", [])
     target_rows = [
@@ -201,6 +275,11 @@ def main() -> int:
         if int(ad_flow.get("unresolvedOwnerCount") or 0):
             print(f"XHS ad history unresolved owners: {ad_flow.get('unresolvedOwnerCount')}", file=sys.stderr)
             return 1
+    ad_detail_rows = ad_flow.get("accountRows", [])
+    required_ad_detail_keys = {"date", "accountName", "spend", "opened", "leads"}
+    if not ad_detail_rows or any(not required_ad_detail_keys.issubset(row) for row in ad_detail_rows):
+        print(f"XHS ad-detail history coverage invalid: {len(ad_detail_rows)} rows", file=sys.stderr)
+        return 1
 
     print(f"dashboard structure valid: {dashboard}")
     return 0
