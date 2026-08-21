@@ -620,6 +620,64 @@ def recent_performance():
     people_rows = [{"name":name,**values} for name,values in sorted(people.items(),key=lambda item:(-sum(item[1].values()),item[0])) if sum(values.values())]
     return [{"date":day.isoformat(),**values} for day,values in rows.items()], project_rows, people_rows
 
+def monthly_contract_details():
+    """Build current-month new, renewal, and actual-checkout detail rows."""
+    month_prefix = f"{as_of.year:04d}-{as_of.month:02d}"
+    details = {"new": [], "renewal": [], "actualCheckout": []}
+
+    def detail_row(row, indexes, event_date):
+        def value(name):
+            raw = row[indexes[name]]
+            return str(raw).strip() if raw is not None and str(raw).strip() else "—"
+        return {
+            "date": event_date,
+            "building": value("小区/公寓"),
+            "roomNo": value("门牌号"),
+            "customerName": value("租客姓名"),
+            "leaseStart": iso(row[indexes["起租时间"]]) or "—",
+            "leaseEnd": iso(row[indexes["退租时间"]]) or "—",
+            "leasePeriod": value("租期时长"),
+            "signer": value("签约人"),
+            "contractId": norm(row[indexes["合同编号"]]),
+        }
+
+    seen_signing = set()
+    for filename in ("在租中合同.xlsx", "将搬入合同.xlsx", "已退租合同.xlsx"):
+        ws = load_workbook(run_dir/filename, read_only=True, data_only=True).active
+        headers = [cell.value for cell in ws[3]]
+        names = ("合同编号", "签约来源", "签约时间", "小区/公寓", "门牌号", "租客姓名", "起租时间", "退租时间", "租期时长", "签约人")
+        indexes = {name: idx(headers, name) for name in names}
+        for row in ws.iter_rows(min_row=4, values_only=True):
+            contract_id = norm(row[indexes["合同编号"]])
+            if not contract_id or contract_id in seen_signing:
+                continue
+            seen_signing.add(contract_id)
+            sign_date = iso(row[indexes["签约时间"]])
+            if not sign_date.startswith(month_prefix):
+                continue
+            source = norm(row[indexes["签约来源"]])
+            key = "renewal" if source in {"续租", "重签"} else "new"
+            details[key].append(detail_row(row, indexes, sign_date))
+
+    ws = load_workbook(run_dir/"已退租合同.xlsx", read_only=True, data_only=True).active
+    headers = [cell.value for cell in ws[3]]
+    names = ("合同编号", "预退/实退", "退租原因", "小区/公寓", "门牌号", "租客姓名", "起租时间", "退租时间", "租期时长", "签约人")
+    indexes = {name: idx(headers, name) for name in names}
+    seen_checkout = set()
+    for row in ws.iter_rows(min_row=4, values_only=True):
+        contract_id = norm(row[indexes["合同编号"]])
+        if not contract_id or contract_id in seen_checkout:
+            continue
+        seen_checkout.add(contract_id)
+        checkout_date = iso(row[indexes["预退/实退"]])
+        if not checkout_date.startswith(month_prefix) or norm(row[indexes["退租原因"]]) == "换房清算":
+            continue
+        details["actualCheckout"].append(detail_row(row, indexes, checkout_date))
+
+    for rows in details.values():
+        rows.sort(key=lambda row: (row["date"], row["contractId"]), reverse=True)
+    return {"month": month_prefix, **details}
+
 building_rows={row["name"]:row for row in current["buildingData"]}
 
 def apply_house_monitoring():
@@ -845,6 +903,11 @@ monthly["小筑项目"]=sum_monthly("小筑项目",["城北小筑A","城北小�
 base_names=[name for name,_ in project_specs[1:]]
 contract_stats={**old["contractStats"],**cs,"asOfDate":current["dataDate"],"projectMonthly":[monthly.get(n,{"name":n,"newCount":0,"renewalCount":0,"actualCheckoutCount":0,"checkoutRenewalCount":0}) for n in base_names]}
 contract_stats["recentPerformance"], contract_stats["recentProjectPerformance"], contract_stats["recentPeoplePerformance"] = recent_performance()
+contract_stats["monthlyDetails"] = monthly_contract_details()
+detail_counts = [len(contract_stats["monthlyDetails"][key]) for key in ("new", "renewal", "actualCheckout")]
+summary_counts = [int(contract_stats["currentMonth"].get(key, 0) or 0) for key in ("newCount", "renewalCount", "actualCheckoutCount")]
+if detail_counts != summary_counts:
+    raise RuntimeError(f"Monthly contract details do not match summary: details={detail_counts}, summary={summary_counts}")
 contract_stats.setdefault("projectMonthlyUnmapped",{"newCount":0,"renewalCount":0,"actualCheckoutCount":0,"checkoutRenewalCount":0})
 contract_stats.setdefault("totals",{})
 contract_stats["uniqueContracts"]=sum(1 for f in ("在租中合同.xlsx","将搬入合同.xlsx","已退租合同.xlsx") for _ in load_workbook(run_dir/f,read_only=True).active.iter_rows(min_row=4,values_only=True))
@@ -853,6 +916,7 @@ payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezon
 rendered=template[:payload_span[0]]+json.dumps(payload,ensure_ascii=False,separators=(",",":"))+template[payload_span[1]:]
 required=['class="nav desktop-nav"','data-desktop-module="xiaohongshu"','data-desktop-module="yuxiaor"','data-desktop-menu="xiaohongshu"','data-desktop-menu="yuxiaor"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','data-dashboard-view="occupancy-ziyin"','id="occupancy-ziyin"','ziyin-project-table','function renderZiyinOccupancy()','"ziyinOccupancy"','occupiedOverlap','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','xhs-account-updated','xhs-account-status-list','adCollectedAt','adCollectedOk','leadCollectedAt','leadCollectedOk','noteCollectedAt','noteCollectedOk','function xhsCollectedHour(','function xhsCollectedBadge(','class="xhs-collection-badge ok"','<th>聚光</th><th>留资</th><th>笔记</th>','xhs-note-count-table','xhs-view-count-table','function xhsMetricTotal(account,weeks,field)','<th>汇总</th>','xhs-daily-reading-chart','id="xhs-leads"','xhs-goal-table','xhs-lead-opened-table','xhs-lead-copied-table','id="xhs-lead-details"','xhs-lead-detail-account','xhs-lead-detail-table','id="xhs-ad-flow"','xhs-ad-account-table','xhs-ad-note-table','id="xhs-ad-start-date"','id="xhs-ad-end-date"','function xhsAdPrepareDateControls(','id="xhs-ad-team-filter"','id="xhs-ad-account-filter"','id="xhs-ad-matrix-head"','function renderXhsAdChart(','function renderXhsAdFlow()','function renderXhsAccountStatus()','function xhsGoalCell(','function renderXhsLeads()','function renderXhsLeadDetails()','"xhsAccountAudit"','"targetMonth"','"targets"','"dailyRows"','"xhsLeads"','"xhsAdFlow"']
 required=[{'id="xhs-ad-matrix-head"':'class="xhs-ad-matrix-head"'}.get(marker,marker) for marker in required]
+required += ['data-dashboard-view="contract-details"','id="contract-details"','id="contract-detail-new-table"','id="contract-detail-renewal-table"','id="contract-detail-checkout-table"','function renderMonthlyContractDetails()','"monthlyDetails"']
 required += ['id="xhs-ad-spend-chart-wrap"','id="xhs-ad-spend-chart"','id="xhs-ad-spend-tooltip"','id="xhs-ad-leads-chart-wrap"','id="xhs-ad-leads-chart"','id="xhs-ad-leads-tooltip"','xhs-ad-spend-guide','xhs-ad-leads-guide','class="panel xhs-ad-detail-panel"','class="xhs-ad-date-tools xhs-ad-detail-date-tools"','id="xhs-ad-week-month-filter"','id="xhs-ad-week-team-filter"','id="xhs-ad-week-account-filter"','id="xhs-ad-week-owner-filter"','id="xhs-ad-week-summary"','id="xhs-ad-week-account-summary"','id="xhs-ad-week-owner-summary"','id="xhs-ad-week-head"','id="xhs-ad-week-table"','id="xhs-ad-owner-week-head"','id="xhs-ad-owner-week-table"','function xhsAdPrepareWeekControls(','function xhsAdWeekPeriods(','function xhsAdWeekDimension(','function renderXhsAdWeeklyTable(','function renderXhsAdDetailTables(','function xhsAdSummarizeAccountRows(','function xhsAdSummarizeOwnerRows(','function renderXhsAdSingleChart(','function bindXhsAdChartHover(','汇总为每个投流账号一行','汇总为每个归属账号一行']
 required += ['id="xhs-traffic"','data-dashboard-view="xhs-traffic"','id="xhs-traffic-updated"','id="xhs-traffic-total"','id="xhs-traffic-paid"','id="xhs-traffic-organic"','id="xhs-traffic-organic-rate"','id="xhs-traffic-spend"','id="xhs-traffic-start-date"','id="xhs-traffic-end-date"','id="xhs-traffic-date-reset"','id="xhs-traffic-table"','id="xhs-traffic-prev-page"','id="xhs-traffic-page-status"','id="xhs-traffic-next-page"','id="xhs-traffic-week-month"','id="xhs-traffic-week-table"','id="xhs-traffic-team-table"','class="panel-note xhs-traffic-footnote"','仅汇总两套数据共同覆盖日期','xhsTrafficState.initialized','function xhsTrafficBuildAccountRows(','adContent.ownerRows || []','function xhsTrafficBuildRows(','organicLeads=totalLeads-paidLeads','function xhsTrafficWeekPeriods(','function renderXhsTrafficWeekTable(','function renderXhsTrafficTeamTable(','function renderXhsTraffic(']
 required += ['id="xhs-note-published"','data-dashboard-view="xhs-note-published"','id="xhs-note-published-account"','id="xhs-note-published-count"','id="xhs-note-published-table"','function renderXhsNotePublished()','"xhsNotePublished"']
