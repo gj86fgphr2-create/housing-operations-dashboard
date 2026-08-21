@@ -46,8 +46,8 @@ REQUIRED = (
     'id="xhs-note-count-table"',
     'id="xhs-view-count-head"',
     'id="xhs-view-count-table"',
-    'id="xhs-exposure-count-head"',
-    'id="xhs-exposure-count-table"',
+    'function xhsMetricTotal(account,weeks,field)',
+    '<th>汇总</th>',
     'id="xhs-daily-reading-chart"',
     'id="xhs-note-published"',
     'data-dashboard-view="xhs-note-published"',
@@ -287,3 +287,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
