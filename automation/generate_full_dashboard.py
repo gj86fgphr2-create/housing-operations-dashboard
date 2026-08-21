@@ -564,7 +564,7 @@ def idx(headers, *names):
 def recent_performance():
     """Build seven-day totals by day, project, and signer from hourly exports."""
     start = as_of - timedelta(days=6)
-    rows = {start + timedelta(days=i): {"newCount":0,"renewalCount":0,"actualCheckoutCount":0} for i in range(7)}
+    rows = {start + timedelta(days=i): {"newCount":0,"renewalCount":0,"actualCheckoutCount":0,"reservationCount":0} for i in range(7)}
     projects = defaultdict(lambda:{"newCount":0,"renewalCount":0,"actualCheckoutCount":0})
     people = defaultdict(lambda:{"newCount":0,"renewalCount":0,"actualCheckoutCount":0})
     seen_signing, seen_checkout = set(), set()
@@ -594,6 +594,23 @@ def recent_performance():
                     projects[project]["actualCheckoutCount"] += 1
                     people[person]["actualCheckoutCount"] += 1
                 seen_checkout.add(contract)
+    reservation_ws = load_workbook(run_dir/"预定合同.xlsx", read_only=True, data_only=True).active
+    reservation_headers = [cell.value for cell in reservation_ws[1]]
+    reservation_id_i = idx(reservation_headers,"预定ID")
+    reservation_status_i = idx(reservation_headers,"状态")
+    reservation_date_i = idx(reservation_headers,"录入日期")
+    seen_reservations = set()
+    for row in reservation_ws.iter_rows(min_row=2, values_only=True):
+        reservation_id = norm(row[reservation_id_i])
+        if not reservation_id or reservation_id in seen_reservations or norm(row[reservation_status_i]) != "已付定":
+            continue
+        seen_reservations.add(reservation_id)
+        reservation_date = iso(row[reservation_date_i])
+        if not reservation_date:
+            continue
+        reserved = datetime.strptime(reservation_date,"%Y-%m-%d").date()
+        if reserved in rows:
+            rows[reserved]["reservationCount"] += 1
     def summed(name, parts):
         return {"name":name,**{field:sum(projects[p][field] for p in parts) for field in ("newCount","renewalCount","actualCheckoutCount")}}
     projects["北亭项目"] = summed("北亭项目",["北亭初期项目","北亭整体项目"])
