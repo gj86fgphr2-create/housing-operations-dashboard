@@ -178,6 +178,116 @@ def latest_xhs_lead_summary():
     existing=[path for path in candidates if path.is_file()]
     return max(existing,key=lambda path:path.stat().st_mtime) if existing else None
 
+def latest_xhs_ad_immutable_history():
+    """Locate the append-only Aurora per-note daily history used by the dashboard."""
+    candidates=[]
+    configured=os.environ.get("XHS_AD_IMMUTABLE_CSV","").strip()
+    if configured: candidates.append(Path(configured))
+    for root in (Path("/home/ubuntu/xhs-account-isolation/data"),Path("/opt/xhs-account-isolation/data")):
+        candidate=root / "immutable-history" / "ad-note-daily.csv"
+        if candidate.is_file(): candidates.append(candidate)
+    existing=[path for path in candidates if path.is_file()]
+    return max(existing,key=lambda path:path.stat().st_mtime) if existing else None
+
+def build_xhs_ad_flow_from_immutable(history_path):
+    """Aggregate append-only note history without relying on a separately rebuilt snapshot."""
+    configured={account["profile"]:account for account in XHS_ACCOUNTS}
+    source_rows=[]
+    collected_times=[]
+    with history_path.open(encoding="utf-8-sig",newline="") as handle:
+        reader=csv.DictReader(handle)
+        required={"date","profile","note_id","spend","private_message_opens","private_message_leads","owner_account_name","owner_user_id","owner_status","first_collected_at"}
+        if not reader.fieldnames or not required.issubset(reader.fieldnames):
+            raise RuntimeError("XHS ad immutable history columns invalid")
+        for row in reader:
+            report_date=str(row.get("date") or "").strip()
+            profile=str(row.get("profile") or "").strip()
+            note_id=str(row.get("note_id") or "").strip()
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}",report_date) or profile not in configured or not note_id:
+                continue
+            source_rows.append(row)
+            collected_at=str(row.get("first_collected_at") or "").strip()
+            if collected_at: collected_times.append(collected_at)
+    if not source_rows:
+        raise RuntimeError("XHS ad immutable history is empty")
+
+    dates=sorted({row["date"].strip() for row in source_rows})
+    first_date=datetime.strptime(dates[0],"%Y-%m-%d").date()
+    last_date=datetime.strptime(dates[-1],"%Y-%m-%d").date()
+    all_dates=[]
+    cursor=first_date
+    while cursor<=last_date:
+        all_dates.append(cursor.isoformat())
+        cursor+=timedelta(days=1)
+
+    account_groups=defaultdict(lambda:{"noteCount":0,"spend":0.0,"opened":0,"leads":0})
+    owner_groups={}
+    unresolved_count=0
+    for row in source_rows:
+        report_date=row["date"].strip()
+        profile=row["profile"].strip()
+        spend=float(row.get("spend") or 0)
+        opened=int(row.get("private_message_opens") or 0)
+        leads=int(row.get("private_message_leads") or 0)
+        account=account_groups[(report_date,profile)]
+        account["noteCount"]+=1
+        account["spend"]+=spend
+        account["opened"]+=opened
+        account["leads"]+=leads
+
+        owner_name=str(row.get("owner_account_name") or "").strip()
+        owner_user_id=str(row.get("owner_user_id") or "").strip()
+        confirmed=bool(owner_name and str(row.get("owner_status") or "").strip()=="confirmed")
+        if not confirmed: unresolved_count+=1
+        owner_key=(report_date,owner_user_id or owner_name or "unresolved")
+        owner=owner_groups.setdefault(owner_key,{
+            "date":report_date,"ownerAccountName":owner_name,"ownerUserId":owner_user_id,
+            "team":xhs_owner_team(owner_name),"noteCount":0,"spend":0.0,"opened":0,"leads":0,
+            "ownerStatus":"confirmed" if confirmed else "unresolved",
+            "ownerStatusLabel":"已确认" if confirmed else "待确认",
+        })
+        owner["noteCount"]+=1
+        owner["spend"]+=spend
+        owner["opened"]+=opened
+        owner["leads"]+=leads
+        if not confirmed:
+            owner["ownerStatus"]="unresolved"
+            owner["ownerStatusLabel"]="待确认"
+
+    account_rows=[]
+    for report_date in all_dates:
+        for profile,configured_account in configured.items():
+            values=account_groups[(report_date,profile)]
+            spend=round(values["spend"],2)
+            opened=values["opened"]
+            leads=values["leads"]
+            account_rows.append({
+                "date":report_date,"profile":profile,"accountName":configured_account["name"],"team":configured_account["team"],
+                "noteCount":values["noteCount"],"spend":spend,"opened":opened,
+                "averageOpenCost":round(spend/opened,2) if opened else None,
+                "leads":leads,"averageLeadCost":round(spend/leads,2) if leads else None,
+                "status":"ok","statusLabel":"有数据" if values["noteCount"] else "已确认零消耗","error":"",
+            })
+    account_rows.sort(key=lambda row:(row["date"],row["profile"]),reverse=True)
+
+    owner_rows=list(owner_groups.values())
+    for row in owner_rows:
+        row["spend"]=round(row["spend"],2)
+        row["averageOpenCost"]=round(row["spend"]/row["opened"],2) if row["opened"] else None
+        row["averageLeadCost"]=round(row["spend"]/row["leads"],2) if row["leads"] else None
+    owner_rows.sort(key=lambda row:(row["date"],row["spend"],row["ownerAccountName"]),reverse=True)
+    generated_at=max(collected_times)[:19].replace("T"," ") if collected_times else datetime.fromtimestamp(history_path.stat().st_mtime).astimezone().strftime("%Y-%m-%d %H:%M")
+    return {
+        "generatedAt":generated_at,"date":all_dates[-1],"periodLabel":f"{all_dates[0]} 至 {all_dates[-1]}","aggregation":"DAY",
+        "historySource":"immutable-history/ad-note-daily.csv","historyMaxDate":all_dates[-1],"historyRowCount":len(source_rows),
+        "accountRows":account_rows,"ownerRows":owner_rows,
+        "ownerAccountCount":len({row["ownerUserId"] or row["ownerAccountName"] for row in owner_rows if row["ownerUserId"] or row["ownerAccountName"]}),
+        "totalNoteCount":len(source_rows),"totalSpend":round(sum(float(row.get("spend") or 0) for row in source_rows),2),
+        "totalOpened":sum(int(row.get("private_message_opens") or 0) for row in source_rows),
+        "totalLeads":sum(int(row.get("private_message_leads") or 0) for row in source_rows),
+        "unresolvedOwnerCount":unresolved_count,
+    }
+
 def latest_xhs_ad_note_summary():
     """Locate the newest official Aurora note-ad snapshot synchronized to the workbench."""
     candidates=[]
@@ -195,6 +305,9 @@ def latest_xhs_ad_note_summary():
     return max(existing,key=lambda path:path.stat().st_mtime) if existing else None
 
 def build_xhs_ad_flow(fallback):
+    immutable_path=latest_xhs_ad_immutable_history()
+    if immutable_path:
+        return build_xhs_ad_flow_from_immutable(immutable_path)
     summary_path=latest_xhs_ad_note_summary()
     if not summary_path:
         return fallback or {"generatedAt":"","date":"","accountRows":[],"ownerRows":[],"totalNoteCount":0}
@@ -721,7 +834,7 @@ contract_stats["uniqueContracts"]=sum(1 for f in ("在租中合同.xlsx","将搬
 
 payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods,"ziyinOccupancy":ziyin_occupancy,"xhsAccountAudit":build_xhs_account_audit(old.get("xhsAccountAudit")),"xhsContent":build_xhs_content(old.get("xhsContent")),"xhsNotePublished":build_xhs_note_published(old.get("xhsNotePublished")),"xhsLeads":build_xhs_leads(old.get("xhsLeads")),"xhsAdFlow":build_xhs_ad_flow(old.get("xhsAdFlow"))}
 rendered=template[:payload_span[0]]+json.dumps(payload,ensure_ascii=False,separators=(",",":"))+template[payload_span[1]:]
-required=['class="nav desktop-nav"','data-desktop-module="xiaohongshu"','data-desktop-module="yuxiaor"','data-desktop-menu="xiaohongshu"','data-desktop-menu="yuxiaor"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','data-dashboard-view="occupancy-ziyin"','id="occupancy-ziyin"','ziyin-project-table','function renderZiyinOccupancy()','"ziyinOccupancy"','occupiedOverlap','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','xhs-account-updated','xhs-account-status-list','adCollectedAt','adCollectedOk','leadCollectedAt','leadCollectedOk','noteCollectedAt','noteCollectedOk','function xhsCollectedHour(','function xhsCollectedBadge(','class="xhs-collection-badge ok"','<th>聚光</th><th>留资</th><th>笔记</th>','xhs-note-count-table','xhs-view-count-table','xhs-exposure-count-table','xhs-daily-reading-chart','id="xhs-leads"','xhs-goal-table','xhs-lead-opened-table','xhs-lead-copied-table','id="xhs-lead-details"','xhs-lead-detail-account','xhs-lead-detail-table','id="xhs-ad-flow"','xhs-ad-account-table','xhs-ad-note-table','id="xhs-ad-start-date"','id="xhs-ad-end-date"','function xhsAdPrepareDateControls(','id="xhs-ad-team-filter"','id="xhs-ad-account-filter"','id="xhs-ad-matrix-head"','function renderXhsAdChart(','function renderXhsAdFlow()','function renderXhsAccountStatus()','function xhsGoalCell(','function renderXhsLeads()','function renderXhsLeadDetails()','"xhsAccountAudit"','"targetMonth"','"targets"','"dailyRows"','"xhsLeads"','"xhsAdFlow"']
+required=['class="nav desktop-nav"','data-desktop-module="xiaohongshu"','data-desktop-module="yuxiaor"','data-desktop-menu="xiaohongshu"','data-desktop-menu="yuxiaor"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','data-dashboard-view="occupancy-ziyin"','id="occupancy-ziyin"','ziyin-project-table','function renderZiyinOccupancy()','"ziyinOccupancy"','occupiedOverlap','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','xhs-account-updated','xhs-account-status-list','adCollectedAt','adCollectedOk','leadCollectedAt','leadCollectedOk','noteCollectedAt','noteCollectedOk','function xhsCollectedHour(','function xhsCollectedBadge(','class="xhs-collection-badge ok"','<th>聚光</th><th>留资</th><th>笔记</th>','xhs-note-count-table','xhs-view-count-table','function xhsMetricTotal(account,weeks,field)','<th>汇总</th>','xhs-daily-reading-chart','id="xhs-leads"','xhs-goal-table','xhs-lead-opened-table','xhs-lead-copied-table','id="xhs-lead-details"','xhs-lead-detail-account','xhs-lead-detail-table','id="xhs-ad-flow"','xhs-ad-account-table','xhs-ad-note-table','id="xhs-ad-start-date"','id="xhs-ad-end-date"','function xhsAdPrepareDateControls(','id="xhs-ad-team-filter"','id="xhs-ad-account-filter"','id="xhs-ad-matrix-head"','function renderXhsAdChart(','function renderXhsAdFlow()','function renderXhsAccountStatus()','function xhsGoalCell(','function renderXhsLeads()','function renderXhsLeadDetails()','"xhsAccountAudit"','"targetMonth"','"targets"','"dailyRows"','"xhsLeads"','"xhsAdFlow"']
 required=[{'id="xhs-ad-matrix-head"':'class="xhs-ad-matrix-head"'}.get(marker,marker) for marker in required]
 required += ['id="xhs-ad-spend-chart-wrap"','id="xhs-ad-spend-chart"','id="xhs-ad-spend-tooltip"','id="xhs-ad-leads-chart-wrap"','id="xhs-ad-leads-chart"','id="xhs-ad-leads-tooltip"','xhs-ad-spend-guide','xhs-ad-leads-guide','class="panel xhs-ad-detail-panel"','class="xhs-ad-date-tools xhs-ad-detail-date-tools"','id="xhs-ad-week-month-filter"','id="xhs-ad-week-team-filter"','id="xhs-ad-week-account-filter"','id="xhs-ad-week-owner-filter"','id="xhs-ad-week-summary"','id="xhs-ad-week-account-summary"','id="xhs-ad-week-owner-summary"','id="xhs-ad-week-head"','id="xhs-ad-week-table"','id="xhs-ad-owner-week-head"','id="xhs-ad-owner-week-table"','function xhsAdPrepareWeekControls(','function xhsAdWeekPeriods(','function xhsAdWeekDimension(','function renderXhsAdWeeklyTable(','function renderXhsAdDetailTables(','function xhsAdSummarizeAccountRows(','function xhsAdSummarizeOwnerRows(','function renderXhsAdSingleChart(','function bindXhsAdChartHover(','汇总为每个投流账号一行','汇总为每个归属账号一行']
 required += ['id="xhs-traffic"','data-dashboard-view="xhs-traffic"','id="xhs-traffic-updated"','id="xhs-traffic-total"','id="xhs-traffic-paid"','id="xhs-traffic-organic"','id="xhs-traffic-organic-rate"','id="xhs-traffic-spend"','id="xhs-traffic-start-date"','id="xhs-traffic-end-date"','id="xhs-traffic-date-reset"','id="xhs-traffic-table"','id="xhs-traffic-prev-page"','id="xhs-traffic-page-status"','id="xhs-traffic-next-page"','id="xhs-traffic-week-month"','id="xhs-traffic-week-table"','id="xhs-traffic-team-table"','class="panel-note xhs-traffic-footnote"','仅汇总两套数据共同覆盖日期','xhsTrafficState.initialized','function xhsTrafficBuildAccountRows(','adContent.ownerRows || []','function xhsTrafficBuildRows(','organicLeads=totalLeads-paidLeads','function xhsTrafficWeekPeriods(','function renderXhsTrafficWeekTable(','function renderXhsTrafficTeamTable(','function renderXhsTraffic(']
@@ -739,8 +852,14 @@ if len(account_audit_rows)!=len(XHS_ACCOUNTS) or any(not all(key in row for key 
 note_published_rows=payload["xhsNotePublished"].get("rows",[])
 if len(note_published_rows)<232 or len({(row.get("profile"),row.get("publishedDate")) for row in note_published_rows})!=len(note_published_rows): raise RuntimeError("XHS note-published history coverage invalid")
 if any(int(row.get("graphicCount") or 0)+int(row.get("videoCount") or 0)+int(row.get("pendingCount") or 0)!=int(row.get("publishedCount") or 0) for row in note_published_rows): raise RuntimeError("XHS note type totals do not reconcile")
-ad_detail_rows=payload["xhsAdFlow"].get("accountRows",[])
+ad_flow=payload["xhsAdFlow"]
+ad_detail_rows=ad_flow.get("accountRows",[])
 if not ad_detail_rows or any(not all(key in row for key in ("date","accountName","spend","opened","leads")) for row in ad_detail_rows): raise RuntimeError("XHS ad-detail history coverage invalid")
+if ad_flow.get("historySource")=="immutable-history/ad-note-daily.csv":
+    if ad_flow.get("date")!=ad_flow.get("historyMaxDate") or ad_flow.get("date")!=max(row["date"] for row in ad_detail_rows): raise RuntimeError("XHS ad immutable freshness validation failed")
+    start_text,end_text=ad_flow["periodLabel"].split(" 至 ",1)
+    expected_days=(datetime.strptime(end_text,"%Y-%m-%d").date()-datetime.strptime(start_text,"%Y-%m-%d").date()).days+1
+    if len(ad_detail_rows)!=expected_days*len(XHS_ACCOUNTS): raise RuntimeError("XHS ad immutable account-day coverage invalid")
 if 'data-dashboard-view="checkout"' in rendered: raise RuntimeError("Legacy checkout navigation detected")
 mobile_yuxiaor=re.search(r'<nav class="mobile-menu mobile-secondary-nav" data-mobile-menu="yuxiaor".*?</nav>',rendered,re.S)
 if mobile_yuxiaor and 'occupancy-ziyin' in mobile_yuxiaor.group(0): raise RuntimeError("Ziyin occupancy menu must stay desktop-only")

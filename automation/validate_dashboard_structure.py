@@ -258,6 +258,16 @@ def main() -> int:
             print(f"XHS 21-day detail coverage invalid: {len(daily_rows)} rows", file=sys.stderr)
             return 1
     ad_flow = payload.get("xhsAdFlow", {})
+    if ad_flow.get("historySource") != "immutable-history/ad-note-daily.csv":
+        print(f"XHS ad history source invalid: {ad_flow.get('historySource')}", file=sys.stderr)
+        return 1
+    ad_dates = [row.get("date") for row in ad_flow.get("accountRows", []) if row.get("date")]
+    if not ad_dates or ad_flow.get("date") != ad_flow.get("historyMaxDate") or ad_flow.get("date") != max(ad_dates):
+        print(f"XHS ad immutable freshness invalid: {ad_flow.get('date')}/{ad_flow.get('historyMaxDate')}", file=sys.stderr)
+        return 1
+    if int(ad_flow.get("historyRowCount") or 0) != int(ad_flow.get("totalNoteCount") or 0):
+        print("XHS ad immutable row count does not reconcile", file=sys.stderr)
+        return 1
     if "noteRows" in ad_flow or "笔记ID" in html or "笔记标题" in html:
         print("XHS ad-note private detail exposure detected", file=sys.stderr)
         return 1
@@ -287,4 +297,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
