@@ -178,6 +178,57 @@ def latest_xhs_lead_summary():
     existing=[path for path in candidates if path.is_file()]
     return max(existing,key=lambda path:path.stat().st_mtime) if existing else None
 
+def build_customer_data(fallback):
+    """Build the operations-team seven-day cross-source customer-service funnel."""
+    empty={"generatedAt":"","startDate":"","endDate":"","accounts":[],"dailyRows":[],"totals":{},"funnel":{},"sourceNote":""}
+    roots=[Path("/home/ubuntu/xhs-account-isolation/data"),Path("/opt/xhs-account-isolation/data")]
+    configured_root=os.environ.get("XHS_DATA_ROOT","").strip()
+    if configured_root: roots.insert(0,Path(configured_root))
+    history_root=next((root/"immutable-history" for root in roots if (root/"immutable-history").is_dir()),None)
+    customer_path=Path(os.environ.get("CUSTOMER_SERVICE_DATA_XLSX","/opt/yuxiaor-automation/manual-data/operations-customer-data-2026-08.xlsx"))
+    required_files=("note-published-daily.csv","professional-reading-daily.csv","lead-daily.csv")
+    if not history_root or not customer_path.is_file() or any(not (history_root/name).is_file() for name in required_files):
+        return fallback or empty
+    operations_accounts=[account for account in XHS_ACCOUNTS if account["team"]=="运营团队"]
+    profiles={account["profile"] for account in operations_accounts}
+
+    def read_daily_csv(name,fields):
+        values=defaultdict(lambda:defaultdict(int)); coverage=defaultdict(set)
+        with (history_root/name).open(encoding="utf-8-sig",newline="") as handle:
+            for row in csv.DictReader(handle):
+                profile=str(row.get("profile") or "").strip(); date_text=str(row.get("date") or "").strip()
+                if profile not in profiles or not re.fullmatch(r"\d{4}-\d{2}-\d{2}",date_text): continue
+                coverage[date_text].add(profile)
+                for field in fields: values[date_text][field]+=int(float(row.get(field) or 0))
+        return values,{date for date,seen in coverage.items() if seen==profiles}
+
+    published,_=read_daily_csv("note-published-daily.csv",("note_count",))
+    reading,reading_dates=read_daily_csv("professional-reading-daily.csv",("reading_count",))
+    leads,lead_dates=read_daily_csv("lead-daily.csv",("inbound_users","personal_wechat_copies"))
+    workbook=load_workbook(customer_path,read_only=True,data_only=True)
+    sheet=workbook["8月数据"] if "8月数据" in workbook.sheetnames else workbook.active
+    header={str(cell.value or "").strip():cell.column for cell in sheet[4]}
+    def header_column(prefix): return next((column for name,column in header.items() if name.startswith(prefix)),None)
+    columns={"date":header_column("日期"),"wechatAdds":header_column("微信添加（小红书"),"actualTours":header_column("看房（实际"),"signed":header_column("成交"),"deposits":header_column("定金")}
+    if any(column is None for column in columns.values()): return fallback or empty
+    customer={}
+    for row in sheet.iter_rows(min_row=5,values_only=True):
+        if len(row)<max(columns.values()): continue
+        raw_date=row[columns["date"]-1]
+        if isinstance(raw_date,datetime): date_text=raw_date.date().isoformat()
+        else:
+            try: date_text=datetime.strptime(str(raw_date or "").strip(),"%Y/%m/%d").date().isoformat()
+            except ValueError: continue
+        customer[date_text]={key:int(float(row[column-1] or 0)) for key,column in columns.items() if key!="date"}
+    dates=sorted(set(customer)&reading_dates&lead_dates)[-7:]
+    daily=[{"date":date_text,"published":published[date_text]["note_count"],"reading":reading[date_text]["reading_count"],"inbound":leads[date_text]["inbound_users"],"leads":leads[date_text]["personal_wechat_copies"],**customer[date_text]} for date_text in dates]
+    fields=("published","reading","inbound","leads","wechatAdds","actualTours","signed","deposits")
+    totals={field:sum(row[field] for row in daily) for field in fields}
+    def ratio(numerator,denominator): return numerator/denominator if denominator else None
+    funnel={"readsPerPost":ratio(totals.get("reading",0),totals.get("published",0)),"readingToInbound":ratio(totals.get("inbound",0),totals.get("reading",0)),"inboundToLeads":ratio(totals.get("leads",0),totals.get("inbound",0)),"leadsToWechat":ratio(totals.get("wechatAdds",0),totals.get("leads",0)),"wechatToActualTours":ratio(totals.get("actualTours",0),totals.get("wechatAdds",0)),"actualToursToDeposits":ratio(totals.get("deposits",0),totals.get("actualTours",0)),"depositsToSigned":ratio(totals.get("signed",0),totals.get("deposits",0)),"actualToursToSigned":ratio(totals.get("signed",0),totals.get("actualTours",0)),"readingToSigned":ratio(totals.get("signed",0),totals.get("reading",0))}
+    newest=max([customer_path.stat().st_mtime]+[(history_root/name).stat().st_mtime for name in required_files])
+    return {"generatedAt":datetime.fromtimestamp(newest).astimezone().strftime("%Y-%m-%d %H:%M"),"startDate":dates[0] if dates else "","endDate":dates[-1] if dates else "","accounts":operations_accounts,"dailyRows":daily,"totals":totals,"funnel":funnel,"sourceNote":"运营团队专业号与客服表格共同覆盖的最近7个自然日；同日跨来源汇总，不代表按客户ID追踪。"}
+
 def latest_xhs_ad_immutable_history():
     """Locate the append-only Aurora per-note daily history used by the dashboard."""
     candidates=[]
@@ -912,7 +963,7 @@ contract_stats.setdefault("projectMonthlyUnmapped",{"newCount":0,"renewalCount":
 contract_stats.setdefault("totals",{})
 contract_stats["uniqueContracts"]=sum(1 for f in ("在租中合同.xlsx","将搬入合同.xlsx","已退租合同.xlsx") for _ in load_workbook(run_dir/f,read_only=True).active.iter_rows(min_row=4,values_only=True))
 
-payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods,"ziyinOccupancy":ziyin_occupancy,"xhsAccountAudit":build_xhs_account_audit(old.get("xhsAccountAudit")),"xhsContent":build_xhs_content(old.get("xhsContent")),"xhsNotePublished":build_xhs_note_published(old.get("xhsNotePublished")),"xhsLeads":build_xhs_leads(old.get("xhsLeads")),"xhsAdFlow":build_xhs_ad_flow(old.get("xhsAdFlow"))}
+payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods,"ziyinOccupancy":ziyin_occupancy,"xhsAccountAudit":build_xhs_account_audit(old.get("xhsAccountAudit")),"xhsContent":build_xhs_content(old.get("xhsContent")),"xhsNotePublished":build_xhs_note_published(old.get("xhsNotePublished")),"xhsLeads":build_xhs_leads(old.get("xhsLeads")),"xhsAdFlow":build_xhs_ad_flow(old.get("xhsAdFlow")),"customerData":build_customer_data(old.get("customerData"))}
 rendered=template[:payload_span[0]]+json.dumps(payload,ensure_ascii=False,separators=(",",":"))+template[payload_span[1]:]
 required=['class="nav desktop-nav"','data-desktop-module="xiaohongshu"','data-desktop-module="yuxiaor"','data-desktop-menu="xiaohongshu"','data-desktop-menu="yuxiaor"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','data-dashboard-view="occupancy-ziyin"','id="occupancy-ziyin"','ziyin-project-table','function renderZiyinOccupancy()','"ziyinOccupancy"','occupiedOverlap','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','xhs-account-updated','xhs-account-status-list','adCollectedAt','adCollectedOk','leadCollectedAt','leadCollectedOk','noteCollectedAt','noteCollectedOk','function xhsCollectedHour(','function xhsCollectedBadge(','class="xhs-collection-badge ok"','<th>聚光</th><th>留资</th><th>笔记</th>','xhs-note-count-table','xhs-view-count-table','function xhsMetricTotal(account,weeks,field)','<th>汇总</th>','xhs-daily-reading-chart','id="xhs-leads"','xhs-goal-table','xhs-lead-opened-table','xhs-lead-copied-table','id="xhs-lead-details"','xhs-lead-detail-account','xhs-lead-detail-table','id="xhs-ad-flow"','xhs-ad-account-table','xhs-ad-note-table','id="xhs-ad-start-date"','id="xhs-ad-end-date"','function xhsAdPrepareDateControls(','id="xhs-ad-team-filter"','id="xhs-ad-account-filter"','id="xhs-ad-matrix-head"','function renderXhsAdChart(','function renderXhsAdFlow()','function renderXhsAccountStatus()','function xhsGoalCell(','function renderXhsLeads()','function renderXhsLeadDetails()','"xhsAccountAudit"','"targetMonth"','"targets"','"dailyRows"','"xhsLeads"','"xhsAdFlow"']
 required=[{'id="xhs-ad-matrix-head"':'class="xhs-ad-matrix-head"'}.get(marker,marker) for marker in required]
@@ -923,11 +974,18 @@ required += ['id="xhs-note-published"','data-dashboard-view="xhs-note-published"
 required += ['id="xhs-note-published-type"','图文数量','视频数量','待识别数量','graphicCount','videoCount','pendingCount']
 required += ['数据明细','笔记发布明细','留资数据明细','聚光投放明细','data-mobile-menu="xhs-details"','data-mobile-submenu="xhs-details"','id="xhs-ad-details"','data-dashboard-view="xhs-ad-details"','id="xhs-ad-details-updated"','id="xhs-ad-detail-account-filter"','id="xhs-ad-detail-start-date"','id="xhs-ad-detail-end-date"','id="xhs-ad-detail-date-reset"','id="xhs-ad-details-count"','id="xhs-ad-details-table"','function renderXhsAdDetails(']
 required += ['class="desktop-home-link"','class="desktop-nav-groups"','class="desktop-nav-group"','class="desktop-module-toggle"','aria-expanded="false"','aria-expanded="true"']
+required += ['data-desktop-module="customer"','data-desktop-menu="customer"','data-mobile-module="customer"','data-mobile-menu="customer"','id="customer-data"','data-dashboard-view="customer-data"','id="customer-data-updated"','id="customer-daily-table"','id="customer-funnel-table"','function renderCustomerData()','"customerData"']
 if any(x not in rendered for x in required): raise RuntimeError("Full dashboard style validation failed")
 if rendered.count('data-dashboard-view="xhs-traffic"') < 2: raise RuntimeError("XHS traffic menu must exist on desktop and mobile")
 if rendered.count('data-dashboard-view="xhs-note-published"') < 2: raise RuntimeError("XHS note-published menu must exist on desktop and mobile")
 if rendered.count('data-dashboard-view="xhs-lead-details"') < 2: raise RuntimeError("XHS lead-details menu must exist on desktop and mobile")
 if rendered.count('data-dashboard-view="xhs-ad-details"') < 2: raise RuntimeError("XHS ad-details menu must exist on desktop and mobile")
+if rendered.count('data-dashboard-view="customer-data"') < 2: raise RuntimeError("Customer data menu must exist on desktop and mobile")
+customer_rows=payload["customerData"].get("dailyRows",[])
+if customer_rows:
+    customer_fields=("published","reading","inbound","leads","wechatAdds","actualTours","signed","deposits")
+    if len(customer_rows)!=7 or len({row.get("date") for row in customer_rows})!=7 or customer_rows!=sorted(customer_rows,key=lambda row:row["date"]): raise RuntimeError("Customer data seven-day coverage invalid")
+    if any(payload["customerData"]["totals"].get(field)!=sum(row[field] for row in customer_rows) for field in customer_fields): raise RuntimeError("Customer data totals do not reconcile")
 account_audit_rows=payload["xhsAccountAudit"].get("accounts",[])
 if len(account_audit_rows)!=len(XHS_ACCOUNTS) or any(not all(key in row for key in ("adCollectedAt","adCollectedOk","leadCollectedAt","leadCollectedOk","noteCollectedAt","noteCollectedOk")) for row in account_audit_rows): raise RuntimeError("XHS account collection timestamps invalid")
 note_published_rows=payload["xhsNotePublished"].get("rows",[])

@@ -14,6 +14,8 @@ REQUIRED = (
     'data-desktop-module="yuxiaor"',
     'data-desktop-menu="xiaohongshu"',
     'data-desktop-menu="yuxiaor"',
+    'data-desktop-module="customer"',
+    'data-desktop-menu="customer"',
     'class="desktop-home-link"',
     'class="desktop-nav-groups"',
     'class="desktop-nav-group"',
@@ -27,6 +29,15 @@ REQUIRED = (
     'data-mobile-module="yuxiaor"',
     'data-mobile-menu="xiaohongshu"',
     'data-mobile-menu="yuxiaor"',
+    'data-mobile-module="customer"',
+    'data-mobile-menu="customer"',
+    'id="customer-data"',
+    'data-dashboard-view="customer-data"',
+    'id="customer-data-updated"',
+    'id="customer-daily-table"',
+    'id="customer-funnel-table"',
+    'function renderCustomerData()',
+    '"customerData"',
     'id="xhs-account"',
     'id="xhs-account-updated"',
     'id="xhs-account-table"',
@@ -220,6 +231,9 @@ def main() -> int:
     if html.count('data-dashboard-view="xhs-ad-details"') < 2:
         print("XHS ad-details menu missing from desktop or mobile navigation", file=sys.stderr)
         return 1
+    if html.count('data-dashboard-view="customer-data"') < 2:
+        print("Customer data menu missing from desktop or mobile navigation", file=sys.stderr)
+        return 1
     note_published_rows = payload.get("xhsNotePublished", {}).get("rows", [])
     note_published_keys = {
         (row.get("profile"), row.get("publishedDate"))
@@ -290,6 +304,21 @@ def main() -> int:
     if not ad_detail_rows or any(not required_ad_detail_keys.issubset(row) for row in ad_detail_rows):
         print(f"XHS ad-detail history coverage invalid: {len(ad_detail_rows)} rows", file=sys.stderr)
         return 1
+
+    customer = payload.get("customerData", {})
+    customer_rows = customer.get("dailyRows", [])
+    customer_fields = ("published", "reading", "inbound", "leads", "wechatAdds", "actualTours", "signed", "deposits")
+    if customer_rows:
+        customer_dates = [row.get("date") for row in customer_rows]
+        if len(customer_rows) != 7 or len(set(customer_dates)) != 7 or customer_dates != sorted(customer_dates):
+            print(f"Customer data seven-day coverage invalid: {customer_dates}", file=sys.stderr)
+            return 1
+        if customer.get("startDate") != customer_dates[0] or customer.get("endDate") != customer_dates[-1]:
+            print("Customer data period does not match daily rows", file=sys.stderr)
+            return 1
+        if any(customer.get("totals", {}).get(field) != sum(int(row.get(field) or 0) for row in customer_rows) for field in customer_fields):
+            print("Customer data totals do not reconcile", file=sys.stderr)
+            return 1
 
     print(f"dashboard structure valid: {dashboard}")
     return 0
