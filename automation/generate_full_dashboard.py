@@ -629,10 +629,11 @@ def monthly_contract_details():
         def value(name):
             raw = row[indexes[name]]
             return str(raw).strip() if raw is not None and str(raw).strip() else "—"
+        room_match = re.search(r"\d+", value("门牌号"))
         return {
             "date": event_date,
             "building": value("小区/公寓"),
-            "roomNo": value("门牌号"),
+            "roomNo": room_match.group(0) if room_match else "—",
             "customerName": value("租客姓名"),
             "leaseStart": iso(row[indexes["起租时间"]]) or "—",
             "leaseEnd": iso(row[indexes["退租时间"]]) or "—",
