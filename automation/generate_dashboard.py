@@ -138,11 +138,11 @@ def signing_category(row):
     source = text(row.get('签约来源'))
     if source == '新签':
         return 'new'
-    if source in {'续租', '重签'}:
+    if source == '续租':
         return 'renewal'
-    if source == '换房':
-        return 'swap'
-    return 'other'
+    if source in {'换房', '重签'}:
+        return 'other'
+    return 'uncategorized'
 
 def signed_in(row, start, end):
     d = as_date(row.get('签约时间'))
@@ -156,12 +156,12 @@ def period_summary(label, start, end):
     signed = [r for r in contract_rows if signed_in(r, start, end)]
     new_rows = [r for r in signed if signing_category(r) == 'new']
     renew_rows = [r for r in signed if signing_category(r) == 'renewal']
-    swap_rows = [r for r in signed if signing_category(r) == 'swap']
+    other_rows = [r for r in signed if signing_category(r) == 'other']
     return {
         'period': label, 'startDate': start.isoformat(), 'endDate': end.isoformat(),
         'newCount': len(new_rows), 'newRevenue': sum(number(r.get('总租金')) for r in new_rows),
         'renewalCount': len(renew_rows), 'renewalRevenue': sum(number(r.get('总租金')) for r in renew_rows),
-        'swapCount': len(swap_rows), 'swapRevenue': sum(number(r.get('总租金')) for r in swap_rows),
+        'otherCount': len(other_rows), 'otherRevenue': sum(number(r.get('总租金')) for r in other_rows),
     }
 
 current = period_summary('本月', month_start, today)
@@ -177,11 +177,11 @@ for index, start_day in enumerate((1, 8, 15, 22, 29), start=1):
     label = f'{today.month}-WEEK-{index}' if index < 5 else f'{today.month}-WEEK-END'
     week_periods.append(period_summary(label, start_day_date, end_day))
 
-people = defaultdict(lambda: {'newCount': 0, 'newRevenue': 0, 'renewalCount': 0, 'renewalRevenue': 0, 'swapCount': 0, 'swapRevenue': 0})
+people = defaultdict(lambda: {'newCount': 0, 'newRevenue': 0, 'renewalCount': 0, 'renewalRevenue': 0, 'otherCount': 0, 'otherRevenue': 0})
 for row in [r for r in contract_rows if signed_in(r, month_start, today)]:
     name = text(row.get('签约人')) or '未填写'
     key = signing_category(row)
-    if key == 'other':
+    if key == 'uncategorized':
         continue
     people[name][f'{key}Count'] += 1
     people[name][f'{key}Revenue'] += number(row.get('总租金'))
@@ -192,16 +192,16 @@ for offset in range(45, -1, -1):
     signed = [r for r in contract_rows if as_date(r.get('签约时间')) == d]
     new_count = sum(signing_category(r) == 'new' for r in signed)
     renewal_count = sum(signing_category(r) == 'renewal' for r in signed)
-    swap_count = sum(signing_category(r) == 'swap' for r in signed)
+    other_count = sum(signing_category(r) == 'other' for r in signed)
     checkout = sum(actual_checkout_in(r, d, d) for r in retired)
-    daily.append({'date': d.isoformat(), 'newSign': new_count, 'renewal': renewal_count, 'swap': swap_count, 'checkout': checkout, 'total': new_count - checkout})
+    daily.append({'date': d.isoformat(), 'newSign': new_count, 'renewal': renewal_count, 'other': other_count, 'checkout': checkout, 'total': new_count - checkout})
 
-project_monthly = defaultdict(lambda: {'newCount': 0, 'renewalCount': 0, 'swapCount': 0, 'actualCheckoutCount': 0, 'checkoutRenewalCount': 0})
+project_monthly = defaultdict(lambda: {'newCount': 0, 'renewalCount': 0, 'otherCount': 0, 'actualCheckoutCount': 0, 'checkoutRenewalCount': 0})
 for row in contract_rows:
     project = text(row.get('所属部门')) or '未分配项目'
     if signed_in(row, month_start, today):
         key = signing_category(row)
-        if key != 'other':
+        if key != 'uncategorized':
             project_monthly[project][f'{key}Count'] += 1
 for row in retired:
     if actual_checkout_in(row, month_start, today):

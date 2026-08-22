@@ -111,18 +111,18 @@
       </header>
 
       <section class="section" id="operations-brief" data-views="operations-brief">
-        <div class="section-head"><div><h2>运营简报</h2><p>最近 7 个自然日；新签仅统计签约来源为“新签”，续租统计“续租/重签”，换房单独统计；实际退租按“预退/实退”日期。</p></div></div>
+        <div class="section-head"><div><h2>运营简报</h2><p>最近 7 个自然日；新签仅统计“新签”，续租仅统计“续租”，其他统计“换房/重签”；实际退租按“预退/实退”日期。</p></div></div>
         <div class="kpis brief-kpis">
           <article class="kpi blue"><div class="label">近7天新签</div><div class="value" id="brief-new-total">—</div><div class="hint">仅签约来源为“新签”</div></article>
-          <article class="kpi green"><div class="label">近7天续租</div><div class="value" id="brief-renewal-total">—</div><div class="hint">签约来源为续租或重签</div></article>
-          <article class="kpi purple"><div class="label">近7天换房</div><div class="value" id="brief-swap-total">—</div><div class="hint">签约来源为“换房”</div></article>
+          <article class="kpi green"><div class="label">近7天续租</div><div class="value" id="brief-renewal-total">—</div><div class="hint">仅签约来源为“续租”</div></article>
+          <article class="kpi purple"><div class="label">近7天其他</div><div class="value" id="brief-other-total">—</div><div class="hint">签约来源为“换房”或“重签”</div></article>
           <article class="kpi red"><div class="label">近7天实际退租</div><div class="value" id="brief-checkout-total">—</div><div class="hint">已退租合同实际发生量</div></article>
           <article class="kpi orange"><div class="label">近7天预定</div><div class="value" id="brief-reservation-total">—</div><div class="hint">仅统计状态为“已付定”</div></article>
         </div>
-        <article class="panel"><h3>每日情况</h3><div class="table-wrap period-table-wrap"><table class="period-table"><thead><tr><th>日期</th><th>新签</th><th>续租</th><th>换房</th><th>实际退租</th></tr></thead><tbody id="brief-daily-table"></tbody></table></div></article>
+        <article class="panel"><h3>每日情况</h3><div class="table-wrap period-table-wrap"><table class="period-table"><thead><tr><th>日期</th><th>新签</th><th>续租</th><th>其他</th><th>实际退租</th></tr></thead><tbody id="brief-daily-table"></tbody></table></div></article>
         <div class="brief-grid">
-          <article class="panel"><h3>项目分类</h3><p class="panel-note">沿用运营总览的主项目、子项目层级和缩进格式。</p><div class="table-wrap brief-table-wrap"><table class="brief-table"><thead><tr><th>项目</th><th>新签</th><th>续租</th><th>换房</th><th>实际退租</th></tr></thead><tbody id="brief-project-table"></tbody></table></div></article>
-          <article class="panel"><h3>签约人统计</h3><p class="panel-note">仅显示近 7 天内至少有一项业务数据的签约人。</p><div class="table-wrap brief-table-wrap"><table class="brief-table person-table"><thead><tr><th>签约人</th><th>新签</th><th>续租</th><th>换房</th><th>实际退租</th></tr></thead><tbody id="brief-person-table"></tbody></table></div></article>
+          <article class="panel"><h3>项目分类</h3><p class="panel-note">沿用运营总览的主项目、子项目层级和缩进格式。</p><div class="table-wrap brief-table-wrap"><table class="brief-table"><thead><tr><th>项目</th><th>新签</th><th>续租</th><th>其他</th><th>实际退租</th></tr></thead><tbody id="brief-project-table"></tbody></table></div></article>
+          <article class="panel"><h3>签约人统计</h3><p class="panel-note">仅显示近 7 天内至少有一项业务数据的签约人。</p><div class="table-wrap brief-table-wrap"><table class="brief-table person-table"><thead><tr><th>签约人</th><th>新签</th><th>续租</th><th>其他</th><th>实际退租</th></tr></thead><tbody id="brief-person-table"></tbody></table></div></article>
         </div>
       </section>
 
@@ -253,14 +253,14 @@
       </section>
 
       <section class="section" id="contracts" data-views="overview performance">
-        <div class="section-head" data-views="overview performance"><div><h2>业绩查看</h2><p>合同编号去重；新签仅统计“新签”，续租统计“续租/重签”，换房单独统计，实际退租按“预退/实退”统计</p></div></div>
+        <div class="section-head" data-views="overview performance"><div><h2>业绩查看</h2><p>合同编号去重；新签仅统计“新签”，续租仅统计“续租”，其他统计“换房/重签”，实际退租按“预退/实退”统计</p></div></div>
         <div class="kpis contract-kpis" data-views="overview performance">
           <article class="kpi blue"><div class="label">本月新签</div><div class="value" id="contract-new-count">—</div><div class="hint" id="contract-new-previous">—</div></article>
           <article class="kpi green"><div class="label">本月续租</div><div class="value" id="contract-renewal-count">—</div><div class="hint" id="contract-renewal-previous">—</div></article>
-          <article class="kpi purple"><div class="label">本月换房</div><div class="value" id="contract-swap-count">—</div><div class="hint" id="contract-swap-previous">—</div></article>
+          <article class="kpi purple"><div class="label">本月其他</div><div class="value" id="contract-other-count">—</div><div class="hint" id="contract-other-previous">—</div></article>
           <article class="kpi purple"><div class="label">本月新签业绩</div><div class="value" id="contract-new-performance">—</div><div class="hint" id="contract-new-performance-previous">—</div></article>
           <article class="kpi orange"><div class="label">本月续租业绩</div><div class="value" id="contract-renewal-performance">—</div><div class="hint" id="contract-renewal-performance-previous">—</div></article>
-          <article class="kpi orange"><div class="label">本月换房业绩</div><div class="value" id="contract-swap-performance">—</div><div class="hint" id="contract-swap-performance-previous">—</div></article>
+          <article class="kpi orange"><div class="label">本月其他业绩</div><div class="value" id="contract-other-performance">—</div><div class="hint" id="contract-other-performance-previous">—</div></article>
           <article class="kpi red"><div class="label">本月实际退房</div><div class="value" id="contract-current-checkout">—</div><div class="hint" id="contract-checkout-previous">—</div></article>
           <article class="kpi green"><div class="label">本月退租中（续租数量）</div><div class="value" id="contract-checkout-renewal">—</div><div class="hint" id="contract-checkout-renewal-previous">—</div></article>
         </div>
@@ -268,19 +268,19 @@
           <article class="panel"><h3>实际与目标对比</h3><p class="panel-note">实际数据截至最新数据采集日；本月汇总目标为各周目标之和</p><div class="table-wrap"><table class="target-comparison-table"><thead><tr><th>周期</th><th>新签实际</th><th>新签目标</th><th>新签完成率</th><th>续租实际</th><th>续租目标</th><th>续租完成率</th></tr></thead><tbody id="contract-target-table"></tbody></table></div></article>
         </div>
         <div class="section checkout-detail-grid contract-stats-stack" data-views="performance">
-          <article class="panel"><h3>周期统计</h3><div class="table-wrap period-table-wrap"><table class="period-table"><thead><tr><th>周期</th><th>新签</th><th>新签业绩</th><th>续租</th><th>续租业绩</th><th>换房</th><th>换房业绩</th></tr></thead><tbody id="contract-period-table"></tbody></table></div></article>
-          <article class="panel"><h3>本月签约人统计</h3><div class="table-wrap contract-person-wrap"><table class="contract-person-table"><thead><tr><th>签约人</th><th>新签</th><th>新签业绩</th><th>续租</th><th>续租业绩</th><th>换房</th><th>换房业绩</th></tr></thead><tbody id="contract-person-table"></tbody></table></div></article>
+          <article class="panel"><h3>周期统计</h3><div class="table-wrap period-table-wrap"><table class="period-table"><thead><tr><th>周期</th><th>新签</th><th>新签业绩</th><th>续租</th><th>续租业绩</th><th>其他</th><th>其他业绩</th></tr></thead><tbody id="contract-period-table"></tbody></table></div></article>
+          <article class="panel"><h3>本月签约人统计</h3><div class="table-wrap contract-person-wrap"><table class="contract-person-table"><thead><tr><th>签约人</th><th>新签</th><th>新签业绩</th><th>续租</th><th>续租业绩</th><th>其他</th><th>其他业绩</th></tr></thead><tbody id="contract-person-table"></tbody></table></div></article>
         </div>
         <article class="panel section" data-views="overview"><h3>近期每日合同净变化</h3><p class="panel-note">当日合计 = 新签数量 − 实际退租数量；展示最近14个有数据日期</p><div class="line-chart-wrap" id="contract-daily-chart-wrap"><svg class="line-chart" id="contract-daily-chart" role="img" aria-label="最近14日合同净变化折线图"></svg></div></article>
-        <article class="panel section" data-views="performance"><h3>本月项目合同统计</h3><p class="panel-note">按房源地址归入既定项目；合同编号去重，小谷围项目为北亭研寓与南亭研寓汇总</p><div class="table-wrap contract-project-month-wrap"><table class="contract-project-month-table"><thead><tr><th>项目</th><th>新签数量</th><th>续租数量</th><th>换房数量</th><th>实际退租数量</th><th>退租中（续租数量）</th></tr></thead><tbody id="contract-project-month-table"></tbody></table></div></article>
+        <article class="panel section" data-views="performance"><h3>本月项目合同统计</h3><p class="panel-note">按房源地址归入既定项目；合同编号去重，小谷围项目为北亭研寓与南亭研寓汇总</p><div class="table-wrap contract-project-month-wrap"><table class="contract-project-month-table"><thead><tr><th>项目</th><th>新签数量</th><th>续租数量</th><th>其他数量</th><th>实际退租数量</th><th>退租中（续租数量）</th></tr></thead><tbody id="contract-project-month-table"></tbody></table></div></article>
       </section>
 
       <section class="section" id="contract-details" data-views="contract-details">
-        <div class="section-head"><div><h2>数据明细</h2><p id="contract-detail-period">本月合同数据；新签、续租和换房按签约日期，实际退房按“预退/实退”日期，合同编号去重。</p></div></div>
+        <div class="section-head"><div><h2>数据明细</h2><p id="contract-detail-period">本月合同数据；新签、续租和其他（换房/重签）按签约日期，实际退房按“预退/实退”日期。</p></div></div>
         <div class="contract-detail-stack">
           <article class="panel"><h3>本月新签明细</h3><div class="contract-detail-count" id="contract-detail-new-count">—</div><div class="table-wrap contract-detail-wrap"><table class="contract-detail-table"><thead><tr><th>日期</th><th>签约来源</th><th>楼栋</th><th>房间号</th><th>顾客名字</th><th>起租日</th><th>退租日</th><th>租赁周期</th><th>签约人</th></tr></thead><tbody id="contract-detail-new-table"></tbody></table></div></article>
           <article class="panel"><h3>本月续租明细</h3><div class="contract-detail-count" id="contract-detail-renewal-count">—</div><div class="table-wrap contract-detail-wrap"><table class="contract-detail-table"><thead><tr><th>日期</th><th>签约来源</th><th>楼栋</th><th>房间号</th><th>顾客名字</th><th>起租日</th><th>退租日</th><th>租赁周期</th><th>签约人</th></tr></thead><tbody id="contract-detail-renewal-table"></tbody></table></div></article>
-          <article class="panel"><h3>本月换房明细</h3><div class="contract-detail-count" id="contract-detail-swap-count">—</div><div class="table-wrap contract-detail-wrap"><table class="contract-detail-table"><thead><tr><th>日期</th><th>签约来源</th><th>楼栋</th><th>房间号</th><th>顾客名字</th><th>起租日</th><th>退租日</th><th>租赁周期</th><th>签约人</th></tr></thead><tbody id="contract-detail-swap-table"></tbody></table></div></article>
+          <article class="panel"><h3>本月其他明细</h3><div class="contract-detail-count" id="contract-detail-other-count">—</div><div class="table-wrap contract-detail-wrap"><table class="contract-detail-table"><thead><tr><th>日期</th><th>签约来源</th><th>楼栋</th><th>房间号</th><th>顾客名字</th><th>起租日</th><th>退租日</th><th>租赁周期</th><th>签约人</th></tr></thead><tbody id="contract-detail-other-table"></tbody></table></div></article>
           <article class="panel"><h3>本月实际退房明细</h3><div class="contract-detail-count" id="contract-detail-checkout-count">—</div><div class="table-wrap contract-detail-wrap"><table class="contract-detail-table"><thead><tr><th>日期</th><th>签约来源</th><th>楼栋</th><th>房间号</th><th>顾客名字</th><th>起租日</th><th>退租日</th><th>租赁周期</th><th>签约人</th></tr></thead><tbody id="contract-detail-checkout-table"></tbody></table></div></article>
         </div>
       </section>
@@ -424,18 +424,18 @@
       const d = DATA.contractStats;
       $('contract-new-count').textContent = int(d.currentMonth.newCount) + ' 份';
       $('contract-renewal-count').textContent = int(d.currentMonth.renewalCount) + ' 份';
-      $('contract-swap-count').textContent = int(d.currentMonth.swapCount) + ' 份';
+      $('contract-other-count').textContent = int(d.currentMonth.otherCount) + ' 份';
       $('contract-new-performance').textContent = currencyInteger(d.currentMonth.newRevenue);
       $('contract-renewal-performance').textContent = currencyInteger(d.currentMonth.renewalRevenue);
-      $('contract-swap-performance').textContent = currencyInteger(d.currentMonth.swapRevenue);
+      $('contract-other-performance').textContent = currencyInteger(d.currentMonth.otherRevenue);
       $('contract-current-checkout').textContent = int(d.currentMonth.actualCheckoutCount) + ' 份';
       $('contract-checkout-renewal').textContent = int(d.currentMonth.checkoutRenewalCount) + ' 份';
       $('contract-new-previous').textContent = '上月：' + int(d.previousMonth.newCount) + ' 份';
       $('contract-renewal-previous').textContent = '上月：' + int(d.previousMonth.renewalCount) + ' 份';
-      $('contract-swap-previous').textContent = '上月：' + int(d.previousMonth.swapCount) + ' 份';
+      $('contract-other-previous').textContent = '上月：' + int(d.previousMonth.otherCount) + ' 份';
       $('contract-new-performance-previous').textContent = '上月：' + currencyInteger(d.previousMonth.newRevenue);
       $('contract-renewal-performance-previous').textContent = '上月：' + currencyInteger(d.previousMonth.renewalRevenue);
-      $('contract-swap-performance-previous').textContent = '上月：' + currencyInteger(d.previousMonth.swapRevenue);
+      $('contract-other-performance-previous').textContent = '上月：' + currencyInteger(d.previousMonth.otherRevenue);
       $('contract-checkout-previous').textContent = '上月：' + int(d.previousMonth.actualCheckoutCount) + ' 份';
       $('contract-checkout-renewal-previous').textContent = '上月：' + int(d.previousMonth.checkoutRenewalCount) + ' 份';
       const periodsByName = new Map(d.periods.map((row) => [row.period,row]));
@@ -458,37 +458,37 @@
         const renewalStatus = r.actualRenewal >= r.renewalCount ? 'target-met' : 'target-unmet';
         return '<tr' + (isFuture ? ' class="target-future"' : '') + '><td data-label="周期" class="' + newStatus + '">' + r.label + '</td><td data-label="新签实际" class="' + newStatus + '">' + int(r.actualNew) + '</td><td data-label="新签目标" class="' + newStatus + '">' + int(r.newCount) + '</td><td data-label="新签完成率" class="rate ' + newStatus + '">' + pct(newRate) + '</td><td data-label="续租实际" class="' + renewalStatus + '">' + int(r.actualRenewal) + '</td><td data-label="续租目标" class="' + renewalStatus + '">' + int(r.renewalCount) + '</td><td data-label="续租完成率" class="rate ' + renewalStatus + '">' + pct(renewalRate) + '</td></tr>';
       }).join('');
-      $('contract-period-table').innerHTML = d.periods.map((r) => '<tr><td data-label="周期">' + r.period + '</td><td data-label="新签">' + int(r.newCount) + '</td><td data-label="新签业绩" class="currency">' + currency(r.newRevenue) + '</td><td data-label="续租">' + int(r.renewalCount) + '</td><td data-label="续租业绩" class="currency">' + currency(r.renewalRevenue) + '</td><td data-label="换房">' + int(r.swapCount) + '</td><td data-label="换房业绩" class="currency">' + currency(r.swapRevenue) + '</td></tr>').join('');
-      $('contract-person-table').innerHTML = d.people.filter((r) => Number(r.newCount || 0) !== 0 || Number(r.renewalCount || 0) !== 0 || Number(r.swapCount || 0) !== 0).sort((a,b) => Number(b.newCount || 0)-Number(a.newCount || 0) || Number(b.renewalCount || 0)-Number(a.renewalCount || 0) || Number(b.swapCount || 0)-Number(a.swapCount || 0)).map((r) => '<tr><td data-label="签约人">' + r.name + '</td><td data-label="新签">' + int(r.newCount) + '</td><td data-label="新签业绩" class="currency">' + currency(r.newRevenue) + '</td><td data-label="续租">' + int(r.renewalCount) + '</td><td data-label="续租业绩" class="currency">' + currency(r.renewalRevenue) + '</td><td data-label="换房">' + int(r.swapCount) + '</td><td data-label="换房业绩" class="currency">' + currency(r.swapRevenue) + '</td></tr>').join('');
-      const projectMonthlyRows = d.projectMonthly.map((r) => '<tr class="' + projectRowClass(r.name) + '"><td data-label="项目">' + projectDisplayName(r.name) + '</td><td data-label="新签数量">' + int(r.newCount) + '</td><td data-label="续租数量">' + int(r.renewalCount) + '</td><td data-label="换房数量">' + int(r.swapCount) + '</td><td data-label="实际退租数量">' + int(r.actualCheckoutCount) + '</td><td data-label="退租中（续租数量）">' + int(r.checkoutRenewalCount) + '</td></tr>').join('');
-      const projectMonthlyTotal = '<tr class="summary-row"><td data-label="项目">本月汇总</td><td data-label="新签数量">' + int(d.currentMonth.newCount) + '</td><td data-label="续租数量">' + int(d.currentMonth.renewalCount) + '</td><td data-label="换房数量">' + int(d.currentMonth.swapCount) + '</td><td data-label="实际退租数量">' + int(d.currentMonth.actualCheckoutCount) + '</td><td data-label="退租中（续租数量）">' + int(d.currentMonth.checkoutRenewalCount) + '</td></tr>';
+      $('contract-period-table').innerHTML = d.periods.map((r) => '<tr><td data-label="周期">' + r.period + '</td><td data-label="新签">' + int(r.newCount) + '</td><td data-label="新签业绩" class="currency">' + currency(r.newRevenue) + '</td><td data-label="续租">' + int(r.renewalCount) + '</td><td data-label="续租业绩" class="currency">' + currency(r.renewalRevenue) + '</td><td data-label="其他">' + int(r.otherCount) + '</td><td data-label="其他业绩" class="currency">' + currency(r.otherRevenue) + '</td></tr>').join('');
+      $('contract-person-table').innerHTML = d.people.filter((r) => Number(r.newCount || 0) !== 0 || Number(r.renewalCount || 0) !== 0 || Number(r.otherCount || 0) !== 0).sort((a,b) => Number(b.newCount || 0)-Number(a.newCount || 0) || Number(b.renewalCount || 0)-Number(a.renewalCount || 0) || Number(b.otherCount || 0)-Number(a.otherCount || 0)).map((r) => '<tr><td data-label="签约人">' + r.name + '</td><td data-label="新签">' + int(r.newCount) + '</td><td data-label="新签业绩" class="currency">' + currency(r.newRevenue) + '</td><td data-label="续租">' + int(r.renewalCount) + '</td><td data-label="续租业绩" class="currency">' + currency(r.renewalRevenue) + '</td><td data-label="其他">' + int(r.otherCount) + '</td><td data-label="其他业绩" class="currency">' + currency(r.otherRevenue) + '</td></tr>').join('');
+      const projectMonthlyRows = d.projectMonthly.map((r) => '<tr class="' + projectRowClass(r.name) + '"><td data-label="项目">' + projectDisplayName(r.name) + '</td><td data-label="新签数量">' + int(r.newCount) + '</td><td data-label="续租数量">' + int(r.renewalCount) + '</td><td data-label="其他数量">' + int(r.otherCount) + '</td><td data-label="实际退租数量">' + int(r.actualCheckoutCount) + '</td><td data-label="退租中（续租数量）">' + int(r.checkoutRenewalCount) + '</td></tr>').join('');
+      const projectMonthlyTotal = '<tr class="summary-row"><td data-label="项目">本月汇总</td><td data-label="新签数量">' + int(d.currentMonth.newCount) + '</td><td data-label="续租数量">' + int(d.currentMonth.renewalCount) + '</td><td data-label="其他数量">' + int(d.currentMonth.otherCount) + '</td><td data-label="实际退租数量">' + int(d.currentMonth.actualCheckoutCount) + '</td><td data-label="退租中（续租数量）">' + int(d.currentMonth.checkoutRenewalCount) + '</td></tr>';
       $('contract-project-month-table').innerHTML = projectMonthlyRows + projectMonthlyTotal;
       renderDailyLineChart();
     }
 
     function renderOperationsBrief(){
       const rows = [...(DATA.contractStats.recentPerformance || [])].sort((a,b) => String(b.date).localeCompare(String(a.date)));
-      const totals = rows.reduce((sum,row) => ({newCount:sum.newCount+Number(row.newCount||0),renewalCount:sum.renewalCount+Number(row.renewalCount||0),swapCount:sum.swapCount+Number(row.swapCount||0),actualCheckoutCount:sum.actualCheckoutCount+Number(row.actualCheckoutCount||0),reservationCount:sum.reservationCount+Number(row.reservationCount||0)}),{newCount:0,renewalCount:0,swapCount:0,actualCheckoutCount:0,reservationCount:0});
-      $('brief-new-total').textContent = int(totals.newCount) + ' 份'; $('brief-renewal-total').textContent = int(totals.renewalCount) + ' 份'; $('brief-swap-total').textContent = int(totals.swapCount) + ' 份'; $('brief-checkout-total').textContent = int(totals.actualCheckoutCount) + ' 份'; $('brief-reservation-total').textContent = int(totals.reservationCount) + ' 份';
-      $('brief-daily-table').innerHTML = rows.map((r) => '<tr><td data-label="日期">' + r.date + '</td><td data-label="新签">' + int(r.newCount) + '</td><td data-label="续租">' + int(r.renewalCount) + '</td><td data-label="换房">' + int(r.swapCount) + '</td><td data-label="实际退租">' + int(r.actualCheckoutCount) + '</td></tr>').join('') + '<tr class="summary-row"><td data-label="日期">7天合计</td><td data-label="新签">' + int(totals.newCount) + '</td><td data-label="续租">' + int(totals.renewalCount) + '</td><td data-label="换房">' + int(totals.swapCount) + '</td><td data-label="实际退租">' + int(totals.actualCheckoutCount) + '</td></tr>';
+      const totals = rows.reduce((sum,row) => ({newCount:sum.newCount+Number(row.newCount||0),renewalCount:sum.renewalCount+Number(row.renewalCount||0),otherCount:sum.otherCount+Number(row.otherCount||0),actualCheckoutCount:sum.actualCheckoutCount+Number(row.actualCheckoutCount||0),reservationCount:sum.reservationCount+Number(row.reservationCount||0)}),{newCount:0,renewalCount:0,otherCount:0,actualCheckoutCount:0,reservationCount:0});
+      $('brief-new-total').textContent = int(totals.newCount) + ' 份'; $('brief-renewal-total').textContent = int(totals.renewalCount) + ' 份'; $('brief-other-total').textContent = int(totals.otherCount) + ' 份'; $('brief-checkout-total').textContent = int(totals.actualCheckoutCount) + ' 份'; $('brief-reservation-total').textContent = int(totals.reservationCount) + ' 份';
+      $('brief-daily-table').innerHTML = rows.map((r) => '<tr><td data-label="日期">' + r.date + '</td><td data-label="新签">' + int(r.newCount) + '</td><td data-label="续租">' + int(r.renewalCount) + '</td><td data-label="其他">' + int(r.otherCount) + '</td><td data-label="实际退租">' + int(r.actualCheckoutCount) + '</td></tr>').join('') + '<tr class="summary-row"><td data-label="日期">7天合计</td><td data-label="新签">' + int(totals.newCount) + '</td><td data-label="续租">' + int(totals.renewalCount) + '</td><td data-label="其他">' + int(totals.otherCount) + '</td><td data-label="实际退租">' + int(totals.actualCheckoutCount) + '</td></tr>';
       const projectRows = DATA.contractStats.recentProjectPerformance || [];
-      const row = (r) => '<tr class="' + projectRowClass(r.name) + '"><td data-label="项目">' + projectDisplayName(r.name) + '</td><td data-label="新签">' + int(r.newCount) + '</td><td data-label="续租">' + int(r.renewalCount) + '</td><td data-label="换房">' + int(r.swapCount) + '</td><td data-label="实际退租">' + int(r.actualCheckoutCount) + '</td></tr>';
-      $('brief-project-table').innerHTML = projectRows.map(row).join('') + '<tr class="summary-row"><td data-label="项目">7天汇总</td><td data-label="新签">' + int(totals.newCount) + '</td><td data-label="续租">' + int(totals.renewalCount) + '</td><td data-label="换房">' + int(totals.swapCount) + '</td><td data-label="实际退租">' + int(totals.actualCheckoutCount) + '</td></tr>';
-      $('brief-person-table').innerHTML = (DATA.contractStats.recentPeoplePerformance || []).map((r) => '<tr><td data-label="签约人">' + r.name + '</td><td data-label="新签">' + int(r.newCount) + '</td><td data-label="续租">' + int(r.renewalCount) + '</td><td data-label="换房">' + int(r.swapCount) + '</td><td data-label="实际退租">' + int(r.actualCheckoutCount) + '</td></tr>').join('') + '<tr class="summary-row"><td data-label="签约人">7天汇总</td><td data-label="新签">' + int(totals.newCount) + '</td><td data-label="续租">' + int(totals.renewalCount) + '</td><td data-label="换房">' + int(totals.swapCount) + '</td><td data-label="实际退租">' + int(totals.actualCheckoutCount) + '</td></tr>';
+      const row = (r) => '<tr class="' + projectRowClass(r.name) + '"><td data-label="项目">' + projectDisplayName(r.name) + '</td><td data-label="新签">' + int(r.newCount) + '</td><td data-label="续租">' + int(r.renewalCount) + '</td><td data-label="其他">' + int(r.otherCount) + '</td><td data-label="实际退租">' + int(r.actualCheckoutCount) + '</td></tr>';
+      $('brief-project-table').innerHTML = projectRows.map(row).join('') + '<tr class="summary-row"><td data-label="项目">7天汇总</td><td data-label="新签">' + int(totals.newCount) + '</td><td data-label="续租">' + int(totals.renewalCount) + '</td><td data-label="其他">' + int(totals.otherCount) + '</td><td data-label="实际退租">' + int(totals.actualCheckoutCount) + '</td></tr>';
+      $('brief-person-table').innerHTML = (DATA.contractStats.recentPeoplePerformance || []).map((r) => '<tr><td data-label="签约人">' + r.name + '</td><td data-label="新签">' + int(r.newCount) + '</td><td data-label="续租">' + int(r.renewalCount) + '</td><td data-label="其他">' + int(r.otherCount) + '</td><td data-label="实际退租">' + int(r.actualCheckoutCount) + '</td></tr>').join('') + '<tr class="summary-row"><td data-label="签约人">7天汇总</td><td data-label="新签">' + int(totals.newCount) + '</td><td data-label="续租">' + int(totals.renewalCount) + '</td><td data-label="其他">' + int(totals.otherCount) + '</td><td data-label="实际退租">' + int(totals.actualCheckoutCount) + '</td></tr>';
     }
 
     function renderMonthlyContractDetails(){
-      const details = DATA.contractStats.monthlyDetails || {month:'',new:[],renewal:[],swap:[],actualCheckout:[]};
+      const details = DATA.contractStats.monthlyDetails || {month:'',new:[],renewal:[],other:[],actualCheckout:[]};
       const cells = [['日期','date'],['签约来源','signSource'],['楼栋','building'],['房间号','roomNo'],['顾客名字','customerName'],['起租日','leaseStart'],['退租日','leaseEnd'],['租赁周期','leasePeriod'],['签约人','signer']];
       const rowsHtml = (rows) => rows.length ? rows.map((row) => '<tr>' + cells.map(([label,key]) => '<td data-label="' + label + '">' + xhsSafe(row[key]) + '</td>').join('') + '</tr>').join('') : '<tr><td data-label="日期">本月暂无数据</td><td colspan="8">—</td></tr>';
-      $('contract-detail-period').textContent = (details.month || DATA.dataDate.slice(0,7)) + ' 本月合同数据；新签、续租和换房按签约日期，实际退房按“预退/实退”日期，合同编号去重并排除“换房清算”。';
+      $('contract-detail-period').textContent = (details.month || DATA.dataDate.slice(0,7)) + ' 本月合同数据；新签、续租和其他（换房/重签）按签约日期，实际退房按“预退/实退”日期，合同编号去重并排除“换房清算”。';
       $('contract-detail-new-count').textContent = '共 ' + int(details.new.length) + ' 条 · 日期从新到旧';
       $('contract-detail-renewal-count').textContent = '共 ' + int(details.renewal.length) + ' 条 · 日期从新到旧';
-      $('contract-detail-swap-count').textContent = '共 ' + int(details.swap.length) + ' 条 · 日期从新到旧';
+      $('contract-detail-other-count').textContent = '共 ' + int(details.other.length) + ' 条 · 日期从新到旧';
       $('contract-detail-checkout-count').textContent = '共 ' + int(details.actualCheckout.length) + ' 条 · 日期从新到旧';
       $('contract-detail-new-table').innerHTML = rowsHtml(details.new);
       $('contract-detail-renewal-table').innerHTML = rowsHtml(details.renewal);
-      $('contract-detail-swap-table').innerHTML = rowsHtml(details.swap);
+      $('contract-detail-other-table').innerHTML = rowsHtml(details.other);
       $('contract-detail-checkout-table').innerHTML = rowsHtml(details.actualCheckout);
     }
 
