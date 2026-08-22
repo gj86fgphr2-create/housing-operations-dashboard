@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-22T14:01:11.981330+08:00",
+  "generatedAt": "2026-08-22T14:05:52.418462+08:00",
   "source": "yuxiaor-server-export",
   "snapshotDate": "2026-08-22",
   "dashboardUrl": "https://gj86fgphr2-create.github.io/housing-operations-dashboard/#operations-brief",
@@ -52,13 +52,13 @@
   "performance": {
     "currentMonth": {
       "newCount": 73,
-      "renewalCount": 35,
+      "renewalCount": 34,
       "actualCheckoutCount": 128,
       "checkoutRenewalCount": 29
     },
     "previousMonth": {
       "newCount": 169,
-      "renewalCount": 81,
+      "renewalCount": 74,
       "actualCheckoutCount": 224,
       "checkoutRenewalCount": 76
     },
@@ -67,7 +67,7 @@
         "date": "2026-08-16",
         "newCount": 4,
         "renewalCount": 1,
-        "swapCount": 0,
+        "otherCount": 0,
         "actualCheckoutCount": 7,
         "reservationCount": 1
       },
@@ -75,7 +75,7 @@
         "date": "2026-08-17",
         "newCount": 5,
         "renewalCount": 2,
-        "swapCount": 1,
+        "otherCount": 1,
         "actualCheckoutCount": 7,
         "reservationCount": 5
       },
@@ -83,7 +83,7 @@
         "date": "2026-08-18",
         "newCount": 4,
         "renewalCount": 3,
-        "swapCount": 0,
+        "otherCount": 0,
         "actualCheckoutCount": 9,
         "reservationCount": 0
       },
@@ -91,7 +91,7 @@
         "date": "2026-08-19",
         "newCount": 2,
         "renewalCount": 1,
-        "swapCount": 0,
+        "otherCount": 0,
         "actualCheckoutCount": 5,
         "reservationCount": 4
       },
@@ -99,7 +99,7 @@
         "date": "2026-08-20",
         "newCount": 2,
         "renewalCount": 1,
-        "swapCount": 1,
+        "otherCount": 1,
         "actualCheckoutCount": 6,
         "reservationCount": 2
       },
@@ -107,7 +107,7 @@
         "date": "2026-08-21",
         "newCount": 1,
         "renewalCount": 1,
-        "swapCount": 0,
+        "otherCount": 0,
         "actualCheckoutCount": 10,
         "reservationCount": 5
       },
@@ -115,7 +115,7 @@
         "date": "2026-08-22",
         "newCount": 1,
         "renewalCount": 0,
-        "swapCount": 0,
+        "otherCount": 0,
         "actualCheckoutCount": 7,
         "reservationCount": 2
       }
@@ -125,105 +125,105 @@
         "name": "北亭项目",
         "newCount": 7,
         "renewalCount": 2,
-        "swapCount": 0,
+        "otherCount": 0,
         "actualCheckoutCount": 14
       },
       {
         "name": "北亭初期项目",
         "newCount": 1,
         "renewalCount": 0,
-        "swapCount": 0,
+        "otherCount": 0,
         "actualCheckoutCount": 1
       },
       {
         "name": "北亭整体项目",
         "newCount": 6,
         "renewalCount": 2,
-        "swapCount": 0,
+        "otherCount": 0,
         "actualCheckoutCount": 13
       },
       {
         "name": "小谷围项目",
         "newCount": 4,
         "renewalCount": 3,
-        "swapCount": 0,
+        "otherCount": 0,
         "actualCheckoutCount": 17
       },
       {
         "name": "北亭研寓项目",
         "newCount": 3,
         "renewalCount": 2,
-        "swapCount": 0,
+        "otherCount": 0,
         "actualCheckoutCount": 9
       },
       {
         "name": "南亭研寓项目",
         "newCount": 1,
         "renewalCount": 1,
-        "swapCount": 0,
+        "otherCount": 0,
         "actualCheckoutCount": 8
       },
       {
         "name": "公司自持项目",
         "newCount": 5,
         "renewalCount": 1,
-        "swapCount": 0,
+        "otherCount": 0,
         "actualCheckoutCount": 6
       },
       {
         "name": "小筑项目",
         "newCount": 2,
         "renewalCount": 0,
-        "swapCount": 2,
+        "otherCount": 2,
         "actualCheckoutCount": 11
       },
       {
         "name": "城北小筑A",
         "newCount": 2,
         "renewalCount": 0,
-        "swapCount": 2,
+        "otherCount": 2,
         "actualCheckoutCount": 9
       },
       {
         "name": "城北小筑B",
         "newCount": 0,
         "renewalCount": 0,
-        "swapCount": 0,
+        "otherCount": 0,
         "actualCheckoutCount": 2
       },
       {
         "name": "城北小筑C",
         "newCount": 0,
         "renewalCount": 0,
-        "swapCount": 0,
+        "otherCount": 0,
         "actualCheckoutCount": 0
       },
       {
         "name": "南亭15座独立项目",
         "newCount": 1,
         "renewalCount": 0,
-        "swapCount": 0,
+        "otherCount": 0,
         "actualCheckoutCount": 1
       },
       {
         "name": "南亭18座独立项目",
         "newCount": 0,
         "renewalCount": 0,
-        "swapCount": 0,
+        "otherCount": 0,
         "actualCheckoutCount": 0
       },
       {
         "name": "南亭21座独立项目",
         "newCount": 0,
         "renewalCount": 1,
-        "swapCount": 0,
+        "otherCount": 0,
         "actualCheckoutCount": 1
       },
       {
         "name": "城北小筑09座独立项目",
         "newCount": 0,
         "renewalCount": 1,
-        "swapCount": 0,
+        "otherCount": 0,
         "actualCheckoutCount": 1
       }
     ],
