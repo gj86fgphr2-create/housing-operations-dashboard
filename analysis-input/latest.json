@@ -1,21 +1,21 @@
 {
-  "generatedAt": "2026-08-22T16:01:47.708528+08:00",
+  "generatedAt": "2026-08-22T17:01:15.762114+08:00",
   "source": "yuxiaor-server-export",
   "snapshotDate": "2026-08-22",
   "dashboardUrl": "https://gj86fgphr2-create.github.io/housing-operations-dashboard/#operations-brief",
   "overview": {
     "rooms": 692,
     "occupied": 568,
-    "comprehensive": 616,
+    "comprehensive": 615,
     "vacancy": 124,
-    "rentableVacancy": 63,
-    "unrentableVacancy": 61,
+    "rentableVacancy": 61,
+    "unrentableVacancy": 63,
     "occupancyRate": 0.8208092485549133,
-    "comprehensiveRate": 0.8901734104046243
+    "comprehensiveRate": 0.888728323699422
   },
   "riskSignals": {
-    "lockCount": 26,
-    "preorderCount": 33,
+    "lockCount": 28,
+    "preorderCount": 32,
     "moveInCount": 15,
     "mappedUnknownCount": 0
   },
@@ -24,17 +24,17 @@
     "reconciliation": {
       "lockMonitoring": {
         "field": "锁房备注",
-        "sourceCount": 26,
-        "dashboardCount": 26,
+        "sourceCount": 28,
+        "dashboardCount": 28,
         "ok": true
       },
       "vacancyMonitoring": {
         "field": "状态",
-        "sourceRentableCount": 63,
-        "sourceUnrentableCount": 61,
+        "sourceRentableCount": 61,
+        "sourceUnrentableCount": 63,
         "sourceMappedUnknownCount": 0,
-        "dashboardRentableCount": 63,
-        "dashboardUnrentableCount": 61,
+        "dashboardRentableCount": 61,
+        "dashboardUnrentableCount": 63,
         "dashboardVacancyCount": 124,
         "mapping": "未知状态计入空房不可租中的其他锁房",
         "ok": true
@@ -42,9 +42,9 @@
       "comprehensiveMonitoring": {
         "definition": "在租中/已出租+空房不可租中的已预订和将搬入",
         "occupiedCount": 568,
-        "preorderCount": 33,
+        "preorderCount": 32,
         "moveInCount": 15,
-        "dashboardComprehensiveCount": 616,
+        "dashboardComprehensiveCount": 615,
         "ok": true
       }
     }
@@ -77,7 +77,7 @@
         "renewalCount": 2,
         "otherCount": 1,
         "actualCheckoutCount": 7,
-        "reservationCount": 5
+        "reservationCount": 4
       },
       {
         "date": "2026-08-18",
