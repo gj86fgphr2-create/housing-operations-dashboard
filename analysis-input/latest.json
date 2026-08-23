@@ -1,21 +1,21 @@
 {
-  "generatedAt": "2026-08-23T18:01:45.096381+08:00",
+  "generatedAt": "2026-08-23T19:01:47.545751+08:00",
   "source": "yuxiaor-server-export",
   "snapshotDate": "2026-08-23",
   "dashboardUrl": "https://gj86fgphr2-create.github.io/housing-operations-dashboard/#operations-brief",
   "overview": {
     "rooms": 692,
     "occupied": 568,
-    "comprehensive": 619,
+    "comprehensive": 622,
     "vacancy": 124,
-    "rentableVacancy": 57,
-    "unrentableVacancy": 67,
+    "rentableVacancy": 51,
+    "unrentableVacancy": 73,
     "occupancyRate": 0.8208092485549133,
-    "comprehensiveRate": 0.8945086705202312
+    "comprehensiveRate": 0.8988439306358381
   },
   "riskSignals": {
-    "lockCount": 36,
-    "preorderCount": 31,
+    "lockCount": 40,
+    "preorderCount": 34,
     "moveInCount": 20,
     "mappedUnknownCount": 0
   },
@@ -24,17 +24,17 @@
     "reconciliation": {
       "lockMonitoring": {
         "field": "锁房备注",
-        "sourceCount": 36,
-        "dashboardCount": 36,
+        "sourceCount": 40,
+        "dashboardCount": 40,
         "ok": true
       },
       "vacancyMonitoring": {
         "field": "状态",
-        "sourceRentableCount": 57,
-        "sourceUnrentableCount": 67,
+        "sourceRentableCount": 51,
+        "sourceUnrentableCount": 73,
         "sourceMappedUnknownCount": 0,
-        "dashboardRentableCount": 57,
-        "dashboardUnrentableCount": 67,
+        "dashboardRentableCount": 51,
+        "dashboardUnrentableCount": 73,
         "dashboardVacancyCount": 124,
         "mapping": "未知状态计入空房不可租中的其他锁房",
         "ok": true
@@ -42,9 +42,9 @@
       "comprehensiveMonitoring": {
         "definition": "在租中/已出租+空房不可租中的已预订和将搬入",
         "occupiedCount": 568,
-        "preorderCount": 31,
+        "preorderCount": 34,
         "moveInCount": 20,
-        "dashboardComprehensiveCount": 619,
+        "dashboardComprehensiveCount": 622,
         "ok": true
       }
     }
@@ -117,7 +117,7 @@
         "renewalCount": 0,
         "otherCount": 0,
         "actualCheckoutCount": 2,
-        "reservationCount": 2
+        "reservationCount": 3
       }
     ],
     "projects": [
@@ -231,7 +231,7 @@
       "new": 4,
       "renewal": 0,
       "actualCheckout": 2,
-      "reservation": 2
+      "reservation": 3
     }
   },
   "today": {
@@ -239,6 +239,6 @@
     "newCount": 4,
     "renewalCount": 0,
     "actualCheckoutCount": 2,
-    "reservationCount": 2
+    "reservationCount": 3
   }
 }
