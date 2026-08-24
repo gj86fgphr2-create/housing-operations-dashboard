@@ -741,6 +741,73 @@ def monthly_contract_details():
 
 building_rows={row["name"]:row for row in current["buildingData"]}
 
+def build_overview_new():
+    """Independent room-level overview; does not change existing dashboard metrics."""
+    def room_keys(room_id,address):
+        keys=set()
+        if norm(room_id): keys.add("id:"+norm(room_id))
+        if norm(address): keys.add("address:"+norm(address))
+        return keys
+
+    def contract_room_keys(filename,header_row,required_status,status_names,address_names):
+        contract_ws=load_workbook(run_dir/filename,read_only=True,data_only=True).active
+        contract_headers=[cell.value for cell in contract_ws[header_row]]
+        room_i=idx(contract_headers,"房源ID")
+        address_i=idx(contract_headers,*address_names)
+        status_i=idx(contract_headers,*status_names)
+        keys=set()
+        for row in contract_ws.iter_rows(min_row=header_row+1,values_only=True):
+            if norm(row[status_i])==required_status:
+                keys.update(room_keys(row[room_i],row[address_i]))
+        return keys
+
+    preorder_keys=contract_room_keys("预定合同.xlsx",1,"已付定",("状态",),("地址","房源地址"))
+    moving_keys=contract_room_keys("将搬入合同.xlsx",3,"将搬入",("合同状态","状态"),("房源地址","地址"))
+    ws=load_workbook(run_dir/"房源详情.xlsx",read_only=True,data_only=True).active
+    headers=[cell.value for cell in ws[3]]
+    room_i=idx(headers,"房源ID")
+    address_i=idx(headers,"房源地址","地址")
+    status_i=idx(headers,"状态")
+    lock_i=idx(headers,"锁房备注")
+    result={"totalRooms":0,"occupiedCount":0,"rentableCount":0,"unavailableCount":0,"lockedCount":0,"preorderCount":0,"moveInCount":0,"otherUnavailableCount":0,"sourceOtherStatusCount":0}
+    status_counts=defaultdict(int)
+    overlaps={"lockedAndPreorder":0,"lockedAndMoveIn":0,"preorderAndMoveIn":0}
+    known_states={"已出租","在租中","空房可租","空房不可租"}
+    for row in ws.iter_rows(min_row=4,values_only=True):
+        if not any(value not in (None,"") for value in row): continue
+        result["totalRooms"]+=1
+        state=norm(row[status_i])
+        remark=norm(row[lock_i])
+        keys=room_keys(row[room_i],row[address_i])
+        status_counts[state or "空白状态"]+=1
+        if state in {"已出租","在租中"}:
+            result["occupiedCount"]+=1
+            continue
+        if state=="空房可租":
+            result["rentableCount"]+=1
+            continue
+        result["unavailableCount"]+=1
+        if state not in known_states: result["sourceOtherStatusCount"]+=1
+        has_lock=bool(remark)
+        has_preorder=bool(keys & preorder_keys)
+        has_moving=bool(keys & moving_keys)
+        if has_lock and has_preorder: overlaps["lockedAndPreorder"]+=1
+        if has_lock and has_moving: overlaps["lockedAndMoveIn"]+=1
+        if has_preorder and has_moving: overlaps["preorderAndMoveIn"]+=1
+        if has_lock: result["lockedCount"]+=1
+        elif has_preorder: result["preorderCount"]+=1
+        elif has_moving: result["moveInCount"]+=1
+        else: result["otherUnavailableCount"]+=1
+    result["statusCounts"]=[{"status":name,"count":count} for name,count in sorted(status_counts.items())]
+    result["overlapsResolved"]=overlaps
+    result["priority"]=["锁房","预定","将搬入","其他不可租"]
+    result["validation"]={
+        "baseReconciled":result["occupiedCount"]+result["rentableCount"]+result["unavailableCount"]==result["totalRooms"],
+        "unavailableReconciled":result["lockedCount"]+result["preorderCount"]+result["moveInCount"]+result["otherUnavailableCount"]==result["unavailableCount"],
+    }
+    if not all(result["validation"].values()): raise RuntimeError(f"Overview-new reconciliation failed: {result}")
+    return result
+
 def apply_house_monitoring():
     """Use 房源详情 as the authoritative source for locks and vacancy availability."""
     def contract_room_ids(filename, header_row, required_status, *status_names):
@@ -973,7 +1040,7 @@ contract_stats.setdefault("projectMonthlyUnmapped",{"newCount":0,"renewalCount":
 contract_stats.setdefault("totals",{})
 contract_stats["uniqueContracts"]=sum(1 for f in ("在租中合同.xlsx","将搬入合同.xlsx","已退租合同.xlsx") for _ in load_workbook(run_dir/f,read_only=True).active.iter_rows(min_row=4,values_only=True))
 
-payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods,"ziyinOccupancy":ziyin_occupancy,"xhsAccountAudit":build_xhs_account_audit(old.get("xhsAccountAudit")),"xhsContent":build_xhs_content(old.get("xhsContent")),"xhsNotePublished":build_xhs_note_published(old.get("xhsNotePublished")),"xhsLeads":build_xhs_leads(old.get("xhsLeads")),"xhsAdFlow":build_xhs_ad_flow(old.get("xhsAdFlow")),"customerData":build_customer_data(old.get("customerData"))}
+payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods,"overviewNew":build_overview_new(),"ziyinOccupancy":ziyin_occupancy,"xhsAccountAudit":build_xhs_account_audit(old.get("xhsAccountAudit")),"xhsContent":build_xhs_content(old.get("xhsContent")),"xhsNotePublished":build_xhs_note_published(old.get("xhsNotePublished")),"xhsLeads":build_xhs_leads(old.get("xhsLeads")),"xhsAdFlow":build_xhs_ad_flow(old.get("xhsAdFlow")),"customerData":build_customer_data(old.get("customerData"))}
 rendered=template[:payload_span[0]]+json.dumps(payload,ensure_ascii=False,separators=(",",":"))+template[payload_span[1]:]
 required=['class="nav desktop-nav"','data-desktop-module="xiaohongshu"','data-desktop-module="yuxiaor"','data-desktop-menu="xiaohongshu"','data-desktop-menu="yuxiaor"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','data-dashboard-view="occupancy-ziyin"','id="occupancy-ziyin"','ziyin-project-table','function renderZiyinOccupancy()','"ziyinOccupancy"','occupiedOverlap','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','xhs-account-updated','xhs-account-status-list','adCollectedAt','adCollectedOk','leadCollectedAt','leadCollectedOk','noteCollectedAt','noteCollectedOk','function xhsCollectedHour(','function xhsCollectedBadge(','class="xhs-collection-badge ok"','<th>聚光</th><th>留资</th><th>笔记</th>','xhs-note-count-table','xhs-view-count-table','function xhsMetricTotal(account,weeks,field)','<th>汇总</th>','xhs-daily-reading-chart','id="xhs-leads"','xhs-goal-table','xhs-lead-opened-table','xhs-lead-copied-table','function xhsLeadWeekHeading(','xhs-week-day-badge','id="xhs-lead-details"','xhs-lead-detail-account','xhs-lead-detail-table','id="xhs-ad-flow"','xhs-ad-account-table','xhs-ad-note-table','id="xhs-ad-start-date"','id="xhs-ad-end-date"','function xhsAdPrepareDateControls(','id="xhs-ad-team-filter"','id="xhs-ad-account-filter"','id="xhs-ad-matrix-head"','function renderXhsAdChart(','function renderXhsAdFlow()','function renderXhsAccountStatus()','function xhsGoalCell(','function renderXhsLeads()','function renderXhsLeadDetails()','"xhsAccountAudit"','"targetMonth"','"targets"','"dailyRows"','"xhsLeads"','"xhsAdFlow"']
 required=[{'id="xhs-ad-matrix-head"':'class="xhs-ad-matrix-head"'}.get(marker,marker) for marker in required]
@@ -986,12 +1053,14 @@ required += ['数据明细','笔记发布明细','留资数据明细','聚光投
 required += ['class="desktop-home-link"','class="desktop-nav-groups"','class="desktop-nav-group"','class="desktop-module-toggle"','aria-expanded="false"','aria-expanded="true"']
 required += ['data-desktop-module="customer"','data-desktop-menu="customer"','data-mobile-module="customer"','data-mobile-menu="customer"','id="customer-data"','data-dashboard-view="customer-data"','id="customer-data-updated"','id="customer-daily-table"','id="customer-funnel-table"','function renderCustomerData()','"customerData"']
 required += ['function xhsNoteCountClass(','function xhsMetricCell(','xhs-note-count-green','xhs-note-count-yellow','xhs-note-count-pink','xhs-note-count-red','if(count>=6)','if(count===5)','if(count===4)']
+required += ['data-dashboard-view="overview-new"','id="overview-new"','function renderOverviewNew()','"overviewNew"','overview-new-breakdown-table','overview-new-validation']
 if any(x not in rendered for x in required): raise RuntimeError("Full dashboard style validation failed")
 if rendered.count('data-dashboard-view="xhs-traffic"') < 2: raise RuntimeError("XHS traffic menu must exist on desktop and mobile")
 if rendered.count('data-dashboard-view="xhs-note-published"') < 2: raise RuntimeError("XHS note-published menu must exist on desktop and mobile")
 if rendered.count('data-dashboard-view="xhs-lead-details"') < 2: raise RuntimeError("XHS lead-details menu must exist on desktop and mobile")
 if rendered.count('data-dashboard-view="xhs-ad-details"') < 2: raise RuntimeError("XHS ad-details menu must exist on desktop and mobile")
 if rendered.count('data-dashboard-view="customer-data"') < 2: raise RuntimeError("Customer data menu must exist on desktop and mobile")
+if rendered.count('data-dashboard-view="overview-new"') < 2: raise RuntimeError("Overview-new menu must exist on desktop and mobile")
 customer_rows=payload["customerData"].get("dailyRows",[])
 if customer_rows:
     customer_fields=("published","reading","inbound","leads","wechatAdds","actualTours","signed","deposits")

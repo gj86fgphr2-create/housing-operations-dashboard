@@ -76,7 +76,10 @@
       .desktop-label{display:none}.mobile-label{display:inline}.checkout-forecast-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}.table-wrap .checkout-forecast-table,.checkout-detail-grid .checkout-forecast-table{display:table;min-width:0;width:100%;table-layout:fixed}.checkout-forecast-table thead{display:table-header-group}.checkout-forecast-table tbody{display:table-row-group}.checkout-forecast-table tr,.checkout-forecast-table tr.project-child{display:table-row;border:0;border-radius:0;box-shadow:none;background:var(--surface)}.checkout-forecast-table th,.checkout-forecast-table td,.checkout-forecast-table tr.project-child td{display:table-cell;padding:9px 3px;border-bottom:1px solid var(--line);text-align:right;font-size:9.5px;white-space:nowrap}.checkout-forecast-table th:first-child,.checkout-forecast-table td:first-child,.checkout-forecast-table tr.project-child td:first-child{display:table-cell;width:32%;padding:9px 5px;text-align:left;font-size:10px;background:transparent}.checkout-forecast-table th:nth-child(n+2),.checkout-forecast-table td:nth-child(n+2){width:17%}.checkout-forecast-table thead th,.checkout-forecast-table thead th:first-child{background:#eef4f9!important}.checkout-forecast-table td::before{content:none}.checkout-forecast-table .project-parent td,.checkout-forecast-table .project-parent td:first-child{background:#e7f0f7!important;font-weight:700}.checkout-forecast-table .project-child td{font-size:9px}.checkout-forecast-table .project-child td:first-child{padding-left:12px;font-weight:400}
     }
     @media(max-width:680px){.xhs-traffic-week-headline{display:block}.xhs-traffic-week-headline .field{display:block;min-width:0;margin-top:12px}.xhs-traffic-week-headline select{width:100%}.xhs-traffic-pagination{justify-content:space-between}.xhs-traffic-pagination span{min-width:0}}
-    @media(max-width:360px){.main{padding-left:10px;padding-right:10px}.kpis{grid-template-columns:1fr}.kpi{min-height:94px}.table-wrap tr{grid-template-columns:1fr}.table-wrap td{grid-column:1/-1}}
+    .overview-new-kpis{grid-template-columns:repeat(3,minmax(180px,1fr))}.overview-new-audit-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,.65fr);gap:16px;margin-top:16px}.overview-new-breakdown-table{min-width:620px}.overview-new-equation{margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:#f7fafc;color:#173b63;font-size:13px;font-weight:700;line-height:1.65}.overview-new-validation{margin:14px 0 0;padding:10px 12px;border-radius:9px;background:var(--green-soft);color:#256b45;font-size:12px;font-weight:700}.overview-new-validation.warn{background:var(--red-soft);color:#9e3935}
+    @media(max-width:900px){.overview-new-audit-grid{grid-template-columns:1fr}}
+    @media(max-width:680px){.overview-new-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.overview-new-breakdown-table{min-width:620px}}
+    @media(max-width:360px){.main{padding-left:10px;padding-right:10px}.kpis{grid-template-columns:1fr}.kpi{min-height:94px}.table-wrap tr{grid-template-columns:1fr}.table-wrap td{grid-column:1/-1}.overview-new-kpis{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -87,13 +90,13 @@
         <button type="button" class="desktop-home-link" data-desktop-home><span class="desktop-home-icon">首</span><span class="desktop-home-copy"><strong>工作台首页</strong><small>运营数据总览</small></span></button>
         <div class="desktop-nav-groups">
           <section class="desktop-nav-group"><button type="button" class="desktop-module-toggle" data-desktop-module="xiaohongshu" aria-expanded="false"><span class="desktop-module-icon">红</span><span class="desktop-module-copy"><strong>小红书运营</strong><small>内容、留资与投流</small></span><span class="desktop-module-chevron">⌄</span></button><nav class="desktop-secondary-nav" data-desktop-menu="xiaohongshu" aria-label="小红书菜单" hidden><span class="desktop-secondary-title">内容运营</span><a href="#xhs-account" data-dashboard-view="xhs-account">账户</a><a href="#xhs-notes" data-dashboard-view="xhs-notes">笔记</a><a href="#xhs-leads" data-dashboard-view="xhs-leads">留资与目标</a><span class="desktop-secondary-title">流量与投放</span><a href="#xhs-traffic" data-dashboard-view="xhs-traffic">流量情况</a><a href="#xhs-ad-flow" data-dashboard-view="xhs-ad-flow">聚光投流</a><span class="desktop-secondary-title">数据明细</span><a href="#xhs-note-published" data-dashboard-view="xhs-note-published">笔记发布明细</a><a href="#xhs-lead-details" data-dashboard-view="xhs-lead-details">留资数据明细</a><a href="#xhs-ad-details" data-dashboard-view="xhs-ad-details">聚光投放明细</a></nav></section>
-          <section class="desktop-nav-group"><button type="button" class="desktop-module-toggle" data-desktop-module="yuxiaor" aria-expanded="true"><span class="desktop-module-icon">寓</span><span class="desktop-module-copy"><strong>寓小二经营</strong><small>房源、业绩与入住率</small></span><span class="desktop-module-chevron">⌄</span></button><nav class="desktop-secondary-nav" data-desktop-menu="yuxiaor" aria-label="寓小二菜单"><span class="desktop-secondary-title">经营概览</span><a href="#operations-brief" data-dashboard-view="operations-brief">简报</a><a href="#overview" data-dashboard-view="overview">总览</a><a href="#contracts" data-dashboard-view="performance">业绩</a><span class="desktop-secondary-title">数据查阅</span><a href="#contract-details" data-dashboard-view="contract-details">数据明细</a><span class="desktop-secondary-title">入住管理</span><a href="#occupancy" data-dashboard-view="occupancy">入住率</a><a href="#occupancy-ziyin" data-dashboard-view="occupancy-ziyin">入住率（紫茵）</a></nav></section>
+          <section class="desktop-nav-group"><button type="button" class="desktop-module-toggle" data-desktop-module="yuxiaor" aria-expanded="true"><span class="desktop-module-icon">寓</span><span class="desktop-module-copy"><strong>寓小二经营</strong><small>房源、业绩与入住率</small></span><span class="desktop-module-chevron">⌄</span></button><nav class="desktop-secondary-nav" data-desktop-menu="yuxiaor" aria-label="寓小二菜单"><span class="desktop-secondary-title">经营概览</span><a href="#operations-brief" data-dashboard-view="operations-brief">简报</a><a href="#overview" data-dashboard-view="overview">总览</a><a href="#overview-new" data-dashboard-view="overview-new">总览（新）</a><a href="#contracts" data-dashboard-view="performance">业绩</a><span class="desktop-secondary-title">数据查阅</span><a href="#contract-details" data-dashboard-view="contract-details">数据明细</a><span class="desktop-secondary-title">入住管理</span><a href="#occupancy" data-dashboard-view="occupancy">入住率</a><a href="#occupancy-ziyin" data-dashboard-view="occupancy-ziyin">入住率（紫茵）</a></nav></section>
           <section class="desktop-nav-group"><button type="button" class="desktop-module-toggle" data-desktop-module="customer" aria-expanded="false"><span class="desktop-module-icon">客</span><span class="desktop-module-copy"><strong>客服数据</strong><small>运营漏斗与转化</small></span><span class="desktop-module-chevron">⌄</span></button><nav class="desktop-secondary-nav" data-desktop-menu="customer" aria-label="客服数据菜单" hidden><span class="desktop-secondary-title">近 7 天</span><a href="#customer-data" data-dashboard-view="customer-data">客服数据</a></nav></section>
         </div>
       </div>
       <div class="mobile-nav-shell" aria-label="手机端工作台导航">
         <nav class="mobile-menu mobile-primary-nav" data-mobile-menu="primary"><button type="button" data-mobile-module="xiaohongshu">小红书</button><button type="button" data-mobile-module="yuxiaor">寓小二</button><button type="button" data-mobile-module="customer">客服数据</button></nav>
-        <nav class="mobile-menu mobile-secondary-nav" data-mobile-menu="yuxiaor" hidden><a href="#operations-brief" data-dashboard-view="operations-brief">简报</a><a href="#overview" data-dashboard-view="overview">总览</a><button type="button" data-mobile-home>首页</button><a href="#contracts" data-dashboard-view="performance">业绩</a><a href="#contract-details" data-dashboard-view="contract-details">明细</a><a href="#occupancy" data-dashboard-view="occupancy">入住率</a></nav>
+        <nav class="mobile-menu mobile-secondary-nav" data-mobile-menu="yuxiaor" hidden><a href="#operations-brief" data-dashboard-view="operations-brief">简报</a><a href="#overview" data-dashboard-view="overview">总览</a><button type="button" data-mobile-home>首页</button><a href="#overview-new" data-dashboard-view="overview-new">总览（新）</a><a href="#contracts" data-dashboard-view="performance">业绩</a><a href="#contract-details" data-dashboard-view="contract-details">明细</a><a href="#occupancy" data-dashboard-view="occupancy">入住率</a></nav>
         <nav class="mobile-menu mobile-secondary-nav xhs-menu" data-mobile-menu="xiaohongshu" hidden><a href="#xhs-account" data-dashboard-view="xhs-account">账户</a><a href="#xhs-notes" data-dashboard-view="xhs-notes">笔记</a><button type="button" data-mobile-home>首页</button><a href="#xhs-leads" data-dashboard-view="xhs-leads">留资与目标</a><a href="#xhs-traffic" data-dashboard-view="xhs-traffic">流量情况</a><a href="#xhs-ad-flow" data-dashboard-view="xhs-ad-flow">聚光投流</a><button type="button" data-mobile-submenu="xhs-details">数据明细</button></nav>
         <nav class="mobile-menu mobile-secondary-nav" data-mobile-menu="xhs-details" aria-label="小红书数据明细三级菜单" hidden><button type="button" data-mobile-submenu="xiaohongshu">返回</button><a href="#xhs-note-published" data-dashboard-view="xhs-note-published">笔记发布明细</a><a href="#xhs-lead-details" data-dashboard-view="xhs-lead-details">留资数据明细</a><a href="#xhs-ad-details" data-dashboard-view="xhs-ad-details">聚光投放明细</a></nav>
         <nav class="mobile-menu mobile-secondary-nav" data-mobile-menu="customer" aria-label="客服数据菜单" hidden><a href="#customer-data" data-dashboard-view="customer-data">客服数据</a><button type="button" data-mobile-home>首页</button></nav>
@@ -240,6 +243,22 @@
         </div>
       </section>
 
+      <section class="section" id="overview-new" data-views="overview-new">
+        <div class="section-head"><div><h2>总览（新）</h2><p>以《房源详情》为房源全集；空房不可租按“锁房 → 预定 → 将搬入 → 其他不可租”互斥归类。</p></div></div>
+        <div class="kpis overview-new-kpis">
+          <article class="kpi blue"><div class="label">总房源数</div><div class="value" id="overview-new-total">—</div><div class="hint">房源详情有效房源</div></article>
+          <article class="kpi green"><div class="label">在租中房源数</div><div class="value" id="overview-new-occupied">—</div><div class="hint" id="overview-new-occupied-hint">状态为在租中或已出租</div></article>
+          <article class="kpi orange"><div class="label">空房可租房源数</div><div class="value" id="overview-new-rentable">—</div><div class="hint" id="overview-new-rentable-hint">状态为“空房可租”</div></article>
+          <article class="kpi red"><div class="label">不可租中的锁房数</div><div class="value" id="overview-new-locked">—</div><div class="hint">优先按锁房备注识别</div></article>
+          <article class="kpi purple"><div class="label">不可租中的预定数</div><div class="value" id="overview-new-preorder">—</div><div class="hint">剩余房源匹配已付定合同</div></article>
+          <article class="kpi blue"><div class="label">不可租中的将搬入数</div><div class="value" id="overview-new-moving">—</div><div class="hint">再次匹配将搬入合同</div></article>
+        </div>
+        <div class="overview-new-audit-grid">
+          <article class="panel"><h3>空房不可租构成</h3><p class="panel-note">同一房源只计入一个分类；合同按房源ID及房源地址匹配。</p><div class="table-wrap"><table class="overview-new-breakdown-table"><thead><tr><th>分类</th><th>数量</th><th>占不可租比例</th><th>识别规则</th></tr></thead><tbody id="overview-new-breakdown-table"></tbody></table></div></article>
+          <article class="panel"><h3>口径校验</h3><div class="overview-new-equation" id="overview-new-base-equation">—</div><div class="overview-new-equation" id="overview-new-unavailable-equation">—</div><p class="overview-new-validation" id="overview-new-validation">正在校验…</p><p class="panel-note" id="overview-new-other-status">—</p></article>
+        </div>
+      </section>
+
       <section class="section" id="overview" data-views="overview occupancy">
         <div class="section-head"><div><h2 id="overview-title">运营总览</h2><p>入住数已包含当天预定并去重</p></div></div>
         <div class="kpis">
@@ -352,6 +371,32 @@
       const items = dataset();
       if (!items.some((d) => d.name === state.selected)) state.selected = state.scope === 'project' ? '全部房源汇总' : items[0].name;
       select.innerHTML = items.map((d) => '<option value="' + d.name.replace(/"/g,'&quot;') + '"' + (d.name === state.selected ? ' selected' : '') + '>' + projectDisplayName(d.name) + '</option>').join('');
+    }
+
+    function renderOverviewNew(){
+      const d=DATA.overviewNew || {};
+      $('overview-new-total').textContent=int(d.totalRooms);
+      $('overview-new-occupied').textContent=int(d.occupiedCount);
+      $('overview-new-rentable').textContent=int(d.rentableCount);
+      $('overview-new-locked').textContent=int(d.lockedCount);
+      $('overview-new-preorder').textContent=int(d.preorderCount);
+      $('overview-new-moving').textContent=int(d.moveInCount);
+      $('overview-new-occupied-hint').textContent='占总房源 '+pct(d.totalRooms ? d.occupiedCount/d.totalRooms : 0);
+      $('overview-new-rentable-hint').textContent='占总房源 '+pct(d.totalRooms ? d.rentableCount/d.totalRooms : 0);
+      const unavailable=Number(d.unavailableCount || 0);
+      const rows=[
+        ['锁房',d.lockedCount,'锁房备注非空，最高优先级'],
+        ['预定',d.preorderCount,'剩余房源匹配状态为“已付定”的预定合同'],
+        ['将搬入',d.moveInCount,'再次匹配状态为“将搬入”的合同'],
+        ['其他不可租',d.otherUnavailableCount,'未匹配以上分类的其他状态房源'],
+      ];
+      $('overview-new-breakdown-table').innerHTML=rows.map((row) => '<tr><td data-label="分类">'+row[0]+'</td><td data-label="数量">'+int(row[1])+'</td><td data-label="占不可租比例" class="rate">'+pct(unavailable ? Number(row[1] || 0)/unavailable : 0)+'</td><td data-label="识别规则">'+row[2]+'</td></tr>').join('')+'<tr class="summary-row"><td data-label="分类">空房不可租合计</td><td data-label="数量">'+int(unavailable)+'</td><td data-label="占不可租比例">100%</td><td data-label="识别规则">四类互斥汇总</td></tr>';
+      $('overview-new-base-equation').textContent=int(d.occupiedCount)+' 在租中 ＋ '+int(d.rentableCount)+' 空房可租 ＋ '+int(d.unavailableCount)+' 空房不可租 ＝ '+int(d.totalRooms)+' 总房源';
+      $('overview-new-unavailable-equation').textContent=int(d.lockedCount)+' 锁房 ＋ '+int(d.preorderCount)+' 预定 ＋ '+int(d.moveInCount)+' 将搬入 ＋ '+int(d.otherUnavailableCount)+' 其他 ＝ '+int(d.unavailableCount)+' 空房不可租';
+      const ok=Boolean(d.validation?.baseReconciled && d.validation?.unavailableReconciled);
+      $('overview-new-validation').textContent=ok ? '✓ 两层统计均已核对一致' : '⚠ 统计未通过一致性校验';
+      $('overview-new-validation').classList.toggle('warn',!ok);
+      $('overview-new-other-status').textContent='房源详情中的其他或空白状态：'+int(d.sourceOtherStatusCount)+' 套，已统一纳入空房不可租。';
     }
 
     function renderKpis(d){
@@ -1065,7 +1110,7 @@
       $('customer-source-note').textContent=content.sourceNote || '同日跨来源汇总，不代表按客户 ID 追踪；个别单日比例可能超过 100%。';
     }
     function render(){ const d=current(); renderKpis(d); renderCheckout(d); }
-    const viewByHash = {'#operations-brief':'operations-brief','#overview':'overview','#checkout-pressure':'occupancy','#contracts':'performance','#contract-details':'contract-details','#occupancy':'occupancy','#occupancy-ziyin':'occupancy-ziyin','#xhs-account':'xhs-account','#xhs-notes':'xhs-notes','#xhs-note-published':'xhs-note-published','#xhs-leads':'xhs-leads','#xhs-lead-details':'xhs-lead-details','#xhs-ad-details':'xhs-ad-details','#xhs-traffic':'xhs-traffic','#xhs-ad-flow':'xhs-ad-flow','#customer-data':'customer-data'};
+    const viewByHash = {'#operations-brief':'operations-brief','#overview':'overview','#overview-new':'overview-new','#checkout-pressure':'occupancy','#contracts':'performance','#contract-details':'contract-details','#occupancy':'occupancy','#occupancy-ziyin':'occupancy-ziyin','#xhs-account':'xhs-account','#xhs-notes':'xhs-notes','#xhs-note-published':'xhs-note-published','#xhs-leads':'xhs-leads','#xhs-lead-details':'xhs-lead-details','#xhs-ad-details':'xhs-ad-details','#xhs-traffic':'xhs-traffic','#xhs-ad-flow':'xhs-ad-flow','#customer-data':'customer-data'};
     const moduleForView = (view) => view === 'customer-data' ? 'customer' : view.startsWith('xhs-') ? 'xiaohongshu' : 'yuxiaor';
     const mobileMenuForView = (view) => ['xhs-note-published','xhs-lead-details','xhs-ad-details'].includes(view) ? 'xhs-details' : moduleForView(view);
     function showMobileMenu(menu){ document.querySelectorAll('[data-mobile-menu]').forEach((element) => { element.hidden = element.dataset.mobileMenu !== menu; }); }
@@ -1076,7 +1121,7 @@
     function setDashboardView(view){
       document.querySelectorAll('[data-views]').forEach((element) => { element.hidden = !element.dataset.views.split(/\s+/).includes(view); });
       document.querySelectorAll('[data-dashboard-view]').forEach((link) => link.classList.toggle('active',link.dataset.dashboardView === view));
-      const isXhs = view.startsWith('xhs-'), isCustomer=view === 'customer-data'; $('dashboard-controls').hidden = isXhs || isCustomer || ['occupancy-ziyin','contract-details'].includes(view); $('page-title').textContent = isCustomer ? '客服数据工作台' : isXhs ? '小红书运营工作台' : '房源运营工作台';
+      const isXhs = view.startsWith('xhs-'), isCustomer=view === 'customer-data'; $('dashboard-controls').hidden = isXhs || isCustomer || ['overview-new','occupancy-ziyin','contract-details'].includes(view); $('page-title').textContent = isCustomer ? '客服数据工作台' : isXhs ? '小红书运营工作台' : '房源运营工作台';
       document.querySelectorAll('[data-desktop-module]').forEach((button) => button.classList.toggle('active',button.dataset.desktopModule === moduleForView(view)));
       if (view === 'overview' || view === 'performance') requestAnimationFrame(renderDailyLineChart);
       if (view === 'xhs-notes') requestAnimationFrame(renderXhsReadingChart);
@@ -1132,7 +1177,7 @@
     $('xhs-ad-week-account-filter').addEventListener('change',()=>renderXhsAdWeeklyTable(DATA.xhsAdFlow || {}));
     $('xhs-ad-week-owner-filter').addEventListener('change',()=>renderXhsAdWeeklyTable(DATA.xhsAdFlow || {}));
     $('side-date').textContent=DATA.dataDate; $('page-subtitle').textContent='数据日期：'+DATA.dataDate+'　｜　生成日期：'+DATA.generatedDate+'　｜　支持项目与楼栋切换';
-    const initialView=viewByHash[location.hash]||'overview'; setDashboardView(initialView); showMobileMenu(location.hash?mobileMenuForView(initialView):'primary'); showDesktopMenu(moduleForView(initialView)); fillSelect(); renderCheckoutTables(); renderProjectTable(); renderZiyinOccupancy(); renderBuildingTable(); renderContracts(); renderOperationsBrief(); renderMonthlyContractDetails(); renderXhsAccountStatus(); renderXhsContent(); renderXhsNotePublished(); renderXhsLeads(); renderXhsLeadDetails(); renderXhsAdFlow(); renderXhsAdDetails(false); renderXhsTraffic(); renderCustomerData(); render();
+    const initialView=viewByHash[location.hash]||'overview'; setDashboardView(initialView); showMobileMenu(location.hash?mobileMenuForView(initialView):'primary'); showDesktopMenu(moduleForView(initialView)); fillSelect(); renderOverviewNew(); renderCheckoutTables(); renderProjectTable(); renderZiyinOccupancy(); renderBuildingTable(); renderContracts(); renderOperationsBrief(); renderMonthlyContractDetails(); renderXhsAccountStatus(); renderXhsContent(); renderXhsNotePublished(); renderXhsLeads(); renderXhsLeadDetails(); renderXhsAdFlow(); renderXhsAdDetails(false); renderXhsTraffic(); renderCustomerData(); render();
     if ('ResizeObserver' in window){ new ResizeObserver(renderDailyLineChart).observe($('contract-daily-chart-wrap')); new ResizeObserver(renderXhsReadingChart).observe($('xhs-daily-reading-chart-wrap')); }
   </script>
 </body>
