@@ -769,8 +769,12 @@ def build_overview_new():
     address_i=idx(headers,"房源地址","地址")
     status_i=idx(headers,"状态")
     lock_i=idx(headers,"锁房备注")
-    result={"totalRooms":0,"occupiedCount":0,"rentableCount":0,"unavailableCount":0,"lockedCount":0,"preorderCount":0,"moveInCount":0,"otherUnavailableCount":0,"sourceOtherStatusCount":0}
+    result={"totalRooms":0,"occupiedCount":0,"rentableCount":0,"unavailableCount":0,"lockedCount":0,"preorderCount":0,"moveInCount":0,"otherUnavailableCount":0,"shortRentCount":0,"comprehensiveCount":0,"sourceOtherStatusCount":0}
     status_counts=defaultdict(int)
+    occupied_rooms=set()
+    preorder_rooms=set()
+    moving_rooms=set()
+    short_rent_rooms=set()
     overlaps={"lockedAndPreorder":0,"lockedAndMoveIn":0,"preorderAndMoveIn":0}
     known_states={"已出租","在租中","空房可租","空房不可租"}
     for row in ws.iter_rows(min_row=4,values_only=True):
@@ -779,9 +783,12 @@ def build_overview_new():
         state=norm(row[status_i])
         remark=norm(row[lock_i])
         keys=room_keys(row[room_i],row[address_i])
+        room_identity=next((key for key in keys if key.startswith("id:")),next(iter(keys),f"row:{result['totalRooms']}"))
+        if "短租" in remark: short_rent_rooms.add(room_identity)
         status_counts[state or "空白状态"]+=1
         if state in {"已出租","在租中"}:
             result["occupiedCount"]+=1
+            occupied_rooms.add(room_identity)
             continue
         if state=="空房可租":
             result["rentableCount"]+=1
@@ -795,15 +802,26 @@ def build_overview_new():
         if has_lock and has_moving: overlaps["lockedAndMoveIn"]+=1
         if has_preorder and has_moving: overlaps["preorderAndMoveIn"]+=1
         if has_lock: result["lockedCount"]+=1
-        elif has_preorder: result["preorderCount"]+=1
-        elif has_moving: result["moveInCount"]+=1
+        elif has_preorder:
+            result["preorderCount"]+=1
+            preorder_rooms.add(room_identity)
+        elif has_moving:
+            result["moveInCount"]+=1
+            moving_rooms.add(room_identity)
         else: result["otherUnavailableCount"]+=1
+    base_comprehensive_rooms=occupied_rooms|preorder_rooms|moving_rooms
+    comprehensive_rooms=base_comprehensive_rooms|short_rent_rooms
+    result["shortRentCount"]=len(short_rent_rooms)
+    result["shortRentOverlapCount"]=len(short_rent_rooms & base_comprehensive_rooms)
+    result["comprehensiveCount"]=len(comprehensive_rooms)
+    result["comprehensiveRate"]=result["comprehensiveCount"]/result["totalRooms"] if result["totalRooms"] else 0
     result["statusCounts"]=[{"status":name,"count":count} for name,count in sorted(status_counts.items())]
     result["overlapsResolved"]=overlaps
     result["priority"]=["锁房","预定","将搬入","其他不可租"]
     result["validation"]={
         "baseReconciled":result["occupiedCount"]+result["rentableCount"]+result["unavailableCount"]==result["totalRooms"],
         "unavailableReconciled":result["lockedCount"]+result["preorderCount"]+result["moveInCount"]+result["otherUnavailableCount"]==result["unavailableCount"],
+        "comprehensiveBounded":0<=result["comprehensiveCount"]<=result["totalRooms"],
     }
     if not all(result["validation"].values()): raise RuntimeError(f"Overview-new reconciliation failed: {result}")
     return result
@@ -1058,7 +1076,7 @@ required += ['class="desktop-home-link"','class="desktop-nav-groups"','class="de
 required += ['<div class="label">本月退房</div>','id="contract-checkout-definition">退租/（实际退/续租）','function checkoutDisplay(','checkoutActualDepartureCount']
 required += ['data-desktop-module="customer"','data-desktop-menu="customer"','data-mobile-module="customer"','data-mobile-menu="customer"','id="customer-data"','data-dashboard-view="customer-data"','id="customer-data-updated"','id="customer-daily-table"','id="customer-funnel-table"','function renderCustomerData()','"customerData"']
 required += ['function xhsNoteCountClass(','function xhsMetricCell(','xhs-note-count-green','xhs-note-count-yellow','xhs-note-count-pink','xhs-note-count-red','if(count>=6)','if(count===5)','if(count===4)']
-required += ['data-dashboard-view="overview-new"','id="overview-new"','function renderOverviewNew()','"overviewNew"','overview-new-rate-comprehensive','overview-new-validation']
+required += ['data-dashboard-view="overview-new"','id="overview-new"','function renderOverviewNew()','"overviewNew"','overview-new-short-rent','overview-new-rate-comprehensive','overview-new-validation']
 if any(x not in rendered for x in required): raise RuntimeError("Full dashboard style validation failed")
 if rendered.count('data-dashboard-view="xhs-traffic"') < 2: raise RuntimeError("XHS traffic menu must exist on desktop and mobile")
 if rendered.count('data-dashboard-view="xhs-note-published"') < 2: raise RuntimeError("XHS note-published menu must exist on desktop and mobile")

@@ -245,7 +245,7 @@
 
       <section class="section" id="overview-new" data-views="overview-new">
         <div class="section-head"><div><h2>总览（新）</h2><p>以《房源详情》为房源全集；空房不可租按“锁房 → 预定 → 将搬入 → 其他不可租”互斥归类。</p></div></div>
-        <article class="panel overview-new-panel"><h3>房源数据</h3><p class="panel-note">共7项，房源数量均来自当前最新数据。</p><div class="kpis overview-new-kpis">
+        <article class="panel overview-new-panel"><h3>房源数据</h3><p class="panel-note">共8项，房源数量均来自当前最新数据。</p><div class="kpis overview-new-kpis">
             <article class="kpi blue"><div class="label">总房源数</div><div class="value" id="overview-new-total">—</div><div class="hint">房源详情有效房源</div></article>
             <article class="kpi green"><div class="label">在租中房源数</div><div class="value" id="overview-new-occupied">—</div><div class="hint" id="overview-new-occupied-hint">状态为在租中或已出租</div></article>
             <article class="kpi orange"><div class="label">空房可租房源数</div><div class="value" id="overview-new-rentable">—</div><div class="hint" id="overview-new-rentable-hint">状态为“空房可租”</div></article>
@@ -253,6 +253,7 @@
             <article class="kpi red"><div class="label">不可租中的锁房数</div><div class="value" id="overview-new-locked">—</div><div class="hint">优先按锁房备注识别</div></article>
             <article class="kpi purple"><div class="label">不可租中的预定数</div><div class="value" id="overview-new-preorder">—</div><div class="hint">剩余房源匹配已付定合同</div></article>
             <article class="kpi blue"><div class="label">不可租中的将搬入数</div><div class="value" id="overview-new-moving">—</div><div class="hint">再次匹配将搬入合同</div></article>
+            <article class="kpi green"><div class="label">短租房源数</div><div class="value" id="overview-new-short-rent">—</div><div class="hint">锁房备注包含“短租”，不限房源状态</div></article>
           </div></article>
         <article class="panel overview-new-panel"><h3>入住率统计</h3><p class="panel-note">各项比率均以总房源数为分母。</p><div class="kpis overview-new-rate-kpis">
             <article class="kpi green"><div class="label">在租中入住率</div><div class="value" id="overview-new-rate-occupied">—</div><div class="hint" id="overview-new-rate-occupied-hint">—</div></article>
@@ -385,12 +386,13 @@
       $('overview-new-locked').textContent=int(d.lockedCount);
       $('overview-new-preorder').textContent=int(d.preorderCount);
       $('overview-new-moving').textContent=int(d.moveInCount);
+      $('overview-new-short-rent').textContent=int(d.shortRentCount);
       $('overview-new-occupied-hint').textContent='占总房源 '+pct(d.totalRooms ? d.occupiedCount/d.totalRooms : 0);
       $('overview-new-rentable-hint').textContent='占总房源 '+pct(d.totalRooms ? d.rentableCount/d.totalRooms : 0);
       $('overview-new-unavailable-hint').textContent='占总房源 '+pct(d.totalRooms ? d.unavailableCount/d.totalRooms : 0);
       const total=Number(d.totalRooms || 0);
       const occupied=Number(d.occupiedCount || 0);
-      const comprehensive=occupied+Number(d.preorderCount || 0)+Number(d.moveInCount || 0);
+      const comprehensive=Number(d.comprehensiveCount || 0);
       const vacancy=Number(d.rentableCount || 0);
       const locked=Number(d.lockedCount || 0);
       $('overview-new-rate-occupied').textContent=pct(total ? occupied/total : 0);
@@ -398,12 +400,12 @@
       $('overview-new-rate-vacancy').textContent=pct(total ? vacancy/total : 0);
       $('overview-new-rate-locked').textContent=pct(total ? locked/total : 0);
       $('overview-new-rate-occupied-hint').textContent=int(occupied)+' 套在租中';
-      $('overview-new-rate-comprehensive-hint').textContent=int(comprehensive)+' 套（在租中 '+int(occupied)+'、预定 '+int(d.preorderCount)+'、将搬入 '+int(d.moveInCount)+'）';
+      $('overview-new-rate-comprehensive-hint').textContent=int(comprehensive)+' 套去重后（在租中 '+int(occupied)+'、预定 '+int(d.preorderCount)+'、将搬入 '+int(d.moveInCount)+'、短租 '+int(d.shortRentCount)+'）';
       $('overview-new-rate-vacancy-hint').textContent=int(vacancy)+' 套空房可租';
       $('overview-new-rate-locked-hint').textContent=int(locked)+' 套锁房';
       $('overview-new-base-equation').textContent=int(d.occupiedCount)+' 在租中 ＋ '+int(d.rentableCount)+' 空房可租 ＋ '+int(d.unavailableCount)+' 空房不可租 ＝ '+int(d.totalRooms)+' 总房源';
       $('overview-new-unavailable-equation').textContent=int(d.lockedCount)+' 锁房 ＋ '+int(d.preorderCount)+' 预定 ＋ '+int(d.moveInCount)+' 将搬入 ＋ '+int(d.otherUnavailableCount)+' 其他 ＝ '+int(d.unavailableCount)+' 空房不可租';
-      const ok=Boolean(d.validation?.baseReconciled && d.validation?.unavailableReconciled);
+      const ok=Boolean(d.validation?.baseReconciled && d.validation?.unavailableReconciled && d.validation?.comprehensiveBounded);
       $('overview-new-validation').textContent=ok ? '✓ 两层统计均已核对一致' : '⚠ 统计未通过一致性校验';
       $('overview-new-validation').classList.toggle('warn',!ok);
       $('overview-new-other-status').textContent='房源详情中的其他或空白状态：'+int(d.sourceOtherStatusCount)+' 套，已统一纳入空房不可租。';
