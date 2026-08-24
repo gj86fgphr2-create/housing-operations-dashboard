@@ -391,7 +391,7 @@
       const total=Number(d.totalRooms || 0);
       const occupied=Number(d.occupiedCount || 0);
       const comprehensive=occupied+Number(d.preorderCount || 0)+Number(d.moveInCount || 0);
-      const vacancy=Number(d.rentableCount || 0)+Number(d.unavailableCount || 0);
+      const vacancy=Number(d.rentableCount || 0);
       const locked=Number(d.lockedCount || 0);
       $('overview-new-rate-occupied').textContent=pct(total ? occupied/total : 0);
       $('overview-new-rate-comprehensive').textContent=pct(total ? comprehensive/total : 0);
@@ -399,7 +399,7 @@
       $('overview-new-rate-locked').textContent=pct(total ? locked/total : 0);
       $('overview-new-rate-occupied-hint').textContent=int(occupied)+' 套在租中';
       $('overview-new-rate-comprehensive-hint').textContent=int(comprehensive)+' 套（在租中 '+int(occupied)+'、预定 '+int(d.preorderCount)+'、将搬入 '+int(d.moveInCount)+'）';
-      $('overview-new-rate-vacancy-hint').textContent=int(vacancy)+' 套（可租 '+int(d.rentableCount)+'、不可租 '+int(d.unavailableCount)+'）';
+      $('overview-new-rate-vacancy-hint').textContent=int(vacancy)+' 套空房可租';
       $('overview-new-rate-locked-hint').textContent=int(locked)+' 套锁房';
       $('overview-new-base-equation').textContent=int(d.occupiedCount)+' 在租中 ＋ '+int(d.rentableCount)+' 空房可租 ＋ '+int(d.unavailableCount)+' 空房不可租 ＝ '+int(d.totalRooms)+' 总房源';
       $('overview-new-unavailable-equation').textContent=int(d.lockedCount)+' 锁房 ＋ '+int(d.preorderCount)+' 预定 ＋ '+int(d.moveInCount)+' 将搬入 ＋ '+int(d.otherUnavailableCount)+' 其他 ＝ '+int(d.unavailableCount)+' 空房不可租';
