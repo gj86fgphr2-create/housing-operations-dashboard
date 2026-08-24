@@ -191,6 +191,10 @@ REQUIRED = (
     '"xhsAdFlow"',
     'id="checkout-pressure"',
     'data-dashboard-view="occupancy"',
+    '<div class="label">本月退房</div>',
+    'id="contract-checkout-definition">退租/（实际退/续租）',
+    'function checkoutDisplay(',
+    'checkoutActualDepartureCount',
 )
 
 FORBIDDEN = (
@@ -199,6 +203,9 @@ FORBIDDEN = (
     'id="xhs-ad-date-reset"',
     '<th>投流账号</th><th>笔记数</th>',
     '<th>归属账号</th><th>笔记数</th>',
+    '<div class="label">本月实际退房</div>',
+    'id="contract-checkout-renewal"',
+    'id="contract-checkout-renewal-previous"',
 )
 
 
@@ -223,6 +230,14 @@ def main() -> int:
         print("dashboard DATA payload missing", file=sys.stderr)
         return 1
     payload = json.loads(payload_match.group(1))
+    for period_name in ("currentMonth", "previousMonth"):
+        period = payload.get("contractStats", {}).get(period_name, {})
+        total = int(period.get("actualCheckoutCount") or 0)
+        actual = int(period.get("checkoutActualDepartureCount") or 0)
+        renewal = int(period.get("checkoutRenewalCount") or 0)
+        if total != actual + renewal:
+            print(f"Checkout breakdown does not reconcile: {period_name} {total}/{actual}/{renewal}", file=sys.stderr)
+            return 1
     account_audit = payload.get("xhsAccountAudit", {})
     audit_accounts = account_audit.get("accounts", [])
     if len(audit_accounts) != 8 or len({row.get("profile") for row in audit_accounts}) != 8:

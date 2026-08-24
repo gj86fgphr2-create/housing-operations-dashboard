@@ -1036,6 +1036,10 @@ detail_counts = [len(contract_stats["monthlyDetails"][key]) for key in ("new", "
 summary_counts = [int(contract_stats["currentMonth"].get(key, 0) or 0) for key in ("newCount", "renewalCount", "otherCount", "actualCheckoutCount")]
 if detail_counts != summary_counts:
     raise RuntimeError(f"Monthly contract details do not match summary: details={detail_counts}, summary={summary_counts}")
+for period_name in ("currentMonth","previousMonth"):
+    period=contract_stats[period_name]
+    if int(period.get("actualCheckoutCount") or 0)!=int(period.get("checkoutActualDepartureCount") or 0)+int(period.get("checkoutRenewalCount") or 0):
+        raise RuntimeError(f"Checkout breakdown does not reconcile: {period_name}")
 contract_stats.setdefault("projectMonthlyUnmapped",{"newCount":0,"renewalCount":0,"otherCount":0,"actualCheckoutCount":0,"checkoutRenewalCount":0})
 contract_stats.setdefault("totals",{})
 contract_stats["uniqueContracts"]=sum(1 for f in ("在租中合同.xlsx","将搬入合同.xlsx","已退租合同.xlsx") for _ in load_workbook(run_dir/f,read_only=True).active.iter_rows(min_row=4,values_only=True))
@@ -1051,6 +1055,7 @@ required += ['id="xhs-note-published"','data-dashboard-view="xhs-note-published"
 required += ['id="xhs-note-published-type"','图文数量','视频数量','待识别数量','graphicCount','videoCount','pendingCount']
 required += ['数据明细','笔记发布明细','留资数据明细','聚光投放明细','data-mobile-menu="xhs-details"','data-mobile-submenu="xhs-details"','id="xhs-ad-details"','data-dashboard-view="xhs-ad-details"','id="xhs-ad-details-updated"','id="xhs-ad-detail-account-filter"','id="xhs-ad-detail-start-date"','id="xhs-ad-detail-end-date"','id="xhs-ad-detail-date-reset"','id="xhs-ad-details-count"','id="xhs-ad-details-table"','function renderXhsAdDetails(']
 required += ['class="desktop-home-link"','class="desktop-nav-groups"','class="desktop-nav-group"','class="desktop-module-toggle"','aria-expanded="false"','aria-expanded="true"']
+required += ['<div class="label">本月退房</div>','id="contract-checkout-definition">退租/（实际退/续租）','function checkoutDisplay(','checkoutActualDepartureCount']
 required += ['data-desktop-module="customer"','data-desktop-menu="customer"','data-mobile-module="customer"','data-mobile-menu="customer"','id="customer-data"','data-dashboard-view="customer-data"','id="customer-data-updated"','id="customer-daily-table"','id="customer-funnel-table"','function renderCustomerData()','"customerData"']
 required += ['function xhsNoteCountClass(','function xhsMetricCell(','xhs-note-count-green','xhs-note-count-yellow','xhs-note-count-pink','xhs-note-count-red','if(count>=6)','if(count===5)','if(count===4)']
 required += ['data-dashboard-view="overview-new"','id="overview-new"','function renderOverviewNew()','"overviewNew"','overview-new-breakdown-table','overview-new-validation']
