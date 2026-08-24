@@ -37,6 +37,7 @@
     .detail-toggle{border:1px solid var(--primary);border-radius:9px;background:var(--surface);color:var(--primary);padding:8px 13px;cursor:pointer;font-weight:600}.detail-toggle:hover,.detail-toggle[aria-expanded="true"]{background:var(--primary);color:#fff}.detail-content[hidden]{display:none!important}.detail-search{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:10px}
     .section{margin-top:24px;scroll-margin-top:18px}.section-head{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:12px}.section h2{font-size:17px;margin:0}.section-head p{margin:0;color:var(--muted);font-size:12px}
     .kpis{display:grid;grid-template-columns:repeat(6,minmax(150px,1fr));gap:12px}.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow);min-height:112px}.kpi .label{font-size:12px;color:var(--muted);margin-bottom:12px}.kpi .value{font-size:27px;font-weight:700;letter-spacing:-.5px}.kpi .hint{font-size:12px;color:var(--muted);margin-top:7px}.kpi.green{border-top:4px solid var(--green)}.kpi.blue{border-top:4px solid var(--blue)}.kpi.orange{border-top:4px solid var(--orange)}.kpi.red{border-top:4px solid var(--red)}.kpi.purple{border-top:4px solid var(--purple)}.kpi.gray{border-top:4px solid #64748b}
+    .contract-checkout-value{font-size:clamp(16px,2vw,27px)!important;white-space:nowrap;overflow-wrap:normal!important}
     .grid-2{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.75fr);gap:16px}.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:var(--shadow)}.panel h3{font-size:15px;margin:0 0 16px}.panel-note{color:var(--muted);font-size:12px;margin:-9px 0 16px}
     .bar-list{display:grid;gap:12px}.bar-row{display:grid;grid-template-columns:150px 1fr 54px;gap:10px;align-items:center;font-size:12px}.bar-row .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.track{height:11px;background:#edf1f6;border-radius:20px;overflow:hidden;position:relative}.fill{height:100%;border-radius:20px;background:var(--blue);transition:width .35s ease}.fill.comp{background:var(--green)}.bar-value{text-align:right;font-variant-numeric:tabular-nums}
     .legend{display:flex;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:14px}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}.dot.green{background:var(--green)}.dot.blue{background:var(--blue)}.dot.orange{background:var(--orange)}.dot.red{background:var(--red)}
@@ -281,8 +282,7 @@
           <article class="kpi purple"><div class="label">本月新签业绩</div><div class="value" id="contract-new-performance">—</div><div class="hint" id="contract-new-performance-previous">—</div></article>
           <article class="kpi orange"><div class="label">本月续租业绩</div><div class="value" id="contract-renewal-performance">—</div><div class="hint" id="contract-renewal-performance-previous">—</div></article>
           <article class="kpi orange"><div class="label">本月其他业绩</div><div class="value" id="contract-other-performance">—</div><div class="hint" id="contract-other-performance-previous">—</div></article>
-          <article class="kpi red"><div class="label">本月实际退房</div><div class="value" id="contract-current-checkout">—</div><div class="hint" id="contract-checkout-previous">—</div></article>
-          <article class="kpi green"><div class="label">本月退租中（续租数量）</div><div class="value" id="contract-checkout-renewal">—</div><div class="hint" id="contract-checkout-renewal-previous">—</div></article>
+          <article class="kpi red"><div class="label">本月退房</div><div class="hint" id="contract-checkout-definition">退租/（实际退/续租）</div><div class="value contract-checkout-value" id="contract-current-checkout">—</div><div class="hint" id="contract-checkout-previous">—</div></article>
         </div>
         <div class="section" data-views="overview performance">
           <article class="panel"><h3>实际与目标对比</h3><p class="panel-note">实际数据截至最新数据采集日；本月汇总目标为各周目标之和</p><div class="table-wrap"><table class="target-comparison-table"><thead><tr><th>周期</th><th>新签实际</th><th>新签目标</th><th>新签完成率</th><th>续租实际</th><th>续租目标</th><th>续租完成率</th></tr></thead><tbody id="contract-target-table"></tbody></table></div></article>
@@ -470,22 +470,25 @@
 
     function renderContracts(){
       const d = DATA.contractStats;
+      function checkoutDisplay(period){
+        const total=Number(period.actualCheckoutCount || 0), renewal=Number(period.checkoutRenewalCount || 0);
+        const actual=Number(period.checkoutActualDepartureCount ?? Math.max(0,total-renewal));
+        return int(total)+'/（'+int(actual)+'/'+int(renewal)+'）份';
+      }
       $('contract-new-count').textContent = int(d.currentMonth.newCount) + ' 份';
       $('contract-renewal-count').textContent = int(d.currentMonth.renewalCount) + ' 份';
       $('contract-other-count').textContent = int(d.currentMonth.otherCount) + ' 份';
       $('contract-new-performance').textContent = currencyInteger(d.currentMonth.newRevenue);
       $('contract-renewal-performance').textContent = currencyInteger(d.currentMonth.renewalRevenue);
       $('contract-other-performance').textContent = currencyInteger(d.currentMonth.otherRevenue);
-      $('contract-current-checkout').textContent = int(d.currentMonth.actualCheckoutCount) + ' 份';
-      $('contract-checkout-renewal').textContent = int(d.currentMonth.checkoutRenewalCount) + ' 份';
+      $('contract-current-checkout').textContent = checkoutDisplay(d.currentMonth);
       $('contract-new-previous').textContent = '上月：' + int(d.previousMonth.newCount) + ' 份';
       $('contract-renewal-previous').textContent = '上月：' + int(d.previousMonth.renewalCount) + ' 份';
       $('contract-other-previous').textContent = '上月：' + int(d.previousMonth.otherCount) + ' 份';
       $('contract-new-performance-previous').textContent = '上月：' + currencyInteger(d.previousMonth.newRevenue);
       $('contract-renewal-performance-previous').textContent = '上月：' + currencyInteger(d.previousMonth.renewalRevenue);
       $('contract-other-performance-previous').textContent = '上月：' + currencyInteger(d.previousMonth.otherRevenue);
-      $('contract-checkout-previous').textContent = '上月：' + int(d.previousMonth.actualCheckoutCount) + ' 份';
-      $('contract-checkout-renewal-previous').textContent = '上月：' + int(d.previousMonth.checkoutRenewalCount) + ' 份';
+      $('contract-checkout-previous').textContent = '上月：' + checkoutDisplay(d.previousMonth);
       const periodsByName = new Map(d.periods.map((row) => [row.period,row]));
       const targetRows = d.targets.map((target) => {
         const actual = periodsByName.get(target.period) || { newCount:0, renewalCount:0 };

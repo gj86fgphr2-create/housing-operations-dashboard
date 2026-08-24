@@ -212,6 +212,15 @@ for row in retired:
 
 checkout_current = [r for r in retired if actual_checkout_in(r, month_start, today)]
 checkout_previous = [r for r in retired if actual_checkout_in(r, previous_start, previous_end)]
+
+def checkout_breakdown(rows):
+    renewal_count = sum(text(row.get('退租原因')) == '续租' for row in rows)
+    return {
+        'actualCheckoutCount': len(rows),
+        'checkoutActualDepartureCount': len(rows) - renewal_count,
+        'checkoutRenewalCount': renewal_count,
+    }
+
 targets = [
     {'period': f'{today.month}-WEEK-1', 'label': 'WEEK-1', 'newCount': 27, 'renewalCount': 14},
     {'period': f'{today.month}-WEEK-2', 'label': 'WEEK-2', 'newCount': 32, 'renewalCount': 17},
@@ -225,8 +234,8 @@ payload = {
     'projectData': project_data, 'buildingData': building_data,
     'baseProjectNames': [row['name'] for row in project_data],
     'contractStats': {
-        'currentMonth': {**current, 'actualCheckoutCount': len(checkout_current), 'checkoutRenewalCount': sum(text(r.get('退租原因')) == '续租' for r in checkout_current)},
-        'previousMonth': {**previous, 'actualCheckoutCount': len(checkout_previous), 'checkoutRenewalCount': sum(text(r.get('退租原因')) == '续租' for r in checkout_previous)},
+        'currentMonth': {**current, **checkout_breakdown(checkout_current)},
+        'previousMonth': {**previous, **checkout_breakdown(checkout_previous)},
         'periods': [current, previous] + week_periods, 'targets': targets,
         'people': [{'name': name, **values} for name, values in people.items()],
         'projectMonthly': [{'name': name, **values} for name, values in project_monthly.items()],
