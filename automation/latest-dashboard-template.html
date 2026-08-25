@@ -199,7 +199,7 @@
         <div class="xhs-ad-date-tools xhs-traffic-date-tools"><label class="field"><span>开始日期</span><input type="date" id="xhs-traffic-start-date"></label><label class="field"><span>截止日期</span><input type="date" id="xhs-traffic-end-date"></label><button class="xhs-ad-date-reset" id="xhs-traffic-date-reset" type="button">恢复全部日期</button></div>
         <div class="xhs-traffic-stack">
           <article class="panel"><div class="xhs-traffic-trend-head"><div><h3>每日自然流与广告流趋势</h3><p class="panel-note" id="xhs-traffic-trend-summary">正在生成趋势…</p></div><div class="xhs-traffic-trend-legend" aria-label="图例"><span><i class="organic"></i>自然流留资</span><span><i class="paid"></i>广告流留资</span></div></div><div class="xhs-traffic-chart-wrap" id="xhs-traffic-trend-wrap"><svg class="xhs-traffic-chart" id="xhs-traffic-trend-chart" role="img" aria-label="每日自然流与广告流留资趋势折线图"></svg></div></article>
-          <article class="panel"><div class="xhs-traffic-trend-head"><div><h3>留资下降账号</h3><p class="panel-note" id="xhs-traffic-decline-summary">按最近3个有数据日期与此前3个有数据日期的日均总留资差额排序。</p></div><div class="xhs-traffic-trend-legend" aria-label="图例"><span><i class="organic"></i>自然流留资</span><span><i class="paid"></i>广告流留资</span></div></div><div class="xhs-traffic-decline-grid" id="xhs-traffic-decline-grid"></div></article>
+          <article class="panel"><div class="xhs-traffic-trend-head"><div><h3>留资下降账号</h3><p class="panel-note" id="xhs-traffic-decline-summary">按最近7个有数据日期与此前7个有数据日期的日均总留资差额排序。</p></div><div class="xhs-traffic-trend-legend" aria-label="图例"><span><i class="organic"></i>自然流留资</span><span><i class="paid"></i>广告流留资</span></div></div><div class="xhs-traffic-decline-grid" id="xhs-traffic-decline-grid"></div></article>
           <article class="panel"><h3>每日留资构成</h3><p class="panel-note" id="xhs-traffic-summary">正在对齐两套数据…</p><div class="table-wrap xhs-table-wrap"><table class="xhs-metric-table xhs-traffic-table"><thead><tr><th>日期</th><th>专业号总留资</th><th>广告流留资</th><th>推算自然流留资</th><th>自然流比例</th><th>广告消耗</th><th>平均广告留资成本</th></tr></thead><tbody id="xhs-traffic-table"></tbody></table></div><div class="xhs-traffic-pagination"><button id="xhs-traffic-prev-page" type="button">上一页</button><span id="xhs-traffic-page-status">第 1 / 1 页</span><button id="xhs-traffic-next-page" type="button">下一页</button></div><p class="panel-note">每页显示 10 条；数据来源为专业号后台复制微信留资与聚光投流账号数据。若推算自然流出现负数，表示两套数据采集时点或口径需要复核。</p></article>
           <article class="panel"><div class="xhs-traffic-week-headline"><div><h3>WEEK 留资构成</h3><p class="panel-note" id="xhs-traffic-week-summary">正在按月汇总…</p></div><label class="field"><span>统计月份</span><select id="xhs-traffic-week-month"></select></label></div><div class="table-wrap xhs-table-wrap"><table class="xhs-metric-table xhs-traffic-week-table"><thead><tr><th>周期</th><th>日期范围</th><th>专业号总留资</th><th>广告流留资</th><th>推算自然流留资</th><th>自然流比例</th><th>广告消耗</th><th>平均广告留资成本</th></tr></thead><tbody id="xhs-traffic-week-table"></tbody></table></div><p class="panel-note xhs-traffic-footnote">W1 至 W4 分别为每月 1–7、8–14、15–21、22–28 日，WE 为 29 日至月末；仅汇总两套数据共同覆盖日期。</p></article>
           <article class="panel"><h3>团队留资汇总</h3><p class="panel-note" id="xhs-traffic-team-summary">正在按团队汇总…</p><div class="table-wrap xhs-table-wrap"><table class="xhs-metric-table xhs-traffic-team-table"><thead><tr><th>团队 / 账户</th><th>运营者</th><th>专业号总留资</th><th>广告流留资</th><th>推算自然流留资</th><th>自然流比例</th><th>广告消耗</th><th>平均广告留资成本</th></tr></thead><tbody id="xhs-traffic-team-table"></tbody></table></div><p class="panel-note xhs-traffic-footnote">广告流留资与广告消耗按照笔记实际归属账号计算；点击“运营团队”或“管家团队”可显示或隐藏所属账户，汇总随上方日期范围联动。</p></article>
@@ -1121,18 +1121,18 @@
       accountRows.forEach((row) => { const item=accounts[row.profile] || (accounts[row.profile]={profile:row.profile,name:row.name,operator:row.operator,team:row.team,rows:[]}); item.rows.push(row); });
       return Object.values(accounts).map((account) => {
         account.rows.sort((a,b) => b.date.localeCompare(a.date));
-        const six=account.rows.slice(0,6);
-        if (six.length<6) return null;
-        const recentAverage=six.slice(0,3).reduce((sum,row) => sum+row.totalLeads,0)/3;
-        const previousAverage=six.slice(3,6).reduce((sum,row) => sum+row.totalLeads,0)/3;
+        const fourteen=account.rows.slice(0,14);
+        if (fourteen.length<14) return null;
+        const recentAverage=fourteen.slice(0,7).reduce((sum,row) => sum+row.totalLeads,0)/7;
+        const previousAverage=fourteen.slice(7,14).reduce((sum,row) => sum+row.totalLeads,0)/7;
         return {...account,recentAverage,previousAverage,delta:recentAverage-previousAverage,drop:previousAverage-recentAverage};
       }).filter((account) => account && account.delta<0).sort((a,b) => a.delta-b.delta || a.name.localeCompare(b.name,'zh-CN')).slice(0,3);
     }
     function renderXhsTrafficTrendChart(svgId,rows,compact=false){
       const svg=$(svgId);
       if (!svg) return;
-      const visibleRows=rows.slice(0,compact ? 6 : 30);
-      const width=compact ? Math.max(300,visibleRows.length*42+48) : Math.max(900,visibleRows.length*58+90), height=compact ? 230 : 320;
+      const visibleRows=rows.slice(0,compact ? 14 : 30);
+      const width=compact ? Math.max(560,visibleRows.length*38+48) : Math.max(900,visibleRows.length*58+90), height=compact ? 230 : 320;
       svg.setAttribute('viewBox','0 0 '+width+' '+height); svg.style.width=width+'px'; svg.classList.toggle('compact',compact);
       if (!visibleRows.length){ svg.innerHTML='<text x="50%" y="50%" text-anchor="middle" class="xhs-traffic-chart-axis">暂无可比趋势数据</text>'; return; }
       const margin={top:compact?38:44,right:18,bottom:44,left:42}, chartWidth=width-margin.left-margin.right, chartHeight=height-margin.top-margin.bottom;
@@ -1158,8 +1158,8 @@
       $('xhs-traffic-trend-summary').textContent=trendRows.length ? xhsTrafficPeriod(trendRows)+' · 日期降序，最新日期位于左侧 · 显示最近 '+trendRows.length+' 个筛选日期' : '所选日期范围暂无可比趋势数据';
       renderXhsTrafficTrendChart('xhs-traffic-trend-chart',trendRows,false);
       const declining=xhsTrafficDeclineAccounts(accountRows);
-      $('xhs-traffic-decline-summary').textContent=declining.length ? '按日均总留资下降量排序 · 最近3个有数据日期对比此前3个有数据日期' : '至少需要6个有数据日期；当前筛选范围内暂无符合条件的下降账号';
-      $('xhs-traffic-decline-grid').innerHTML=declining.map((account,index) => '<section class="xhs-traffic-decline-card"><div class="xhs-traffic-decline-copy"><div><strong>'+xhsSafe(account.name)+'</strong><small>'+xhsSafe(account.operator)+' · '+xhsSafe(account.team)+'</small></div><span class="xhs-traffic-decline-amount">日均下降 '+account.drop.toFixed(1)+'</span></div><div class="xhs-traffic-decline-metrics"><span><b>'+account.previousAverage.toFixed(1)+'</b>上3日均</span><span><b>'+account.recentAverage.toFixed(1)+'</b>近3日均</span><span><b>'+account.drop.toFixed(1)+'</b>下降量</span></div><div class="xhs-traffic-chart-wrap"><svg class="xhs-traffic-chart compact" id="xhs-traffic-decline-chart-'+index+'" role="img" aria-label="'+xhsSafe(account.name)+'自然流与广告流留资趋势折线图"></svg></div></section>').join('') || '<div class="xhs-traffic-decline-empty">当前筛选范围内没有满足“6个有数据日期且近3日均下降”的账号。</div>';
+      $('xhs-traffic-decline-summary').textContent=declining.length ? '按日均总留资下降量排序 · 最近7个有数据日期对比此前7个有数据日期' : '至少需要14个有数据日期；当前筛选范围内暂无符合条件的下降账号';
+      $('xhs-traffic-decline-grid').innerHTML=declining.map((account,index) => '<section class="xhs-traffic-decline-card"><div class="xhs-traffic-decline-copy"><div><strong>'+xhsSafe(account.name)+'</strong><small>'+xhsSafe(account.operator)+' · '+xhsSafe(account.team)+'</small></div><span class="xhs-traffic-decline-amount">日均下降 '+account.drop.toFixed(1)+'</span></div><div class="xhs-traffic-decline-metrics"><span><b>'+account.previousAverage.toFixed(1)+'</b>上7日均</span><span><b>'+account.recentAverage.toFixed(1)+'</b>近7日均</span><span><b>'+account.drop.toFixed(1)+'</b>下降量</span></div><div class="xhs-traffic-chart-wrap"><svg class="xhs-traffic-chart compact" id="xhs-traffic-decline-chart-'+index+'" role="img" aria-label="'+xhsSafe(account.name)+'自然流与广告流留资趋势折线图"></svg></div></section>').join('') || '<div class="xhs-traffic-decline-empty">当前筛选范围内没有满足“14个有数据日期且近7日均下降”的账号。</div>';
       declining.forEach((account,index) => renderXhsTrafficTrendChart('xhs-traffic-decline-chart-'+index,account.rows,true));
     }
     function xhsTrafficRate(value){ return value===null || !Number.isFinite(value) ? '—' : (value*100).toFixed(1)+'%'; }
