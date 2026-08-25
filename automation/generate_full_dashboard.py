@@ -789,6 +789,7 @@ def build_overview_new():
         remark=norm(row[lock_i])
         keys=room_keys(row[room_i],row[address_i])
         room_identity=next((key for key in keys if key.startswith("id:")),next(iter(keys),f"row:{result['totalRooms']}"))
+        if "短租" in remark: short_rent_rooms.add(room_identity)
         status_counts[state or "空白状态"]+=1
         if state in {"已出租","在租中"}:
             result["occupiedCount"]+=1
@@ -805,15 +806,14 @@ def build_overview_new():
         if has_lock and has_preorder: overlaps["lockedAndPreorder"]+=1
         if has_lock and has_moving: overlaps["lockedAndMoveIn"]+=1
         if has_preorder and has_moving: overlaps["preorderAndMoveIn"]+=1
-        if has_preorder:
+        if has_lock: result["lockedCount"]+=1
+        elif has_preorder:
             result["preorderCount"]+=1
             preorder_rooms.add(room_identity)
         elif has_moving:
             result["moveInCount"]+=1
             moving_rooms.add(room_identity)
-        else:
-            result["lockedCount"]+=1
-            if "短租" in remark: short_rent_rooms.add(room_identity)
+        else: result["otherUnavailableCount"]+=1
     base_comprehensive_rooms=occupied_rooms|preorder_rooms|moving_rooms
     comprehensive_rooms=base_comprehensive_rooms|short_rent_rooms
     result["shortRentCount"]=len(short_rent_rooms)
@@ -822,11 +822,10 @@ def build_overview_new():
     result["comprehensiveRate"]=result["comprehensiveCount"]/result["totalRooms"] if result["totalRooms"] else 0
     result["statusCounts"]=[{"status":name,"count":count} for name,count in sorted(status_counts.items())]
     result["overlapsResolved"]=overlaps
-    result["priority"]=["预定","将搬入","锁房"]
+    result["priority"]=["锁房","预定","将搬入","其他不可租"]
     result["validation"]={
         "baseReconciled":result["occupiedCount"]+result["rentableCount"]+result["unavailableCount"]==result["totalRooms"],
         "unavailableReconciled":result["lockedCount"]+result["preorderCount"]+result["moveInCount"]+result["otherUnavailableCount"]==result["unavailableCount"],
-        "shortRentWithinLocked":result["shortRentCount"]<=result["lockedCount"],
         "comprehensiveBounded":0<=result["comprehensiveCount"]<=result["totalRooms"],
     }
     if not all(result["validation"].values()): raise RuntimeError(f"Overview-new reconciliation failed: {result}")
@@ -1075,7 +1074,7 @@ required=[{'id="xhs-ad-matrix-head"':'class="xhs-ad-matrix-head"'}.get(marker,ma
 required += ['data-dashboard-view="contract-details"','id="contract-details"','id="contract-detail-new-table"','id="contract-detail-renewal-table"','id="contract-detail-other-table"','id="contract-detail-checkout-table"','function renderMonthlyContractDetails()','"monthlyDetails"','"signSource"','"otherCount"','"otherRevenue"']
 required += ['id="xhs-ad-spend-chart-wrap"','id="xhs-ad-spend-chart"','id="xhs-ad-spend-tooltip"','id="xhs-ad-leads-chart-wrap"','id="xhs-ad-leads-chart"','id="xhs-ad-leads-tooltip"','xhs-ad-spend-guide','xhs-ad-leads-guide','class="panel xhs-ad-detail-panel"','class="xhs-ad-date-tools xhs-ad-detail-date-tools"','id="xhs-ad-week-month-filter"','id="xhs-ad-week-team-filter"','id="xhs-ad-week-account-filter"','id="xhs-ad-week-owner-filter"','id="xhs-ad-week-summary"','id="xhs-ad-week-account-summary"','id="xhs-ad-week-owner-summary"','id="xhs-ad-week-head"','id="xhs-ad-week-table"','id="xhs-ad-owner-week-head"','id="xhs-ad-owner-week-table"','function xhsAdPrepareWeekControls(','function xhsAdWeekPeriods(','function xhsAdWeekDimension(','function renderXhsAdWeeklyTable(','function renderXhsAdDetailTables(','function xhsAdSummarizeAccountRows(','function xhsAdSummarizeOwnerRows(','function renderXhsAdSingleChart(','function bindXhsAdChartHover(','汇总为每个投流账号一行','汇总为每个归属账号一行']
 required += ['id="xhs-traffic"','data-dashboard-view="xhs-traffic"','id="xhs-traffic-updated"','id="xhs-traffic-total"','id="xhs-traffic-paid"','id="xhs-traffic-organic"','id="xhs-traffic-organic-rate"','id="xhs-traffic-spend"','id="xhs-traffic-start-date"','id="xhs-traffic-end-date"','id="xhs-traffic-date-reset"','id="xhs-traffic-trend-chart"','id="xhs-traffic-trend-summary"','id="xhs-traffic-decline-grid"','id="xhs-traffic-table"','id="xhs-traffic-prev-page"','id="xhs-traffic-page-status"','id="xhs-traffic-next-page"','id="xhs-traffic-week-month"','id="xhs-traffic-week-table"','id="xhs-traffic-team-table"','class="panel-note xhs-traffic-footnote"','仅汇总两套数据共同覆盖日期','xhsTrafficState.initialized','function xhsTrafficBuildAccountRows(','adContent.ownerRows || []','function xhsTrafficBuildRows(','organicLeads=totalLeads-paidLeads','function xhsTrafficWeekPeriods(','function xhsTrafficDeclineAccounts(','function renderXhsTrafficTrendChart(','function renderXhsTrafficTrends(','function renderXhsTrafficWeekTable(','function renderXhsTrafficTeamTable(','function renderXhsTraffic(']
-required += ['最近7个有数据日期对比此前7个有数据日期','至少需要14个有数据日期','上7日均','近7日均','fourteen.slice(0,7)','fourteen.slice(7,14)']
+required += ['最近7个有数据日期对比此前7个有数据日期','至少需要14个有数据日期','上7日均','近7日均','日均变化','日均上升','日均持平','fourteen.slice(0,7)','fourteen.slice(7,14)','function xhsTrafficDeclineAccounts(accountRows,metric=','Number(row[metric] || 0)',').filter(Boolean).sort((a,b) => a.delta-b.delta']
 required += ['id="xhs-note-published"','data-dashboard-view="xhs-note-published"','id="xhs-note-published-account"','id="xhs-note-published-count"','id="xhs-note-published-table"','function renderXhsNotePublished()','"xhsNotePublished"']
 required += ['id="xhs-note-published-type"','图文数量','视频数量','待识别数量','graphicCount','videoCount','pendingCount']
 required += ['数据明细','笔记发布明细','留资数据明细','聚光投放明细','data-mobile-menu="xhs-details"','data-mobile-submenu="xhs-details"','id="xhs-ad-details"','data-dashboard-view="xhs-ad-details"','id="xhs-ad-details-updated"','id="xhs-ad-detail-account-filter"','id="xhs-ad-detail-start-date"','id="xhs-ad-detail-end-date"','id="xhs-ad-detail-date-reset"','id="xhs-ad-details-count"','id="xhs-ad-details-table"','function renderXhsAdDetails(']
@@ -1086,13 +1085,14 @@ required += ['function xhsNoteCountClass(','function xhsMetricCell(','xhs-note-c
 required += ['data-dashboard-view="overview-new"','id="overview-new"','function renderOverviewNew()','"overviewNew"','overview-new-short-rent','overview-new-rate-comprehensive','overview-new-validation']
 required += ['function weekKeyFromLabel(','function weekDayBadgeInfo(','function weekHeading(','id="project-checkout-head"','id="building-checkout-head"']
 required += ['id="xhs-reading-decline-grid"','function renderXhsReadingDeclines()','function xhsDeclineSparkline(','"accountDailyReading"','上7个有效采集日平均－近7个有效采集日平均']
-required += ['id="xhs-trends"','data-dashboard-view="xhs-trends"','id="xhs-trends-updated"','id="xhs-trend-title"','id="xhs-trend-metric"','id="xhs-trend-main-content"','id="xhs-trend-decline-content"','value="totalLeads"','value="organicLeads"','value="paidLeads"','value="declineAccounts"','showDeclines=metric===\'declineAccounts\'','function renderXhsTrafficTrendChart(svgId,rows,compact=false,metric=','已隐藏当日未完整数据','rows.filter((row) => row.date!==today).slice(0,30)','Number(row.date.slice(5,7))+\'-\'+Number(row.date.slice(8,10))']
+required += ['id="xhs-trends"','data-dashboard-view="xhs-trends"','id="xhs-trends-updated"','id="xhs-trend-title"','id="xhs-trend-metric"','id="xhs-trend-main-content"','id="xhs-trend-decline-content"','id="xhs-traffic-decline-summary"','value="totalLeads"','value="organicLeads"','value="paidLeads"','const labelStep=1','xhsTrafficDeclineAccounts(accountRows.filter((row) => row.date!==today),metric)','renderXhsTrafficTrendChart(\'xhs-traffic-decline-chart-\'+index,account.rows,true,metric)','function renderXhsTrafficTrendChart(svgId,rows,compact=false,metric=','已隐藏当日未完整数据','每个日期与数值均完整展示','rows.filter((row) => row.date!==today).slice(0,30)','Number(row.date.slice(5,7))+\'-\'+Number(row.date.slice(8,10))']
 if any(x not in rendered for x in required): raise RuntimeError("Full dashboard style validation failed")
 if rendered.count('data-dashboard-view="xhs-traffic"') < 2: raise RuntimeError("XHS traffic menu must exist on desktop and mobile")
 if rendered.count('data-dashboard-view="xhs-trends"') < 2: raise RuntimeError("XHS trends menu must exist on desktop and mobile")
 trends_section=re.search(r'<section class="section" id="xhs-trends".*?</section>\s*<section class="section" id="xhs-traffic"',rendered,re.S)
 traffic_section=re.search(r'<section class="section" id="xhs-traffic".*?</section>\s*<section class="section" id="xhs-ad-flow"',rendered,re.S)
 if not trends_section or 'xhs-traffic-trend-chart' not in trends_section.group(0) or 'xhs-traffic-decline-grid' not in trends_section.group(0) or trends_section.group(0).count('<article class="panel">') != 1: raise RuntimeError("XHS trend content must share one panel")
+if 'value="declineAccounts"' in trends_section.group(0) or 'hidden' in re.search(r'<div class="xhs-trend-decline-content"[^>]*>',trends_section.group(0)).group(0): raise RuntimeError("XHS decline accounts must stay visible and follow the selected metric")
 if not traffic_section or 'xhs-traffic-trend-chart' in traffic_section.group(0) or 'xhs-traffic-decline-grid' in traffic_section.group(0): raise RuntimeError("XHS trend panels must be removed from traffic view")
 if rendered.count('data-dashboard-view="xhs-note-published"') < 2: raise RuntimeError("XHS note-published menu must exist on desktop and mobile")
 if rendered.count('data-dashboard-view="xhs-lead-details"') < 2: raise RuntimeError("XHS lead-details menu must exist on desktop and mobile")
