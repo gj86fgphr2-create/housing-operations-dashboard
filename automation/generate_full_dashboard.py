@@ -1083,7 +1083,7 @@ required += ['data-desktop-module="customer"','data-desktop-menu="customer"','da
 required += ['function xhsNoteCountClass(','function xhsMetricCell(','xhs-note-count-green','xhs-note-count-yellow','xhs-note-count-pink','xhs-note-count-red','if(count>=6)','if(count===5)','if(count===4)']
 required += ['data-dashboard-view="overview-new"','id="overview-new"','function renderOverviewNew()','"overviewNew"','overview-new-short-rent','overview-new-rate-comprehensive','overview-new-validation']
 required += ['function weekKeyFromLabel(','function weekDayBadgeInfo(','function weekHeading(','id="project-checkout-head"','id="building-checkout-head"']
-required += ['id="xhs-reading-decline-grid"','function renderXhsReadingDeclines()','function xhsDeclineSparkline(','"accountDailyReading"','上3个有效采集日平均－近3个有效采集日平均']
+required += ['id="xhs-reading-decline-grid"','function renderXhsReadingDeclines()','function xhsDeclineSparkline(','"accountDailyReading"','上7个有效采集日平均－近7个有效采集日平均']
 if any(x not in rendered for x in required): raise RuntimeError("Full dashboard style validation failed")
 if rendered.count('data-dashboard-view="xhs-traffic"') < 2: raise RuntimeError("XHS traffic menu must exist on desktop and mobile")
 if rendered.count('data-dashboard-view="xhs-note-published"') < 2: raise RuntimeError("XHS note-published menu must exist on desktop and mobile")
