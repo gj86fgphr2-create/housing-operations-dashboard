@@ -288,6 +288,12 @@
             <article class="kpi blue"><div class="label">不可租中的将搬入数</div><div class="value" id="overview-new-moving">—</div><div class="hint">再次匹配将搬入合同</div></article>
             <article class="kpi green"><div class="label">短租房源数</div><div class="value" id="overview-new-short-rent">—</div><div class="hint">锁房备注包含“短租”，不限房源状态</div></article>
           </div></article>
+        <article class="panel overview-new-panel"><h3>入住率统计</h3><p class="panel-note">各项比率均以总房源数为分母。</p><div class="kpis overview-new-rate-kpis">
+            <article class="kpi green"><div class="label">在租中入住率</div><div class="value" id="overview-new-rate-occupied">—</div><div class="hint" id="overview-new-rate-occupied-hint">—</div></article>
+            <article class="kpi blue"><div class="label">综合入住率</div><div class="value" id="overview-new-rate-comprehensive">—</div><div class="hint" id="overview-new-rate-comprehensive-hint">—</div></article>
+            <article class="kpi orange"><div class="label">空房率</div><div class="value" id="overview-new-rate-vacancy">—</div><div class="hint" id="overview-new-rate-vacancy-hint">—</div></article>
+            <article class="kpi red"><div class="label">锁房率</div><div class="value" id="overview-new-rate-locked">—</div><div class="hint" id="overview-new-rate-locked-hint">—</div></article>
+          </div></article>
         <article class="panel overview-new-panel" id="overview-contract-activity"><h3>合同业务数据</h3><p class="panel-note">以工作台数据日期为基准；合同编号与预定编号均去重。</p><div class="overview-contract-periods">
             <section class="overview-contract-period"><div class="overview-contract-period-head"><strong>今天</strong><span id="overview-contract-today-range">—</span></div><div class="kpis overview-contract-kpis">
                 <article class="kpi blue"><div class="label">新签数据</div><div class="value" id="overview-contract-today-new-sign">—</div><div class="hint">按签约时间</div></article>
@@ -308,12 +314,6 @@
                 <article class="kpi red"><div class="label">实际退租数据</div><div class="value" id="overview-contract-week-actual-checkout">—</div><div class="hint">排除换房清算</div></article>
               </div></section>
           </div><p class="overview-contract-source"><strong>统计字段：</strong>新签/续租取签约时间，预定取录入日期，实际退租取预退/实退日期。</p></article>
-        <article class="panel overview-new-panel"><h3>入住率统计</h3><p class="panel-note">各项比率均以总房源数为分母。</p><div class="kpis overview-new-rate-kpis">
-            <article class="kpi green"><div class="label">在租中入住率</div><div class="value" id="overview-new-rate-occupied">—</div><div class="hint" id="overview-new-rate-occupied-hint">—</div></article>
-            <article class="kpi blue"><div class="label">综合入住率</div><div class="value" id="overview-new-rate-comprehensive">—</div><div class="hint" id="overview-new-rate-comprehensive-hint">—</div></article>
-            <article class="kpi orange"><div class="label">空房率</div><div class="value" id="overview-new-rate-vacancy">—</div><div class="hint" id="overview-new-rate-vacancy-hint">—</div></article>
-            <article class="kpi red"><div class="label">锁房率</div><div class="value" id="overview-new-rate-locked">—</div><div class="hint" id="overview-new-rate-locked-hint">—</div></article>
-          </div></article>
         <div class="overview-new-hidden-validation" hidden aria-hidden="true"><span id="overview-new-base-equation">—</span><span id="overview-new-unavailable-equation">—</span><span id="overview-new-validation">正在校验…</span><span id="overview-new-other-status">—</span></div>
       </section>
 
