@@ -59,6 +59,12 @@ REQUIRED = (
     '最新日期在左',
     '每日数值直接标注',
     'labelY=Math.max(18,pointY-labelOffset)',
+    'id="contract-daily-trend-panel"',
+    'class="panel contract-daily-trend-panel"',
+    'id="contract-daily-chart-wrap"',
+    'id="contract-daily-chart"',
+    'function renderDailyLineChart()',
+    'renderBusinessTrend(); renderDailyLineChart(); renderCheckoutTrends();',
     'id="checkout-trend-grid"',
     'id="checkout-trend-future-chart"',
     'id="checkout-trend-past-chart"',
@@ -351,6 +357,13 @@ def main() -> int:
         return 1
     if html.count('data-dashboard-view="business-trend"') < 2:
         print("Business trend menu missing from desktop or mobile navigation", file=sys.stderr)
+        return 1
+    business_section = re.search(r'<section class="section" id="business-trend".*?</section>\s*<section class="section" id="overview"', html, re.S)
+    if not business_section or html.count('id="contract-daily-trend-panel"') != 1 or 'id="contract-daily-chart"' not in business_section.group(0):
+        print("Contract daily trend chart is not uniquely located in the business-trend view", file=sys.stderr)
+        return 1
+    if 'data-views="overview"><h3>近期每日合同净变化</h3>' in html:
+        print("Contract daily trend chart still exists in the overview view", file=sys.stderr)
         return 1
     if html.count('data-dashboard-view="xhs-note-published"') < 2:
         print("XHS note-published menu missing from desktop or mobile navigation", file=sys.stderr)
