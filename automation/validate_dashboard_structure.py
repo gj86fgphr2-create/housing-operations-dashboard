@@ -332,6 +332,24 @@ def main() -> int:
     if not checkout_trends.get("validation", {}).get("occupancyReconciled"):
         print("Future checkout trend does not reconcile with occupancy checkout statistics", file=sys.stderr)
         return 1
+    future_ranges = future_period.get("ranges", [])
+    future_rows = future_period.get("rows", [])
+    expected_ranges = []
+    for offset in range(0, len(future_rows), 7):
+        chunk = future_rows[offset:offset + 7]
+        expected_ranges.append({
+            "index": len(expected_ranges) + 1,
+            "startDate": chunk[0]["date"],
+            "endDate": chunk[-1]["date"],
+            "dayCount": len(chunk),
+            "checkoutCount": sum(int(row.get("checkoutCount") or 0) for row in chunk),
+        })
+    if future_ranges != expected_ranges or [item.get("dayCount") for item in future_ranges] != [7, 7, 7, 7, 2]:
+        print(f"Future checkout seven-day ranges invalid: {future_ranges}", file=sys.stderr)
+        return 1
+    if sum(int(item.get("checkoutCount") or 0) for item in future_ranges) != sum(int(row.get("checkoutCount") or 0) for row in future_rows):
+        print("Future checkout range totals do not reconcile with daily rows", file=sys.stderr)
+        return 1
     overview_new = payload.get("overviewNew", {})
     expected_priority = ["预定", "将搬入", "锁房"]
     if overview_new.get("priority") != expected_priority:

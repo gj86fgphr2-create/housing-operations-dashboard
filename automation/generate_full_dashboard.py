@@ -795,6 +795,16 @@ def checkout_trends():
             if actual_checkout_day in past: past[actual_checkout_day]+=1
     past_rows=[{"date":day.isoformat(),"checkoutCount":past[day]} for day in sorted(past,reverse=True)]
     future_rows=[{"date":day.isoformat(),"checkoutCount":future[day]} for day in sorted(future)]
+    future_ranges=[]
+    for offset in range(0,len(future_rows),7):
+        chunk=future_rows[offset:offset+7]
+        future_ranges.append({
+            "index":len(future_ranges)+1,
+            "startDate":chunk[0]["date"],
+            "endDate":chunk[-1]["date"],
+            "dayCount":len(chunk),
+            "checkoutCount":sum(row["checkoutCount"] for row in chunk),
+        })
     occupancy_week_counts={period["key"]:sum(int(values.get(period["key"],0)) for values in checkout.values()) for period in periods}
     validation={
         "thirtyDaysEach":len(past_rows)==30 and len(future_rows)==30,
@@ -805,12 +815,14 @@ def checkout_trends():
         "boundariesValid":past_rows[0]["date"]==as_of.isoformat() and past_rows[-1]["date"]==past_start.isoformat() and future_rows[0]["date"]==future_start.isoformat() and future_rows[-1]["date"]==future_end.isoformat(),
         "nonNegative":all(row["checkoutCount"]>=0 for row in past_rows+future_rows),
         "occupancyReconciled":all(month_week_counts[period["key"]]==occupancy_week_counts[period["key"]] for period in periods),
+        "futureRangeCoverage":len(future_ranges)==5 and [item["dayCount"] for item in future_ranges]==[7,7,7,7,2] and future_ranges[0]["startDate"]==future_rows[0]["date"] and future_ranges[-1]["endDate"]==future_rows[-1]["date"],
+        "futureRangeTotalsMatched":sum(item["checkoutCount"] for item in future_ranges)==sum(row["checkoutCount"] for row in future_rows),
     }
     if not all(validation.values()): raise RuntimeError(f"Checkout trend validation failed: {validation}")
     return {
         "asOfDate":as_of.isoformat(),
         "past":{"startDate":past_start.isoformat(),"endDate":as_of.isoformat(),"sourceFiles":["已退租合同.xlsx"],"dateField":"预退/实退","rows":past_rows},
-        "future":{"startDate":future_start.isoformat(),"endDate":future_end.isoformat(),"sourceFiles":["在租中合同.xlsx","将搬入合同.xlsx"],"dateField":"退租时间","sourceCounts":dict(future_source_counts),"rows":future_rows},
+        "future":{"startDate":future_start.isoformat(),"endDate":future_end.isoformat(),"sourceFiles":["在租中合同.xlsx","将搬入合同.xlsx"],"dateField":"退租时间","sourceCounts":dict(future_source_counts),"rows":future_rows,"ranges":future_ranges},
         "occupancyWeekCounts":occupancy_week_counts,
         "validation":validation,
     }
@@ -1255,7 +1267,7 @@ required += ['data-dashboard-view="overview-new"','id="overview-new"','function 
 required += ['id="overview-contract-activity"','overview-contract-today-new-sign','overview-contract-yesterday-reservation','overview-contract-week-actual-checkout','"contractActivity"','function overviewContractRangeLabel(']
 required += ['id="business-trend"','data-dashboard-view="business-trend"','id="business-trend-chart"','id="business-trend-summary"','function renderBusinessTrend()','"businessTrend"','newSignCount','reservationCount','最新日期在左','每日数值直接标注','labelY=Math.max(18,pointY-labelOffset)']
 required += ['id="contract-daily-trend-panel"','class="panel contract-daily-trend-panel"','id="contract-daily-chart-wrap"','id="contract-daily-chart"','function renderDailyLineChart()','renderBusinessTrend(); renderDailyLineChart(); renderCheckoutTrends();']
-required += ['id="checkout-trend-grid"','id="checkout-trend-future-chart"','id="checkout-trend-past-chart"','id="checkout-trend-future-summary"','id="checkout-trend-past-summary"','function renderCheckoutTrends()','function renderCheckoutTrendChart(','"checkoutTrends"','futureNearestFirst','pastNewestFirst','未来30天','过去30天','checkoutLabelY=Math.max(18,pointY-9)']
+required += ['id="checkout-trend-grid"','id="checkout-trend-future-chart"','id="checkout-trend-past-chart"','id="checkout-trend-future-summary"','id="checkout-trend-past-summary"','function renderCheckoutTrends()','function renderCheckoutTrendChart(','"checkoutTrends"','"ranges"','futureNearestFirst','pastNewestFirst','futureRangeCoverage','futureRangeTotalsMatched','未来30天','过去30天','checkoutLabelY=Math.max(18,pointY-9)','checkout-trend-range-band','checkout-trend-range-total','天合计']
 required += ['function weekKeyFromLabel(','function weekDayBadgeInfo(','function weekHeading(','id="project-checkout-head"','id="building-checkout-head"']
 required += ['id="xhs-reading-decline-grid"','function renderXhsReadingDeclines()','function xhsDeclineSparkline(','"accountDailyReading"','上7个有效采集日平均－近7个有效采集日平均']
 required += ['id="xhs-trends"','data-dashboard-view="xhs-trends"','id="xhs-trends-updated"','id="xhs-trend-title"','id="xhs-trend-metric"','id="xhs-trend-main-content"','id="xhs-trend-decline-content"','id="xhs-traffic-decline-summary"','value="totalLeads"','value="organicLeads"','value="paidLeads"','const labelStep=1','xhsTrafficDeclineAccounts(accountRows.filter((row) => row.date!==today),metric)','renderXhsTrafficTrendChart(\'xhs-traffic-decline-chart-\'+index,account.rows,true,metric)','function renderXhsTrafficTrendChart(svgId,rows,compact=false,metric=','已隐藏当日未完整数据','每个日期与数值均完整展示','rows.filter((row) => row.date!==today).slice(0,30)','Number(row.date.slice(5,7))+\'-\'+Number(row.date.slice(8,10))']
