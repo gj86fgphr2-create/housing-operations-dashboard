@@ -4,7 +4,7 @@
 import json
 import re
 import sys
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 
@@ -59,6 +59,17 @@ REQUIRED = (
     '最新日期在左',
     '每日数值直接标注',
     'labelY=Math.max(18,pointY-labelOffset)',
+    'id="checkout-trend-grid"',
+    'id="checkout-trend-future-chart"',
+    'id="checkout-trend-past-chart"',
+    'id="checkout-trend-future-summary"',
+    'id="checkout-trend-past-summary"',
+    'function renderCheckoutTrends()',
+    'function renderCheckoutTrendChart(',
+    '"checkoutTrends"',
+    '未来30天',
+    '过去30天',
+    'checkoutLabelY=Math.max(18,pointY-9)',
     'id="customer-data"',
     'data-dashboard-view="customer-data"',
     'id="customer-data-updated"',
@@ -278,6 +289,31 @@ def main() -> int:
         return 1
     if not all(business_trend.get("validation", {}).values()):
         print(f"Business trend validation failed: {business_trend.get('validation')}", file=sys.stderr)
+        return 1
+    checkout_trends = payload.get("checkoutTrends", {})
+    as_of = date.fromisoformat(payload.get("dataDate"))
+    checkout_specs = (
+        ("past", as_of - timedelta(days=29), as_of, True),
+        ("future", as_of + timedelta(days=1), as_of + timedelta(days=30), False),
+    )
+    for key, start, end, newest_first in checkout_specs:
+        period = checkout_trends.get(key, {})
+        rows = period.get("rows", [])
+        dates = [date.fromisoformat(row.get("date")) for row in rows]
+        expected = [start + timedelta(days=index) for index in range(30)]
+        if newest_first:
+            expected.reverse()
+        if len(rows) != 30 or dates != expected:
+            print(f"Checkout trend date coverage invalid: {key} {len(rows)} rows", file=sys.stderr)
+            return 1
+        if period.get("startDate") != start.isoformat() or period.get("endDate") != end.isoformat():
+            print(f"Checkout trend boundaries invalid: {key}", file=sys.stderr)
+            return 1
+        if any(int(row.get("checkoutCount") or 0) < 0 for row in rows):
+            print(f"Checkout trend contains negative counts: {key}", file=sys.stderr)
+            return 1
+    if checkout_trends.get("asOfDate") != as_of.isoformat() or not all(checkout_trends.get("validation", {}).values()):
+        print(f"Checkout trend validation failed: {checkout_trends.get('validation')}", file=sys.stderr)
         return 1
     overview_new = payload.get("overviewNew", {})
     expected_priority = ["预定", "将搬入", "锁房"]
