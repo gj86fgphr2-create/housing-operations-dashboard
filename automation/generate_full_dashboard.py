@@ -851,7 +851,6 @@ def build_overview_new():
         remark=norm(row[lock_i])
         keys=room_keys(row[room_i],row[address_i])
         room_identity=next((key for key in keys if key.startswith("id:")),next(iter(keys),f"row:{result['totalRooms']}"))
-        if "短租" in remark: short_rent_rooms.add(room_identity)
         status_counts[state or "空白状态"]+=1
         if state in {"已出租","在租中"}:
             result["occupiedCount"]+=1
@@ -868,14 +867,15 @@ def build_overview_new():
         if has_lock and has_preorder: overlaps["lockedAndPreorder"]+=1
         if has_lock and has_moving: overlaps["lockedAndMoveIn"]+=1
         if has_preorder and has_moving: overlaps["preorderAndMoveIn"]+=1
-        if has_lock: result["lockedCount"]+=1
-        elif has_preorder:
+        if has_preorder:
             result["preorderCount"]+=1
             preorder_rooms.add(room_identity)
         elif has_moving:
             result["moveInCount"]+=1
             moving_rooms.add(room_identity)
-        else: result["otherUnavailableCount"]+=1
+        else:
+            result["lockedCount"]+=1
+            if "短租" in remark: short_rent_rooms.add(room_identity)
     base_comprehensive_rooms=occupied_rooms|preorder_rooms|moving_rooms
     comprehensive_rooms=base_comprehensive_rooms|short_rent_rooms
     result["shortRentCount"]=len(short_rent_rooms)
@@ -884,10 +884,11 @@ def build_overview_new():
     result["comprehensiveRate"]=result["comprehensiveCount"]/result["totalRooms"] if result["totalRooms"] else 0
     result["statusCounts"]=[{"status":name,"count":count} for name,count in sorted(status_counts.items())]
     result["overlapsResolved"]=overlaps
-    result["priority"]=["锁房","预定","将搬入","其他不可租"]
+    result["priority"]=["预定","将搬入","锁房"]
     result["validation"]={
         "baseReconciled":result["occupiedCount"]+result["rentableCount"]+result["unavailableCount"]==result["totalRooms"],
         "unavailableReconciled":result["lockedCount"]+result["preorderCount"]+result["moveInCount"]+result["otherUnavailableCount"]==result["unavailableCount"],
+        "shortRentWithinLocked":result["shortRentCount"]<=result["lockedCount"],
         "comprehensiveBounded":0<=result["comprehensiveCount"]<=result["totalRooms"],
     }
     if not all(result["validation"].values()): raise RuntimeError(f"Overview-new reconciliation failed: {result}")

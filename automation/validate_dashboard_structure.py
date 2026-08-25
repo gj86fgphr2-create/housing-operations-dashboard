@@ -43,6 +43,13 @@ REQUIRED = (
     'id="meter-offline-table"',
     'function renderMeterManagement()',
     '"meterManagement"',
+    '空房不可租按“预定 → 将搬入 → 锁房”互斥归类',
+    '按预定、将搬入、锁房顺序互斥归类',
+    '第一优先匹配已付定合同',
+    '第二优先匹配将搬入合同',
+    '扣除预定、将搬入后的剩余不可租',
+    '仅从剩余锁房中按备注包含“短租”筛选',
+    'd.validation?.shortRentWithinLocked',
     'id="customer-data"',
     'data-dashboard-view="customer-data"',
     'id="customer-data-updated"',
@@ -218,6 +225,9 @@ FORBIDDEN = (
     '<div class="label">本月实际退房</div>',
     'id="contract-checkout-renewal"',
     'id="contract-checkout-renewal-previous"',
+    '优先按锁房备注识别',
+    '剩余房源匹配已付定合同',
+    '锁房备注包含“短租”，不限房源状态',
 )
 
 
@@ -242,6 +252,24 @@ def main() -> int:
         print("dashboard DATA payload missing", file=sys.stderr)
         return 1
     payload = json.loads(payload_match.group(1))
+    overview_new = payload.get("overviewNew", {})
+    expected_priority = ["预定", "将搬入", "锁房"]
+    if overview_new.get("priority") != expected_priority:
+        print(f"Overview-new priority regression: {overview_new.get('priority')}", file=sys.stderr)
+        return 1
+    unavailable = int(overview_new.get("unavailableCount") or 0)
+    preorder = int(overview_new.get("preorderCount") or 0)
+    moving = int(overview_new.get("moveInCount") or 0)
+    locked = int(overview_new.get("lockedCount") or 0)
+    short_rent = int(overview_new.get("shortRentCount") or 0)
+    other_unavailable = int(overview_new.get("otherUnavailableCount") or 0)
+    overview_validation = overview_new.get("validation", {})
+    if other_unavailable or unavailable != preorder + moving + locked:
+        print(f"Overview-new unavailable breakdown invalid: {unavailable}/{preorder}/{moving}/{locked}/{other_unavailable}", file=sys.stderr)
+        return 1
+    if short_rent > locked or not overview_validation.get("shortRentWithinLocked"):
+        print(f"Overview-new short-rent subset invalid: {short_rent}/{locked}", file=sys.stderr)
+        return 1
     for period_name in ("currentMonth", "previousMonth"):
         period = payload.get("contractStats", {}).get(period_name, {})
         total = int(period.get("actualCheckoutCount") or 0)
