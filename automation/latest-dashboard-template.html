@@ -82,6 +82,7 @@
     .overview-new-panel+.overview-new-panel{margin-top:16px}.overview-new-kpis,.overview-new-rate-kpis{grid-template-columns:repeat(4,minmax(160px,1fr));margin-top:14px}.overview-new-hidden-validation{display:none}
     @media(max-width:680px){.overview-new-kpis,.overview-new-rate-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:360px){.main{padding-left:10px;padding-right:10px}.kpis{grid-template-columns:1fr}.kpi{min-height:94px}.table-wrap tr{grid-template-columns:1fr}.table-wrap td{grid-column:1/-1}.overview-new-kpis,.overview-new-rate-kpis{grid-template-columns:1fr}}
+    .xhs-decline-block{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}.xhs-decline-head{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:13px}.xhs-decline-head h4{margin:0 0 5px;font-size:15px}.xhs-decline-head p{margin:0;color:var(--muted);font-size:12px;line-height:1.55}.xhs-decline-scroll{overflow-x:auto;padding:2px 2px 8px}.xhs-decline-grid{display:grid;grid-template-columns:repeat(3,minmax(260px,1fr));gap:13px;min-width:820px}.xhs-decline-card{min-width:0;overflow:hidden;border:1px solid #f0c6ba;border-top:4px solid var(--orange);border-radius:13px;background:linear-gradient(180deg,#fffaf7 0%,var(--surface) 42%);box-shadow:0 5px 16px rgba(109,59,31,.07)}.xhs-decline-card-head{display:flex;align-items:start;justify-content:space-between;gap:10px;padding:13px 14px 8px}.xhs-decline-rank{flex:0 0 auto;display:grid;place-items:center;width:27px;height:27px;border-radius:9px;background:#fff0e8;color:#b84a25;font-size:12px;font-weight:800}.xhs-decline-name{min-width:0;flex:1}.xhs-decline-name strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.xhs-decline-name small{display:block;margin-top:3px;color:var(--muted);font-size:10px}.xhs-decline-value{text-align:right;white-space:nowrap}.xhs-decline-value strong{display:block;color:#b84a25;font-size:20px;line-height:1}.xhs-decline-value small{color:var(--muted);font-size:10px}.xhs-decline-chart{display:block;width:100%;height:150px}.xhs-decline-line{fill:none;stroke:#df6c32;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.xhs-decline-point{fill:#fff;stroke:#df6c32;stroke-width:2}.xhs-decline-meta{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin:0 12px;padding:10px 2px;border-top:1px dashed #edcbbb;border-bottom:1px dashed #edcbbb;font-variant-numeric:tabular-nums}.xhs-decline-meta div:last-child{text-align:right}.xhs-decline-meta span{display:block;color:var(--muted);font-size:10px}.xhs-decline-meta strong{font-size:14px}.xhs-decline-arrow{color:#c85b2d;font-size:18px}.xhs-decline-note{margin:0;padding:10px 14px 13px;color:#6a4a3b;font-size:11px;line-height:1.55}.xhs-decline-empty{grid-column:1/-1;padding:34px 20px;border:1px dashed var(--line);border-radius:12px;color:var(--muted);text-align:center;font-size:12px}
   </style>
 </head>
 <body>
@@ -154,7 +155,7 @@
         <div class="xhs-notes-stack">
           <article class="panel"><h3>笔记数量</h3><p class="panel-note">按账户、运营人及创作服务平台笔记发布时间周次统计</p><div class="table-wrap xhs-table-wrap"><table class="xhs-metric-table"><thead id="xhs-note-count-head"></thead><tbody id="xhs-note-count-table"></tbody></table></div></article>
           <article class="panel"><h3>阅读数</h3><p class="panel-note">专业号笔记管理当前显示的累计阅读数</p><div class="table-wrap xhs-table-wrap"><table class="xhs-metric-table"><thead id="xhs-view-count-head"></thead><tbody id="xhs-view-count-table"></tbody></table></div></article>
-          <article class="panel"><h3>全部账户每日阅读次数</h3><p class="panel-note">汇总全部账户；日期从新到旧排列，展示最近 30 日</p><div class="line-chart-wrap" id="xhs-daily-reading-chart-wrap"><svg class="line-chart" id="xhs-daily-reading-chart" role="img" aria-label="全部账户每日阅读次数折线图"></svg></div></article>
+          <article class="panel"><h3>全部账户每日阅读次数</h3><p class="panel-note">汇总全部账户；日期从新到旧排列，展示最近 30 日</p><div class="line-chart-wrap" id="xhs-daily-reading-chart-wrap"><svg class="line-chart" id="xhs-daily-reading-chart" role="img" aria-label="全部账户每日阅读次数折线图"></svg></div><div class="xhs-decline-block"><div class="xhs-decline-head"><div><h4>阅读下降账号 TOP 3</h4><p>下降量＝上3个有效采集日平均－近3个有效采集日平均；按下降量由高到低排列</p></div></div><div class="xhs-decline-scroll"><div class="xhs-decline-grid" id="xhs-reading-decline-grid" aria-live="polite"></div></div></div></article>
         </div>
       </section>
       <section class="section" id="xhs-note-published" data-views="xhs-note-published">
@@ -682,12 +683,50 @@
       svg.setAttribute('viewBox','0 0 '+width+' '+height);
       svg.innerHTML='<title>全部账户每日阅读次数</title><desc>日期按从新到旧排列，汇总全部已采集账户</desc>'+grid+'<polyline class="chart-line" points="'+points+'"></polyline>'+marks+labels;
     }
+    function xhsDeclineSparkline(rows,name){
+      const width=300,height=150,margin={top:18,right:14,bottom:28,left:38};
+      const values=rows.map((row) => Number(row.readingCount || 0)), max=Math.max(1,...values), min=Math.min(0,...values);
+      const plotWidth=width-margin.left-margin.right, plotHeight=height-margin.top-margin.bottom, span=Math.max(1,max-min);
+      const x=(index) => margin.left+(rows.length===1 ? plotWidth/2 : index*plotWidth/(rows.length-1));
+      const y=(value) => margin.top+(max-Number(value || 0))*plotHeight/span;
+      const ticks=[min,(min+max)/2,max];
+      const grid=ticks.map((tick) => '<line class="chart-grid" x1="'+margin.left+'" x2="'+(width-margin.right)+'" y1="'+y(tick)+'" y2="'+y(tick)+'"></line><text class="chart-axis-label" x="'+(margin.left-6)+'" y="'+(y(tick)+4)+'" text-anchor="end">'+Math.round(tick)+'</text>').join('');
+      const points=rows.map((row,index) => x(index)+','+y(row.readingCount)).join(' ');
+      const marks=rows.map((row,index) => '<circle class="xhs-decline-point" cx="'+x(index)+'" cy="'+y(row.readingCount)+'" r="3"><title>'+xhsSafe(row.date)+'：'+int(row.readingCount)+'</title></circle>').join('');
+      const labels=rows.map((row,index) => index===0 || index===rows.length-1 ? '<text class="chart-axis-label" x="'+x(index)+'" y="'+(height-9)+'" text-anchor="middle">'+xhsSafe(String(row.date || '').slice(5))+'</text>' : '').join('');
+      return '<svg class="xhs-decline-chart" viewBox="0 0 '+width+' '+height+'" role="img" aria-label="'+xhsSafe(name)+'最近阅读趋势"><title>'+xhsSafe(name)+'最近阅读趋势</title>'+grid+'<polyline class="xhs-decline-line" points="'+points+'"></polyline>'+marks+labels+'</svg>';
+    }
+    function renderXhsReadingDeclines(){
+      const grid=$('xhs-reading-decline-grid');
+      if (!grid) return;
+      const grouped=new Map();
+      ((DATA.xhsContent || {}).accountDailyReading || []).forEach((row) => {
+        if (!row || !row.profile || !row.date || !Number.isFinite(Number(row.readingCount))) return;
+        if (!grouped.has(row.profile)) grouped.set(row.profile,{profile:row.profile,name:row.accountName || row.profile,byDate:new Map()});
+        grouped.get(row.profile).byDate.set(String(row.date),Number(row.readingCount));
+      });
+      const ranked=[...grouped.values()].map((account) => {
+        const rows=[...account.byDate.entries()].map(([date,readingCount]) => ({date,readingCount})).sort((a,b) => a.date.localeCompare(b.date));
+        if (rows.length<6) return null;
+        const six=rows.slice(-6), previous=six.slice(0,3), recent=six.slice(3), avg=(items) => items.reduce((sum,row) => sum+row.readingCount,0)/items.length;
+        const previousAvg=avg(previous), recentAvg=avg(recent), decline=previousAvg-recentAvg, rate=previousAvg>0 ? decline/previousAvg : null;
+        return {...account,rows,previous,recent,previousAvg,recentAvg,decline,rate};
+      }).filter((account) => account && account.decline>0).sort((a,b) => b.decline-a.decline || (b.rate || 0)-(a.rate || 0) || String(a.name).localeCompare(String(b.name),'zh-CN')).slice(0,3);
+      if (!ranked.length){ grid.innerHTML='<div class="xhs-decline-empty">最近6个有效采集日没有账户出现阅读均值下降，或可用数据不足6天。</div>'; return; }
+      grid.innerHTML=ranked.map((account,index) => {
+        const chartRows=account.rows.slice(-14), rateText=account.rate===null ? '—' : pct(account.rate), previousRange=account.previous[0].date.slice(5)+'～'+account.previous[2].date.slice(5), recentRange=account.recent[0].date.slice(5)+'～'+account.recent[2].date.slice(5);
+        const latest=account.recent.map((row) => row.readingCount), continuous=latest[0]>latest[1] && latest[1]>latest[2];
+        const note=(continuous ? '近3日连续回落；' : '')+'近3日均值较上3日下降 '+int(Math.round(account.decline))+' 次（'+rateText+'），建议检查近期发布频率与内容表现。';
+        return '<article class="xhs-decline-card"><div class="xhs-decline-card-head"><span class="xhs-decline-rank">'+(index+1)+'</span><div class="xhs-decline-name"><strong title="'+xhsSafe(account.name)+'">'+xhsSafe(account.name)+'</strong><small>最近 '+int(chartRows.length)+' 个有效采集日</small></div><div class="xhs-decline-value"><strong>↓ '+int(Math.round(account.decline))+'</strong><small>下降量</small></div></div>'+xhsDeclineSparkline(chartRows,account.name)+'<div class="xhs-decline-meta"><div><span>上3日均值 · '+previousRange+'</span><strong>'+int(Math.round(account.previousAvg))+'</strong></div><div class="xhs-decline-arrow">→</div><div><span>近3日均值 · '+recentRange+'</span><strong>'+int(Math.round(account.recentAvg))+'</strong></div></div><p class="xhs-decline-note">'+xhsSafe(note)+'</p></article>';
+      }).join('');
+    }
     function renderXhsContent(){
       const content=DATA.xhsContent || {};
       $('xhs-content-updated').textContent=content.generatedAt ? '数据更新：'+content.generatedAt : '暂无采集数据';
       renderXhsMetricTable('xhs-note-count-head','xhs-note-count-table','notes');
       renderXhsMetricTable('xhs-view-count-head','xhs-view-count-table','reads');
       renderXhsReadingChart();
+      renderXhsReadingDeclines();
     }
 
     function renderXhsNotePublished(){
@@ -1204,7 +1243,7 @@
       const isXhs = view.startsWith('xhs-'), isCustomer=view === 'customer-data'; $('dashboard-controls').hidden = isXhs || isCustomer || ['overview-new','occupancy-ziyin','contract-details'].includes(view); $('page-title').textContent = isCustomer ? '客服数据工作台' : isXhs ? '小红书运营工作台' : '房源运营工作台';
       document.querySelectorAll('[data-desktop-module]').forEach((button) => button.classList.toggle('active',button.dataset.desktopModule === moduleForView(view)));
       if (view === 'overview' || view === 'performance') requestAnimationFrame(renderDailyLineChart);
-      if (view === 'xhs-notes') requestAnimationFrame(renderXhsReadingChart);
+      if (view === 'xhs-notes') requestAnimationFrame(() => { renderXhsReadingChart(); renderXhsReadingDeclines(); });
     }
     $('dashboard-home').addEventListener('click', () => {
       history.replaceState(null, '', '#overview');
@@ -1258,7 +1297,7 @@
     $('xhs-ad-week-owner-filter').addEventListener('change',()=>renderXhsAdWeeklyTable(DATA.xhsAdFlow || {}));
     $('side-date').textContent=DATA.dataDate; $('page-subtitle').textContent='数据日期：'+DATA.dataDate+'　｜　生成日期：'+DATA.generatedDate+'　｜　支持项目与楼栋切换';
     const initialView=viewByHash[location.hash]||'overview'; setDashboardView(initialView); showMobileMenu(location.hash?mobileMenuForView(initialView):'primary'); showDesktopMenu(moduleForView(initialView)); fillSelect(); renderOverviewNew(); renderCheckoutTables(); renderProjectTable(); renderZiyinOccupancy(); renderBuildingTable(); renderContracts(); renderOperationsBrief(); renderMonthlyContractDetails(); renderXhsAccountStatus(); renderXhsContent(); renderXhsNotePublished(); renderXhsLeads(); renderXhsLeadDetails(); renderXhsAdFlow(); renderXhsAdDetails(false); renderXhsTraffic(); renderCustomerData(); render();
-    if ('ResizeObserver' in window){ new ResizeObserver(renderDailyLineChart).observe($('contract-daily-chart-wrap')); new ResizeObserver(renderXhsReadingChart).observe($('xhs-daily-reading-chart-wrap')); }
+    if ('ResizeObserver' in window){ new ResizeObserver(renderDailyLineChart).observe($('contract-daily-chart-wrap')); new ResizeObserver(() => { renderXhsReadingChart(); renderXhsReadingDeclines(); }).observe($('xhs-daily-reading-chart-wrap')); }
   </script>
 </body>
 </html>

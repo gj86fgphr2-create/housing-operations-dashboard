@@ -103,13 +103,18 @@ def build_xhs_content(fallback):
             }
         accounts.append({**account,"metrics":metrics})
     daily_totals=defaultdict(int)
+    account_daily=[]
     daily_path=summary_path.with_name("daily-reading-latest.csv")
     if daily_path.is_file():
         with daily_path.open(encoding="utf-8-sig",newline="") as handle:
             for row in csv.DictReader(handle):
                 if row.get("status") == "ok" and row.get("date"):
-                    daily_totals[row["date"]]+=int(row.get("reading_count") or 0)
-    return {"generatedAt":summary.get("generated_at","")[:19].replace("T"," "),"month":f"{end_date.year:04d}-{end_date.month:02d}","weeks":weeks,"accounts":accounts,"dailyReading":[{"date":date,"readingCount":count} for date,count in sorted(daily_totals.items(),reverse=True)]}
+                    reading_count=int(row.get("reading_count") or 0)
+                    daily_totals[row["date"]]+=reading_count
+                    account=next((item for item in XHS_ACCOUNTS if item["profile"]==row.get("profile")),None)
+                    account_daily.append({"profile":row.get("profile", ""),"accountName":(account or {}).get("name") or row.get("account_name") or row.get("profile", ""),"date":row["date"],"readingCount":reading_count})
+    account_daily.sort(key=lambda row:(row["profile"],row["date"]))
+    return {"generatedAt":summary.get("generated_at","")[:19].replace("T"," "),"month":f"{end_date.year:04d}-{end_date.month:02d}","weeks":weeks,"accounts":accounts,"dailyReading":[{"date":date,"readingCount":count} for date,count in sorted(daily_totals.items(),reverse=True)],"accountDailyReading":account_daily}
 
 def latest_xhs_note_published_csv():
     """Locate the immutable per-account note publication history."""
@@ -1078,6 +1083,7 @@ required += ['data-desktop-module="customer"','data-desktop-menu="customer"','da
 required += ['function xhsNoteCountClass(','function xhsMetricCell(','xhs-note-count-green','xhs-note-count-yellow','xhs-note-count-pink','xhs-note-count-red','if(count>=6)','if(count===5)','if(count===4)']
 required += ['data-dashboard-view="overview-new"','id="overview-new"','function renderOverviewNew()','"overviewNew"','overview-new-short-rent','overview-new-rate-comprehensive','overview-new-validation']
 required += ['function weekKeyFromLabel(','function weekDayBadgeInfo(','function weekHeading(','id="project-checkout-head"','id="building-checkout-head"']
+required += ['id="xhs-reading-decline-grid"','function renderXhsReadingDeclines()','function xhsDeclineSparkline(','"accountDailyReading"','上3个有效采集日平均－近3个有效采集日平均']
 if any(x not in rendered for x in required): raise RuntimeError("Full dashboard style validation failed")
 if rendered.count('data-dashboard-view="xhs-traffic"') < 2: raise RuntimeError("XHS traffic menu must exist on desktop and mobile")
 if rendered.count('data-dashboard-view="xhs-note-published"') < 2: raise RuntimeError("XHS note-published menu must exist on desktop and mobile")
