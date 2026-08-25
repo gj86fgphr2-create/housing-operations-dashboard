@@ -234,6 +234,34 @@ def build_customer_data(fallback):
     newest=max([customer_path.stat().st_mtime]+[(history_root/name).stat().st_mtime for name in required_files])
     return {"generatedAt":datetime.fromtimestamp(newest).astimezone().strftime("%Y-%m-%d %H:%M"),"startDate":dates[0] if dates else "","endDate":dates[-1] if dates else "","accounts":operations_accounts,"dailyRows":daily,"totals":totals,"funnel":funnel,"sourceNote":"运营团队专业号与客服表格共同覆盖的最近7个自然日；同日跨来源汇总，不代表按客户ID追踪。"}
 
+def build_meter_management(fallback):
+    """Attach the last complete, sanitized meter snapshot and latest run status."""
+    data_path=Path(os.environ.get("METER_MANAGEMENT_JSON","/opt/yuxiaor-automation/data/meter-management/latest.json"))
+    status_path=Path(os.environ.get("METER_MANAGEMENT_STATUS_JSON","/opt/yuxiaor-automation/data/meter-management/status.json"))
+    empty={"schemaVersion":1,"source":"微亭易租设备管理","projectId":"","collectedAt":"","summary":{"total":0,"online":0,"offline":0,"negative":0,"keepElectric":0},"keepElectricDevices":[],"negativeDevices":[],"offlineDevices":[],"collectionStatus":{"state":"missing"}}
+    content=dict(fallback or empty)
+    if data_path.is_file():
+        loaded=json.loads(data_path.read_text(encoding="utf-8"))
+        if not isinstance(loaded,dict): raise RuntimeError("Meter-management snapshot must be an object")
+        content=loaded
+    status={"state":"missing"}
+    if status_path.is_file():
+        loaded_status=json.loads(status_path.read_text(encoding="utf-8"))
+        if isinstance(loaded_status,dict): status=loaded_status
+    content["collectionStatus"]=status
+    summary=content.get("summary",{})
+    keep_rows=content.get("keepElectricDevices",[])
+    negative_rows=content.get("negativeDevices",[])
+    offline_rows=content.get("offlineDevices",[])
+    if not all(isinstance(rows,list) for rows in (keep_rows,negative_rows,offline_rows)):
+        raise RuntimeError("Meter-management exception lists must be arrays")
+    if int(summary.get("keepElectric") or 0)!=len(keep_rows) or int(summary.get("negative") or 0)!=len(negative_rows) or int(summary.get("offline") or 0)!=len(offline_rows):
+        raise RuntimeError("Meter-management summary does not reconcile")
+    allowed={"deviceId","deviceName","areaName","onlineStatus","powerStatus","remainingPower","updatedAt","keepElectric"}
+    if any(set(row)-allowed for rows in (keep_rows,negative_rows,offline_rows) for row in rows):
+        raise RuntimeError("Meter-management payload contains an unexpected device field")
+    return content
+
 def latest_xhs_ad_immutable_history():
     """Locate the append-only Aurora per-note daily history used by the dashboard."""
     candidates=[]
@@ -1103,7 +1131,7 @@ contract_stats["uniqueContracts"]=sum(1 for f in ("在租中合同.xlsx","将搬
 
 overview_new=build_overview_new()
 overview_new["contractActivity"]=overview_contract_activity(contract_stats["recentPerformance"])
-payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods,"overviewNew":overview_new,"ziyinOccupancy":ziyin_occupancy,"xhsAccountAudit":build_xhs_account_audit(old.get("xhsAccountAudit")),"xhsContent":build_xhs_content(old.get("xhsContent")),"xhsNotePublished":build_xhs_note_published(old.get("xhsNotePublished")),"xhsLeads":build_xhs_leads(old.get("xhsLeads")),"xhsAdFlow":build_xhs_ad_flow(old.get("xhsAdFlow")),"customerData":build_customer_data(old.get("customerData"))}
+payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods,"overviewNew":overview_new,"ziyinOccupancy":ziyin_occupancy,"xhsAccountAudit":build_xhs_account_audit(old.get("xhsAccountAudit")),"xhsContent":build_xhs_content(old.get("xhsContent")),"xhsNotePublished":build_xhs_note_published(old.get("xhsNotePublished")),"xhsLeads":build_xhs_leads(old.get("xhsLeads")),"xhsAdFlow":build_xhs_ad_flow(old.get("xhsAdFlow")),"customerData":build_customer_data(old.get("customerData")),"meterManagement":build_meter_management(old.get("meterManagement"))}
 rendered=template[:payload_span[0]]+json.dumps(payload,ensure_ascii=False,separators=(",",":"))+template[payload_span[1]:]
 required=['class="nav desktop-nav"','data-desktop-module="xiaohongshu"','data-desktop-module="yuxiaor"','data-desktop-menu="xiaohongshu"','data-desktop-menu="yuxiaor"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','data-dashboard-view="occupancy-ziyin"','id="occupancy-ziyin"','ziyin-project-table','function renderZiyinOccupancy()','"ziyinOccupancy"','occupiedOverlap','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','xhs-account-updated','xhs-account-status-list','adCollectedAt','adCollectedOk','leadCollectedAt','leadCollectedOk','noteCollectedAt','noteCollectedOk','function xhsCollectedHour(','function xhsCollectedBadge(','class="xhs-collection-badge ok"','<th>聚光</th><th>留资</th><th>笔记</th>','xhs-note-count-table','xhs-view-count-table','function xhsMetricTotal(account,weeks,field)','<th>汇总</th>','xhs-daily-reading-chart','id="xhs-leads"','xhs-goal-table','xhs-lead-opened-table','xhs-lead-copied-table','function xhsLeadWeekHeading(','xhs-week-day-badge','id="xhs-lead-details"','xhs-lead-detail-account','xhs-lead-detail-table','id="xhs-ad-flow"','xhs-ad-account-table','xhs-ad-note-table','id="xhs-ad-start-date"','id="xhs-ad-end-date"','function xhsAdPrepareDateControls(','id="xhs-ad-team-filter"','id="xhs-ad-account-filter"','id="xhs-ad-matrix-head"','function renderXhsAdChart(','function renderXhsAdFlow()','function renderXhsAccountStatus()','function xhsGoalCell(','function renderXhsLeads()','function renderXhsLeadDetails()','"xhsAccountAudit"','"targetMonth"','"targets"','"dailyRows"','"xhsLeads"','"xhsAdFlow"']
 required=[{'id="xhs-ad-matrix-head"':'class="xhs-ad-matrix-head"'}.get(marker,marker) for marker in required]
@@ -1117,6 +1145,7 @@ required += ['数据明细','笔记发布明细','留资数据明细','聚光投
 required += ['class="desktop-home-link"','class="desktop-nav-groups"','class="desktop-nav-group"','class="desktop-module-toggle"','aria-expanded="false"','aria-expanded="true"']
 required += ['<div class="label">本月退房</div>','id="contract-checkout-definition">退租/（实际退/续租）','function checkoutDisplay(','checkoutActualDepartureCount']
 required += ['data-desktop-module="customer"','data-desktop-menu="customer"','data-mobile-module="customer"','data-mobile-menu="customer"','id="customer-data"','data-dashboard-view="customer-data"','id="customer-data-updated"','id="customer-daily-table"','id="customer-funnel-table"','function renderCustomerData()','"customerData"']
+required += ['data-desktop-module="meters"','data-desktop-menu="meters"','data-mobile-module="meters"','data-mobile-menu="meters"','id="meter-management"','data-dashboard-view="meter-management"','id="meter-collection-status"','id="meter-keep-table"','id="meter-negative-table"','id="meter-offline-table"','function renderMeterManagement()','"meterManagement"']
 required += ['function xhsNoteCountClass(','function xhsMetricCell(','xhs-note-count-green','xhs-note-count-yellow','xhs-note-count-pink','xhs-note-count-red','if(count>=6)','if(count===5)','if(count===4)']
 required += ['data-dashboard-view="overview-new"','id="overview-new"','function renderOverviewNew()','"overviewNew"','overview-new-short-rent','overview-new-rate-comprehensive','overview-new-validation']
 required += ['id="overview-contract-activity"','overview-contract-today-new-sign','overview-contract-yesterday-reservation','overview-contract-week-actual-checkout','"contractActivity"','function overviewContractRangeLabel(']
@@ -1135,6 +1164,7 @@ if rendered.count('data-dashboard-view="xhs-note-published"') < 2: raise Runtime
 if rendered.count('data-dashboard-view="xhs-lead-details"') < 2: raise RuntimeError("XHS lead-details menu must exist on desktop and mobile")
 if rendered.count('data-dashboard-view="xhs-ad-details"') < 2: raise RuntimeError("XHS ad-details menu must exist on desktop and mobile")
 if rendered.count('data-dashboard-view="customer-data"') < 2: raise RuntimeError("Customer data menu must exist on desktop and mobile")
+if rendered.count('data-dashboard-view="meter-management"') < 2: raise RuntimeError("Meter-management menu must exist on desktop and mobile")
 if rendered.count('data-dashboard-view="overview-new"') < 2: raise RuntimeError("Overview-new menu must exist on desktop and mobile")
 customer_rows=payload["customerData"].get("dailyRows",[])
 if customer_rows:

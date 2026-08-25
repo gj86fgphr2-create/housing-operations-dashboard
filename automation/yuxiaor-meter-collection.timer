@@ -1,0 +1,12 @@
+[Unit]
+Description=Collect WTYZ meter exceptions every six hours
+
+[Timer]
+OnCalendar=*-*-* 04,10,16,22:30:00 Asia/Shanghai
+Persistent=true
+AccuracySec=1min
+RandomizedDelaySec=30
+Unit=yuxiaor-meter-collection.service
+
+[Install]
+WantedBy=timers.target
