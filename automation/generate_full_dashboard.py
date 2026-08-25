@@ -1085,8 +1085,14 @@ required += ['function xhsNoteCountClass(','function xhsMetricCell(','xhs-note-c
 required += ['data-dashboard-view="overview-new"','id="overview-new"','function renderOverviewNew()','"overviewNew"','overview-new-short-rent','overview-new-rate-comprehensive','overview-new-validation']
 required += ['function weekKeyFromLabel(','function weekDayBadgeInfo(','function weekHeading(','id="project-checkout-head"','id="building-checkout-head"']
 required += ['id="xhs-reading-decline-grid"','function renderXhsReadingDeclines()','function xhsDeclineSparkline(','"accountDailyReading"','上7个有效采集日平均－近7个有效采集日平均']
+required += ['id="xhs-trends"','data-dashboard-view="xhs-trends"','id="xhs-trends-updated"','id="xhs-trend-metric"','value="totalLeads"','value="organicLeads"','value="paidLeads"','function renderXhsTrafficTrendChart(svgId,rows,compact=false,metric=','完整展示最近 ','Number(row.date.slice(8,10))+\'日</text>\'']
 if any(x not in rendered for x in required): raise RuntimeError("Full dashboard style validation failed")
 if rendered.count('data-dashboard-view="xhs-traffic"') < 2: raise RuntimeError("XHS traffic menu must exist on desktop and mobile")
+if rendered.count('data-dashboard-view="xhs-trends"') < 2: raise RuntimeError("XHS trends menu must exist on desktop and mobile")
+trends_section=re.search(r'<section class="section" id="xhs-trends".*?</section>\s*<section class="section" id="xhs-traffic"',rendered,re.S)
+traffic_section=re.search(r'<section class="section" id="xhs-traffic".*?</section>\s*<section class="section" id="xhs-ad-flow"',rendered,re.S)
+if not trends_section or 'xhs-traffic-trend-chart' not in trends_section.group(0) or 'xhs-traffic-decline-grid' not in trends_section.group(0): raise RuntimeError("XHS trend panels must exist in trends view")
+if not traffic_section or 'xhs-traffic-trend-chart' in traffic_section.group(0) or 'xhs-traffic-decline-grid' in traffic_section.group(0): raise RuntimeError("XHS trend panels must be removed from traffic view")
 if rendered.count('data-dashboard-view="xhs-note-published"') < 2: raise RuntimeError("XHS note-published menu must exist on desktop and mobile")
 if rendered.count('data-dashboard-view="xhs-lead-details"') < 2: raise RuntimeError("XHS lead-details menu must exist on desktop and mobile")
 if rendered.count('data-dashboard-view="xhs-ad-details"') < 2: raise RuntimeError("XHS ad-details menu must exist on desktop and mobile")
