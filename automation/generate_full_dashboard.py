@@ -684,6 +684,40 @@ def recent_performance():
     people_rows = [{"name":name,**values} for name,values in sorted(people.items(),key=lambda item:(-sum(item[1].values()),item[0])) if sum(values.values())]
     return [{"date":day.isoformat(),**values} for day,values in rows.items()], project_rows, people_rows
 
+def overview_contract_activity(recent_rows):
+    """Summarize deduplicated contract events for today, yesterday, and the current week."""
+    by_date={row["date"]:row for row in recent_rows}
+    week_start=as_of-timedelta(days=as_of.weekday())
+    fields={
+        "newSign":"newCount",
+        "reservation":"reservationCount",
+        "renewal":"renewalCount",
+        "actualCheckout":"actualCheckoutCount",
+    }
+    def period(key,label,start,end):
+        selected=[row for row in recent_rows if start.isoformat()<=row["date"]<=end.isoformat()]
+        return {
+            "key":key,
+            "label":label,
+            "startDate":start.isoformat(),
+            "endDate":end.isoformat(),
+            "metrics":{name:sum(int(row.get(source) or 0) for row in selected) for name,source in fields.items()},
+        }
+    yesterday=as_of-timedelta(days=1)
+    periods=[
+        period("today","今天",as_of,as_of),
+        period("yesterday","昨天",yesterday,yesterday),
+        period("week","本周",week_start,as_of),
+    ]
+    validation={
+        "todayMatched":periods[0]["metrics"]=={name:int(by_date.get(as_of.isoformat(),{}).get(source) or 0) for name,source in fields.items()},
+        "yesterdayMatched":periods[1]["metrics"]=={name:int(by_date.get(yesterday.isoformat(),{}).get(source) or 0) for name,source in fields.items()},
+        "weekRangeValid":week_start<=as_of and (as_of-week_start).days<7,
+        "nonNegative":all(value>=0 for item in periods for value in item["metrics"].values()),
+    }
+    if not all(validation.values()): raise RuntimeError(f"Overview contract activity validation failed: {periods}")
+    return {"asOfDate":as_of.isoformat(),"weekStart":week_start.isoformat(),"periods":periods,"validation":validation}
+
 def monthly_contract_details():
     """Build current-month new, renewal, other, and actual-checkout detail rows."""
     month_prefix = f"{as_of.year:04d}-{as_of.month:02d}"
@@ -1067,7 +1101,9 @@ contract_stats.setdefault("projectMonthlyUnmapped",{"newCount":0,"renewalCount":
 contract_stats.setdefault("totals",{})
 contract_stats["uniqueContracts"]=sum(1 for f in ("在租中合同.xlsx","将搬入合同.xlsx","已退租合同.xlsx") for _ in load_workbook(run_dir/f,read_only=True).active.iter_rows(min_row=4,values_only=True))
 
-payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods,"overviewNew":build_overview_new(),"ziyinOccupancy":ziyin_occupancy,"xhsAccountAudit":build_xhs_account_audit(old.get("xhsAccountAudit")),"xhsContent":build_xhs_content(old.get("xhsContent")),"xhsNotePublished":build_xhs_note_published(old.get("xhsNotePublished")),"xhsLeads":build_xhs_leads(old.get("xhsLeads")),"xhsAdFlow":build_xhs_ad_flow(old.get("xhsAdFlow")),"customerData":build_customer_data(old.get("customerData"))}
+overview_new=build_overview_new()
+overview_new["contractActivity"]=overview_contract_activity(contract_stats["recentPerformance"])
+payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods,"overviewNew":overview_new,"ziyinOccupancy":ziyin_occupancy,"xhsAccountAudit":build_xhs_account_audit(old.get("xhsAccountAudit")),"xhsContent":build_xhs_content(old.get("xhsContent")),"xhsNotePublished":build_xhs_note_published(old.get("xhsNotePublished")),"xhsLeads":build_xhs_leads(old.get("xhsLeads")),"xhsAdFlow":build_xhs_ad_flow(old.get("xhsAdFlow")),"customerData":build_customer_data(old.get("customerData"))}
 rendered=template[:payload_span[0]]+json.dumps(payload,ensure_ascii=False,separators=(",",":"))+template[payload_span[1]:]
 required=['class="nav desktop-nav"','data-desktop-module="xiaohongshu"','data-desktop-module="yuxiaor"','data-desktop-menu="xiaohongshu"','data-desktop-menu="yuxiaor"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','data-dashboard-view="occupancy-ziyin"','id="occupancy-ziyin"','ziyin-project-table','function renderZiyinOccupancy()','"ziyinOccupancy"','occupiedOverlap','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','xhs-account-updated','xhs-account-status-list','adCollectedAt','adCollectedOk','leadCollectedAt','leadCollectedOk','noteCollectedAt','noteCollectedOk','function xhsCollectedHour(','function xhsCollectedBadge(','class="xhs-collection-badge ok"','<th>聚光</th><th>留资</th><th>笔记</th>','xhs-note-count-table','xhs-view-count-table','function xhsMetricTotal(account,weeks,field)','<th>汇总</th>','xhs-daily-reading-chart','id="xhs-leads"','xhs-goal-table','xhs-lead-opened-table','xhs-lead-copied-table','function xhsLeadWeekHeading(','xhs-week-day-badge','id="xhs-lead-details"','xhs-lead-detail-account','xhs-lead-detail-table','id="xhs-ad-flow"','xhs-ad-account-table','xhs-ad-note-table','id="xhs-ad-start-date"','id="xhs-ad-end-date"','function xhsAdPrepareDateControls(','id="xhs-ad-team-filter"','id="xhs-ad-account-filter"','id="xhs-ad-matrix-head"','function renderXhsAdChart(','function renderXhsAdFlow()','function renderXhsAccountStatus()','function xhsGoalCell(','function renderXhsLeads()','function renderXhsLeadDetails()','"xhsAccountAudit"','"targetMonth"','"targets"','"dailyRows"','"xhsLeads"','"xhsAdFlow"']
 required=[{'id="xhs-ad-matrix-head"':'class="xhs-ad-matrix-head"'}.get(marker,marker) for marker in required]
@@ -1083,6 +1119,7 @@ required += ['<div class="label">本月退房</div>','id="contract-checkout-defi
 required += ['data-desktop-module="customer"','data-desktop-menu="customer"','data-mobile-module="customer"','data-mobile-menu="customer"','id="customer-data"','data-dashboard-view="customer-data"','id="customer-data-updated"','id="customer-daily-table"','id="customer-funnel-table"','function renderCustomerData()','"customerData"']
 required += ['function xhsNoteCountClass(','function xhsMetricCell(','xhs-note-count-green','xhs-note-count-yellow','xhs-note-count-pink','xhs-note-count-red','if(count>=6)','if(count===5)','if(count===4)']
 required += ['data-dashboard-view="overview-new"','id="overview-new"','function renderOverviewNew()','"overviewNew"','overview-new-short-rent','overview-new-rate-comprehensive','overview-new-validation']
+required += ['id="overview-contract-activity"','overview-contract-today-new-sign','overview-contract-yesterday-reservation','overview-contract-week-actual-checkout','"contractActivity"','function overviewContractRangeLabel(']
 required += ['function weekKeyFromLabel(','function weekDayBadgeInfo(','function weekHeading(','id="project-checkout-head"','id="building-checkout-head"']
 required += ['id="xhs-reading-decline-grid"','function renderXhsReadingDeclines()','function xhsDeclineSparkline(','"accountDailyReading"','上7个有效采集日平均－近7个有效采集日平均']
 required += ['id="xhs-trends"','data-dashboard-view="xhs-trends"','id="xhs-trends-updated"','id="xhs-trend-title"','id="xhs-trend-metric"','id="xhs-trend-main-content"','id="xhs-trend-decline-content"','id="xhs-traffic-decline-summary"','value="totalLeads"','value="organicLeads"','value="paidLeads"','const labelStep=1','xhsTrafficDeclineAccounts(accountRows.filter((row) => row.date!==today),metric)','renderXhsTrafficTrendChart(\'xhs-traffic-decline-chart-\'+index,account.rows,true,metric)','function renderXhsTrafficTrendChart(svgId,rows,compact=false,metric=','已隐藏当日未完整数据','每个日期与数值均完整展示','rows.filter((row) => row.date!==today).slice(0,30)','Number(row.date.slice(5,7))+\'-\'+Number(row.date.slice(8,10))']
