@@ -58,6 +58,7 @@ REQUIRED = (
     '"businessTrend"',
     '最新日期在左',
     '每日数值直接标注',
+    'labelY=Math.max(18,pointY-labelOffset)',
     'id="customer-data"',
     'data-dashboard-view="customer-data"',
     'id="customer-data-updated"',
