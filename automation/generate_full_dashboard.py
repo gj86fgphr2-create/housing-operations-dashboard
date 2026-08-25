@@ -752,33 +752,50 @@ def business_trend():
     return {"asOfDate":as_of.isoformat(),"startDate":start.isoformat(),"endDate":as_of.isoformat(),"rows":trend_rows,"validation":validation}
 
 def checkout_trends():
-    """Build continuous past and future checkout series from deduplicated terminated contracts."""
+    """Build future checkout from active/move-in contracts and past actual checkout from terminated contracts."""
     past_start=as_of-timedelta(days=29)
     future_start=as_of+timedelta(days=1)
     future_end=as_of+timedelta(days=30)
     past={past_start+timedelta(days=i):0 for i in range(30)}
     future={future_start+timedelta(days=i):0 for i in range(30)}
+    future_seen=set()
+    future_source_counts=defaultdict(int)
+    month_seen=set()
+    month_week_counts=defaultdict(int)
+    for filename in ("在租中合同.xlsx","将搬入合同.xlsx"):
+        ws=load_workbook(run_dir/filename,read_only=True,data_only=True).active
+        headers=[cell.value for cell in ws[3]]
+        contract_i,planned_checkout_i=idx(headers,"合同编号"),idx(headers,"退租时间")
+        for row in ws.iter_rows(min_row=4,values_only=True):
+            contract_id=norm(row[contract_i])
+            planned_checkout_date=iso(row[planned_checkout_i])
+            if not contract_id or contract_id in future_seen or not planned_checkout_date: continue
+            future_seen.add(contract_id)
+            planned_checkout_day=datetime.strptime(planned_checkout_date,"%Y-%m-%d").date()
+            if planned_checkout_day in future:
+                future[planned_checkout_day]+=1
+                future_source_counts[filename]+=1
+            if contract_id not in month_seen and planned_checkout_date.startswith(f"{as_of.year:04d}-{as_of.month:02d}-"):
+                month_seen.add(contract_id)
+                day=planned_checkout_day.day
+                week_key="w1" if day<=7 else "w2" if day<=14 else "w3" if day<=21 else "w4" if day<=28 else "we"
+                month_week_counts[week_key]+=1
     ws=load_workbook(run_dir/"已退租合同.xlsx",read_only=True,data_only=True).active
     headers=[cell.value for cell in ws[3]]
-    contract_i=idx(headers,"合同编号")
-    actual_checkout_i,planned_checkout_i=idx(headers,"预退/实退"),idx(headers,"退租时间")
-    reason_i=idx(headers,"退租原因")
-    seen_contracts=set()
+    contract_i,actual_checkout_i,reason_i=idx(headers,"合同编号"),idx(headers,"预退/实退"),idx(headers,"退租原因")
+    past_seen=set()
     for row in ws.iter_rows(min_row=4,values_only=True):
         contract_id=norm(row[contract_i])
-        if not contract_id or contract_id in seen_contracts: continue
-        seen_contracts.add(contract_id)
+        if not contract_id or contract_id in past_seen: continue
+        past_seen.add(contract_id)
         if norm(row[reason_i])=="换房清算": continue
         actual_checkout_date=iso(row[actual_checkout_i])
-        planned_checkout_date=iso(row[planned_checkout_i])
         if actual_checkout_date:
             actual_checkout_day=datetime.strptime(actual_checkout_date,"%Y-%m-%d").date()
             if actual_checkout_day in past: past[actual_checkout_day]+=1
-        if planned_checkout_date:
-            planned_checkout_day=datetime.strptime(planned_checkout_date,"%Y-%m-%d").date()
-            if planned_checkout_day in future: future[planned_checkout_day]+=1
     past_rows=[{"date":day.isoformat(),"checkoutCount":past[day]} for day in sorted(past,reverse=True)]
     future_rows=[{"date":day.isoformat(),"checkoutCount":future[day]} for day in sorted(future)]
+    occupancy_week_counts={period["key"]:sum(int(values.get(period["key"],0)) for values in checkout.values()) for period in periods}
     validation={
         "thirtyDaysEach":len(past_rows)==30 and len(future_rows)==30,
         "pastNewestFirst":all(past_rows[i]["date"]>past_rows[i+1]["date"] for i in range(len(past_rows)-1)),
@@ -787,12 +804,14 @@ def checkout_trends():
         "futureContinuous":all((datetime.strptime(future_rows[i+1]["date"],"%Y-%m-%d").date()-datetime.strptime(future_rows[i]["date"],"%Y-%m-%d").date()).days==1 for i in range(len(future_rows)-1)),
         "boundariesValid":past_rows[0]["date"]==as_of.isoformat() and past_rows[-1]["date"]==past_start.isoformat() and future_rows[0]["date"]==future_start.isoformat() and future_rows[-1]["date"]==future_end.isoformat(),
         "nonNegative":all(row["checkoutCount"]>=0 for row in past_rows+future_rows),
+        "occupancyReconciled":all(month_week_counts[period["key"]]==occupancy_week_counts[period["key"]] for period in periods),
     }
     if not all(validation.values()): raise RuntimeError(f"Checkout trend validation failed: {validation}")
     return {
         "asOfDate":as_of.isoformat(),
-        "past":{"startDate":past_start.isoformat(),"endDate":as_of.isoformat(),"rows":past_rows},
-        "future":{"startDate":future_start.isoformat(),"endDate":future_end.isoformat(),"rows":future_rows},
+        "past":{"startDate":past_start.isoformat(),"endDate":as_of.isoformat(),"sourceFiles":["已退租合同.xlsx"],"dateField":"预退/实退","rows":past_rows},
+        "future":{"startDate":future_start.isoformat(),"endDate":future_end.isoformat(),"sourceFiles":["在租中合同.xlsx","将搬入合同.xlsx"],"dateField":"退租时间","sourceCounts":dict(future_source_counts),"rows":future_rows},
+        "occupancyWeekCounts":occupancy_week_counts,
         "validation":validation,
     }
 

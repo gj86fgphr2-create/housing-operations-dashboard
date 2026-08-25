@@ -321,6 +321,17 @@ def main() -> int:
     if checkout_trends.get("asOfDate") != as_of.isoformat() or not all(checkout_trends.get("validation", {}).values()):
         print(f"Checkout trend validation failed: {checkout_trends.get('validation')}", file=sys.stderr)
         return 1
+    future_period = checkout_trends.get("future", {})
+    past_period = checkout_trends.get("past", {})
+    if future_period.get("sourceFiles") != ["在租中合同.xlsx", "将搬入合同.xlsx"] or future_period.get("dateField") != "退租时间":
+        print(f"Future checkout source regression: {future_period.get('sourceFiles')}/{future_period.get('dateField')}", file=sys.stderr)
+        return 1
+    if past_period.get("sourceFiles") != ["已退租合同.xlsx"] or past_period.get("dateField") != "预退/实退":
+        print(f"Past checkout source regression: {past_period.get('sourceFiles')}/{past_period.get('dateField')}", file=sys.stderr)
+        return 1
+    if not checkout_trends.get("validation", {}).get("occupancyReconciled"):
+        print("Future checkout trend does not reconcile with occupancy checkout statistics", file=sys.stderr)
+        return 1
     overview_new = payload.get("overviewNew", {})
     expected_priority = ["预定", "将搬入", "锁房"]
     if overview_new.get("priority") != expected_priority:

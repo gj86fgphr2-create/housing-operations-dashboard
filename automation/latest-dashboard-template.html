@@ -331,7 +331,7 @@
         <div class="checkout-trend-grid" id="checkout-trend-grid">
           <article class="panel checkout-trend-card">
             <div class="business-trend-head"><div><h3>未来退租趋势</h3><p class="panel-note" id="checkout-trend-future-summary">正在生成未来30天趋势…</p></div><span class="business-trend-latest checkout-trend-badge future">最近日期在左</span></div>
-            <div class="checkout-trend-chart-wrap"><svg class="checkout-trend-chart" id="checkout-trend-future-chart" role="img" aria-label="未来30天预退实退趋势折线图，每日数值显示在折线上方"></svg></div>
+            <div class="checkout-trend-chart-wrap"><svg class="checkout-trend-chart" id="checkout-trend-future-chart" role="img" aria-label="未来30天预计退租趋势折线图，每日数值显示在折线上方"></svg></div>
           </article>
           <article class="panel checkout-trend-card">
             <div class="business-trend-head"><div><h3>过去实际退租趋势</h3><p class="panel-note" id="checkout-trend-past-summary">正在生成过去30天趋势…</p></div><span class="business-trend-latest checkout-trend-badge past">最新日期在左</span></div>
@@ -484,9 +484,9 @@
 
     function renderCheckoutTrends(){
       const content=DATA.checkoutTrends || {},future=content.future || {},past=content.past || {},futureRows=[...(future.rows || [])].sort((a,b)=>String(a.date).localeCompare(String(b.date))),pastRows=[...(past.rows || [])].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-      $('checkout-trend-future-summary').textContent=futureRows.length ? future.startDate+' 至 '+future.endDate+' · 未来30天按退租时间 · 合同编号去重，排除换房清算' : '当前暂无可用未来退租数据';
+      $('checkout-trend-future-summary').textContent=futureRows.length ? future.startDate+' 至 '+future.endDate+' · 在租中＋将搬入，按退租时间 · 合同编号跨文件去重' : '当前暂无可用未来退租数据';
       $('checkout-trend-past-summary').textContent=pastRows.length ? past.startDate+' 至 '+past.endDate+' · 过去30天按预退/实退 · 合同编号去重，排除换房清算' : '当前暂无可用实际退租数据';
-      renderCheckoutTrendChart('checkout-trend-future-chart',futureRows,'future','最近','未来30天预退实退趋势');
+      renderCheckoutTrendChart('checkout-trend-future-chart',futureRows,'future','最近','未来30天预计退租趋势');
       renderCheckoutTrendChart('checkout-trend-past-chart',pastRows,'past','最新','过去30天实际退租趋势');
     }
 
