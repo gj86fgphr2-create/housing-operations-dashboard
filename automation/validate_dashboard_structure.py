@@ -50,6 +50,14 @@ REQUIRED = (
     '扣除预定、将搬入后的剩余不可租',
     '仅从剩余锁房中按备注包含“短租”筛选',
     'd.validation?.shortRentWithinLocked',
+    'data-dashboard-view="business-trend"',
+    'id="business-trend"',
+    'id="business-trend-chart"',
+    'id="business-trend-summary"',
+    'function renderBusinessTrend()',
+    '"businessTrend"',
+    '最新日期在左',
+    '每日数值直接标注',
     'id="customer-data"',
     'data-dashboard-view="customer-data"',
     'id="customer-data-updated"',
@@ -252,6 +260,24 @@ def main() -> int:
         print("dashboard DATA payload missing", file=sys.stderr)
         return 1
     payload = json.loads(payload_match.group(1))
+    business_trend = payload.get("businessTrend", {})
+    business_rows = business_trend.get("rows", [])
+    business_dates = [row.get("date") for row in business_rows]
+    if len(business_rows) != 30 or business_dates != sorted(business_dates, reverse=True):
+        print(f"Business trend date coverage invalid: {len(business_rows)} rows", file=sys.stderr)
+        return 1
+    if any(
+        (date.fromisoformat(business_dates[index]) - date.fromisoformat(business_dates[index + 1])).days != 1
+        for index in range(len(business_dates) - 1)
+    ):
+        print("Business trend dates are not continuous", file=sys.stderr)
+        return 1
+    if any(int(row.get("newSignCount") or 0) < 0 or int(row.get("reservationCount") or 0) < 0 for row in business_rows):
+        print("Business trend contains negative counts", file=sys.stderr)
+        return 1
+    if not all(business_trend.get("validation", {}).values()):
+        print(f"Business trend validation failed: {business_trend.get('validation')}", file=sys.stderr)
+        return 1
     overview_new = payload.get("overviewNew", {})
     expected_priority = ["预定", "将搬入", "锁房"]
     if overview_new.get("priority") != expected_priority:
@@ -285,6 +311,9 @@ def main() -> int:
         return 1
     if html.count('data-dashboard-view="xhs-traffic"') < 2:
         print("XHS traffic menu missing from desktop or mobile navigation", file=sys.stderr)
+        return 1
+    if html.count('data-dashboard-view="business-trend"') < 2:
+        print("Business trend menu missing from desktop or mobile navigation", file=sys.stderr)
         return 1
     if html.count('data-dashboard-view="xhs-note-published"') < 2:
         print("XHS note-published menu missing from desktop or mobile navigation", file=sys.stderr)
