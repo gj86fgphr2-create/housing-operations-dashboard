@@ -84,6 +84,7 @@ REQUIRED = (
     'function renderCheckoutTrends()',
     'function renderCheckoutTrendChart(',
     '"checkoutTrends"',
+    'compactLabel=compactMonth',
     '未来30天',
     '过去30天',
     'checkoutLabelY=Math.max(18,pointY-9)',
