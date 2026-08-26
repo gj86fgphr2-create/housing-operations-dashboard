@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-26T12:02:29.165411+08:00",
+  "generatedAt": "2026-08-26T13:02:41.576340+08:00",
   "source": "yuxiaor-server-export",
   "snapshotDate": "2026-08-26",
   "dashboardUrl": "https://gj86fgphr2-create.github.io/housing-operations-dashboard/#operations-brief",
@@ -14,7 +14,7 @@
     "comprehensiveRate": 0.8930635838150289
   },
   "riskSignals": {
-    "lockCount": 37,
+    "lockCount": 36,
     "preorderCount": 36,
     "moveInCount": 21,
     "mappedUnknownCount": 0
@@ -24,8 +24,8 @@
     "reconciliation": {
       "lockMonitoring": {
         "field": "锁房备注",
-        "sourceCount": 37,
-        "dashboardCount": 37,
+        "sourceCount": 36,
+        "dashboardCount": 36,
         "ok": true
       },
       "vacancyMonitoring": {
@@ -52,7 +52,7 @@
   "performance": {
     "currentMonth": {
       "newCount": 87,
-      "renewalCount": 36,
+      "renewalCount": 37,
       "actualCheckoutCount": 151,
       "checkoutRenewalCount": 33
     },
@@ -114,7 +114,7 @@
       {
         "date": "2026-08-26",
         "newCount": 0,
-        "renewalCount": 1,
+        "renewalCount": 2,
         "otherCount": 0,
         "actualCheckoutCount": 1,
         "reservationCount": 0
@@ -124,7 +124,7 @@
       {
         "name": "北亭项目",
         "newCount": 3,
-        "renewalCount": 3,
+        "renewalCount": 4,
         "otherCount": 0,
         "actualCheckoutCount": 13
       },
@@ -138,7 +138,7 @@
       {
         "name": "北亭整体项目",
         "newCount": 3,
-        "renewalCount": 3,
+        "renewalCount": 4,
         "otherCount": 0,
         "actualCheckoutCount": 13
       },
@@ -229,7 +229,7 @@
     ],
     "items": {
       "new": 0,
-      "renewal": 1,
+      "renewal": 2,
       "actualCheckout": 1,
       "reservation": 0
     }
@@ -237,7 +237,7 @@
   "today": {
     "date": "2026-08-26",
     "newCount": 0,
-    "renewalCount": 1,
+    "renewalCount": 2,
     "actualCheckoutCount": 1,
     "reservationCount": 0
   }
