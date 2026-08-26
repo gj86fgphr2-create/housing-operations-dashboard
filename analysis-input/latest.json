@@ -1,17 +1,17 @@
 {
-  "generatedAt": "2026-08-26T16:01:07.949913+08:00",
+  "generatedAt": "2026-08-26T17:01:55.844553+08:00",
   "source": "yuxiaor-server-export",
   "snapshotDate": "2026-08-26",
   "dashboardUrl": "https://gj86fgphr2-create.github.io/housing-operations-dashboard/#operations-brief",
   "overview": {
     "rooms": 692,
-    "occupied": 561,
-    "comprehensive": 622,
-    "vacancy": 131,
-    "rentableVacancy": 56,
+    "occupied": 560,
+    "comprehensive": 621,
+    "vacancy": 132,
+    "rentableVacancy": 57,
     "unrentableVacancy": 75,
-    "occupancyRate": 0.8106936416184971,
-    "comprehensiveRate": 0.8988439306358381
+    "occupancyRate": 0.8092485549132948,
+    "comprehensiveRate": 0.8973988439306358
   },
   "riskSignals": {
     "lockCount": 42,
@@ -30,21 +30,21 @@
       },
       "vacancyMonitoring": {
         "field": "状态",
-        "sourceRentableCount": 56,
+        "sourceRentableCount": 57,
         "sourceUnrentableCount": 75,
         "sourceMappedUnknownCount": 0,
-        "dashboardRentableCount": 56,
+        "dashboardRentableCount": 57,
         "dashboardUnrentableCount": 75,
-        "dashboardVacancyCount": 131,
+        "dashboardVacancyCount": 132,
         "mapping": "未知状态计入空房不可租中的其他锁房",
         "ok": true
       },
       "comprehensiveMonitoring": {
         "definition": "在租中/已出租+空房不可租中的已预订和将搬入",
-        "occupiedCount": 561,
+        "occupiedCount": 560,
         "preorderCount": 39,
         "moveInCount": 22,
-        "dashboardComprehensiveCount": 622,
+        "dashboardComprehensiveCount": 621,
         "ok": true
       }
     }
@@ -117,7 +117,7 @@
         "renewalCount": 3,
         "otherCount": 0,
         "actualCheckoutCount": 1,
-        "reservationCount": 4
+        "reservationCount": 5
       }
     ],
     "projects": [
@@ -231,7 +231,7 @@
       "new": 1,
       "renewal": 3,
       "actualCheckout": 1,
-      "reservation": 4
+      "reservation": 5
     }
   },
   "today": {
@@ -239,6 +239,6 @@
     "newCount": 1,
     "renewalCount": 3,
     "actualCheckoutCount": 1,
-    "reservationCount": 4
+    "reservationCount": 5
   }
 }
