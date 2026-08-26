@@ -77,6 +77,10 @@ REQUIRED = (
     'business-trend-week-label',
     'content.ranges || []',
     'content.months || []',
+    'trend-uniform-wrap',
+    'TREND_UNIFORM_WIDTH=1344',
+    'function setTrendChartWidth(',
+    'const width = setTrendChartWidth(svg)',
     'id="contract-daily-trend-panel"',
     'class="panel contract-daily-trend-panel"',
     'id="contract-daily-chart-wrap"',
@@ -539,6 +543,9 @@ def main() -> int:
     marker_positions = [business_markup.find(marker) for marker in ordered_markers]
     if any(position < 0 for position in marker_positions) or marker_positions != sorted(marker_positions):
         print(f"Business trend panel order invalid: {marker_positions}", file=sys.stderr)
+        return 1
+    if business_markup.count('trend-uniform-wrap') != 5:
+        print(f"Business trend chart width wrappers invalid: {business_markup.count('trend-uniform-wrap')}", file=sys.stderr)
         return 1
     if 'data-views="overview"><h3>近期每日合同净变化</h3>' in html:
         print("Contract daily trend chart still exists in the overview view", file=sys.stderr)
