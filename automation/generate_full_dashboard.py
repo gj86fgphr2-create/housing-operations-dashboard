@@ -795,21 +795,39 @@ def checkout_trends():
             if actual_checkout_day in past: past[actual_checkout_day]+=1
     past_rows=[{"date":day.isoformat(),"checkoutCount":past[day]} for day in sorted(past,reverse=True)]
     future_rows=[{"date":day.isoformat(),"checkoutCount":future[day]} for day in sorted(future)]
-    def seven_day_ranges(rows):
+    def month_week(day):
+        if day.day<=7: return "W1"
+        if day.day<=14: return "W2"
+        if day.day<=21: return "W3"
+        if day.day<=28: return "W4"
+        return "WE"
+
+    def week_ranges(rows):
         ranges=[]
-        for offset in range(0,len(rows),7):
-            chunk=rows[offset:offset+7]
-            ranges.append({
-                "index":len(ranges)+1,
-                "startDate":chunk[0]["date"],
-                "endDate":chunk[-1]["date"],
-                "dayCount":len(chunk),
-                "checkoutCount":sum(row["checkoutCount"] for row in chunk),
-            })
+        for row in rows:
+            day=datetime.strptime(row["date"],"%Y-%m-%d").date()
+            week=month_week(day)
+            period_key=f"{day.year:04d}-{day.month:02d}-{week}"
+            if not ranges or ranges[-1]["periodKey"]!=period_key:
+                ranges.append({
+                    "index":len(ranges)+1,
+                    "periodKey":period_key,
+                    "month":f"{day.year:04d}-{day.month:02d}",
+                    "week":week,
+                    "label":f"{day.month}月 {week}",
+                    "startDate":row["date"],
+                    "endDate":row["date"],
+                    "dayCount":1,
+                    "checkoutCount":row["checkoutCount"],
+                })
+            else:
+                ranges[-1]["endDate"]=row["date"]
+                ranges[-1]["dayCount"]+=1
+                ranges[-1]["checkoutCount"]+=row["checkoutCount"]
         return ranges
 
-    future_ranges=seven_day_ranges(future_rows)
-    past_ranges=seven_day_ranges(past_rows)
+    future_ranges=week_ranges(future_rows)
+    past_ranges=week_ranges(past_rows)
     occupancy_week_counts={period["key"]:sum(int(values.get(period["key"],0)) for values in checkout.values()) for period in periods}
     validation={
         "thirtyDaysEach":len(past_rows)==30 and len(future_rows)==30,
@@ -820,9 +838,9 @@ def checkout_trends():
         "boundariesValid":past_rows[0]["date"]==as_of.isoformat() and past_rows[-1]["date"]==past_start.isoformat() and future_rows[0]["date"]==future_start.isoformat() and future_rows[-1]["date"]==future_end.isoformat(),
         "nonNegative":all(row["checkoutCount"]>=0 for row in past_rows+future_rows),
         "occupancyReconciled":all(month_week_counts[period["key"]]==occupancy_week_counts[period["key"]] for period in periods),
-        "pastRangeCoverage":len(past_ranges)==5 and [item["dayCount"] for item in past_ranges]==[7,7,7,7,2] and past_ranges[0]["startDate"]==past_rows[0]["date"] and past_ranges[-1]["endDate"]==past_rows[-1]["date"],
+        "pastRangeCoverage":bool(past_ranges) and sum(item["dayCount"] for item in past_ranges)==len(past_rows) and past_ranges[0]["startDate"]==past_rows[0]["date"] and past_ranges[-1]["endDate"]==past_rows[-1]["date"] and all(item["week"] in ("W1","W2","W3","W4","WE") for item in past_ranges),
         "pastRangeTotalsMatched":sum(item["checkoutCount"] for item in past_ranges)==sum(row["checkoutCount"] for row in past_rows),
-        "futureRangeCoverage":len(future_ranges)==5 and [item["dayCount"] for item in future_ranges]==[7,7,7,7,2] and future_ranges[0]["startDate"]==future_rows[0]["date"] and future_ranges[-1]["endDate"]==future_rows[-1]["date"],
+        "futureRangeCoverage":bool(future_ranges) and sum(item["dayCount"] for item in future_ranges)==len(future_rows) and future_ranges[0]["startDate"]==future_rows[0]["date"] and future_ranges[-1]["endDate"]==future_rows[-1]["date"] and all(item["week"] in ("W1","W2","W3","W4","WE") for item in future_ranges),
         "futureRangeTotalsMatched":sum(item["checkoutCount"] for item in future_ranges)==sum(row["checkoutCount"] for row in future_rows),
     }
     if not all(validation.values()): raise RuntimeError(f"Checkout trend validation failed: {validation}")
@@ -1272,9 +1290,9 @@ required += ['data-desktop-module="meters"','data-desktop-menu="meters"','data-m
 required += ['function xhsNoteCountClass(','function xhsMetricCell(','xhs-note-count-green','xhs-note-count-yellow','xhs-note-count-pink','xhs-note-count-red','if(count>=6)','if(count===5)','if(count===4)']
 required += ['data-dashboard-view="overview-new"','id="overview-new"','function renderOverviewNew()','"overviewNew"','overview-new-short-rent','overview-new-rate-comprehensive','overview-new-validation']
 required += ['id="overview-contract-activity"','overview-contract-today-new-sign','overview-contract-yesterday-reservation','overview-contract-week-actual-checkout','"contractActivity"','function overviewContractRangeLabel(']
-required += ['id="business-trend"','data-dashboard-view="business-trend"','id="business-trend-chart"','id="business-trend-summary"','function renderBusinessTrend()','"businessTrend"','newSignCount','reservationCount','最新日期在左','堆叠面积图','新签数量（底层）','预定数量（上层）','business-trend-area new-sign','business-trend-area reservation','const totalAt=','areaPath(totalAt','business-trend-line total','business-trend-value total','labelY=Math.max(18,pointY-9)']
+required += ['id="business-trend"','data-dashboard-view="business-trend"','id="business-trend-chart"','id="business-trend-summary"','function renderBusinessTrend()','"businessTrend"','newSignCount','reservationCount','最新日期在左','堆叠面积图','新签数量（底层）','预定数量（上层）','business-trend-area new-sign','business-trend-area reservation','const totalAt=','areaPath(totalAt','business-trend-line total','business-trend-value total','business-trend-value new-sign','newSign!==total','business-trend-grid vertical','labelY=Math.max(18,pointY-9)']
 required += ['id="contract-daily-trend-panel"','class="panel contract-daily-trend-panel"','id="contract-daily-chart-wrap"','id="contract-daily-chart"','function renderDailyLineChart()','renderBusinessTrend(); renderDailyLineChart(); renderCheckoutTrends();']
-required += ['id="checkout-trend-grid"','id="checkout-trend-future-chart"','id="checkout-trend-past-chart"','id="checkout-trend-future-summary"','id="checkout-trend-past-summary"','function renderCheckoutTrends()','function renderCheckoutTrendChart(','"checkoutTrends"','"ranges"','futureNearestFirst','pastNewestFirst','pastRangeCoverage','pastRangeTotalsMatched','futureRangeCoverage','futureRangeTotalsMatched','未来30天','过去30天','checkoutLabelY=Math.max(18,pointY-9)','checkout-trend-range-band','checkout-trend-range-total','天合计']
+required += ['id="checkout-trend-grid"','id="checkout-trend-future-chart"','id="checkout-trend-past-chart"','id="checkout-trend-future-summary"','id="checkout-trend-past-summary"','function renderCheckoutTrends()','function renderCheckoutTrendChart(','"checkoutTrends"','"ranges"','"periodKey"','"week"','"label"','futureNearestFirst','pastNewestFirst','pastRangeCoverage','pastRangeTotalsMatched','futureRangeCoverage','futureRangeTotalsMatched','未来30天','过去30天','checkoutLabelY=Math.max(18,pointY-9)','checkout-trend-range-band','checkout-trend-range-total','天合计']
 required += ['function weekKeyFromLabel(','function weekDayBadgeInfo(','function weekHeading(','id="project-checkout-head"','id="building-checkout-head"']
 required += ['id="xhs-reading-decline-grid"','function renderXhsReadingDeclines()','function xhsDeclineSparkline(','"accountDailyReading"','上7个有效采集日平均－近7个有效采集日平均']
 required += ['id="xhs-trends"','data-dashboard-view="xhs-trends"','id="xhs-trends-updated"','id="xhs-trend-title"','id="xhs-trend-metric"','id="xhs-trend-main-content"','id="xhs-trend-decline-content"','id="xhs-traffic-decline-summary"','value="totalLeads"','value="organicLeads"','value="paidLeads"','const labelStep=1','xhsTrafficDeclineAccounts(accountRows.filter((row) => row.date!==today),metric)','renderXhsTrafficTrendChart(\'xhs-traffic-decline-chart-\'+index,account.rows,true,metric)','function renderXhsTrafficTrendChart(svgId,rows,compact=false,metric=','已隐藏当日未完整数据','每个日期与数值均完整展示','rows.filter((row) => row.date!==today).slice(0,30)','Number(row.date.slice(5,7))+\'-\'+Number(row.date.slice(8,10))']

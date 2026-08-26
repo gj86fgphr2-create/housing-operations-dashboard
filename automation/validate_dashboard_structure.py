@@ -66,6 +66,9 @@ REQUIRED = (
     'areaPath(totalAt',
     'business-trend-line total',
     'business-trend-value total',
+    'business-trend-value new-sign',
+    'newSign!==total',
+    'business-trend-grid vertical',
     'labelY=Math.max(18,pointY-9)',
     'id="contract-daily-trend-panel"',
     'class="panel contract-daily-trend-panel"',
@@ -344,17 +347,28 @@ def main() -> int:
         ranges = period.get("ranges", [])
         rows = period.get("rows", [])
         expected_ranges = []
-        for offset in range(0, len(rows), 7):
-            chunk = rows[offset:offset + 7]
-            expected_ranges.append({
-                "index": len(expected_ranges) + 1,
-                "startDate": chunk[0]["date"],
-                "endDate": chunk[-1]["date"],
-                "dayCount": len(chunk),
-                "checkoutCount": sum(int(row.get("checkoutCount") or 0) for row in chunk),
-            })
-        if ranges != expected_ranges or [item.get("dayCount") for item in ranges] != [7, 7, 7, 7, 2]:
-            print(f"{period_label} checkout seven-day ranges invalid: {ranges}", file=sys.stderr)
+        for row in rows:
+            day = date.fromisoformat(row["date"])
+            week = "W1" if day.day <= 7 else "W2" if day.day <= 14 else "W3" if day.day <= 21 else "W4" if day.day <= 28 else "WE"
+            period_key = f"{day.year:04d}-{day.month:02d}-{week}"
+            if not expected_ranges or expected_ranges[-1]["periodKey"] != period_key:
+                expected_ranges.append({
+                    "index": len(expected_ranges) + 1,
+                    "periodKey": period_key,
+                    "month": f"{day.year:04d}-{day.month:02d}",
+                    "week": week,
+                    "label": f"{day.month}月 {week}",
+                    "startDate": row["date"],
+                    "endDate": row["date"],
+                    "dayCount": 1,
+                    "checkoutCount": int(row.get("checkoutCount") or 0),
+                })
+            else:
+                expected_ranges[-1]["endDate"] = row["date"]
+                expected_ranges[-1]["dayCount"] += 1
+                expected_ranges[-1]["checkoutCount"] += int(row.get("checkoutCount") or 0)
+        if ranges != expected_ranges:
+            print(f"{period_label} checkout W1-WE ranges invalid: {ranges}", file=sys.stderr)
             return 1
         if sum(int(item.get("checkoutCount") or 0) for item in ranges) != sum(int(row.get("checkoutCount") or 0) for row in rows):
             print(f"{period_label} checkout range totals do not reconcile with daily rows", file=sys.stderr)
