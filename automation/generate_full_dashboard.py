@@ -1449,6 +1449,29 @@ monthly["小谷围项目"]=sum_monthly("小谷围项目",["北亭研寓项目","
 monthly["小筑项目"]=sum_monthly("小筑项目",["城北小筑A","城北小筑B","城北小筑C"])
 base_names=[name for name,_ in project_specs[1:]]
 contract_stats={**old["contractStats"],**cs,"asOfDate":current["dataDate"],"projectMonthly":[monthly.get(n,{"name":n,"newCount":0,"renewalCount":0,"otherCount":0,"actualCheckoutCount":0,"checkoutRenewalCount":0}) for n in base_names]}
+
+def attach_reservation_period_counts(stats):
+    ws=load_workbook(run_dir/"预定合同.xlsx",read_only=True,data_only=True).active
+    headers=[cell.value for cell in ws[1]]
+    reservation_id_i,status_i,created_i=idx(headers,"预定ID"),idx(headers,"状态"),idx(headers,"录入日期")
+    seen=set(); reservation_dates=[]
+    for row in ws.iter_rows(min_row=2,values_only=True):
+        reservation_id=norm(row[reservation_id_i])
+        if not reservation_id or reservation_id in seen or norm(row[status_i])!="已付定": continue
+        seen.add(reservation_id)
+        created=iso(row[created_i])
+        if created: reservation_dates.append(created)
+    for period_row in stats.get("periods",[]):
+        start_date,end_date=period_row.get("startDate",""),period_row.get("endDate","")
+        period_row["reservationCount"]=sum(start_date<=date<=end_date for date in reservation_dates) if start_date and end_date else 0
+    current_month_row=next((row for row in stats.get("periods",[]) if row.get("period")=="本月"),None)
+    stats.setdefault("currentMonth",{})["reservationCount"]=int((current_month_row or {}).get("reservationCount",0))
+    target_periods={row.get("period") for row in stats.get("targets",[])}
+    target_total=sum(int(row.get("reservationCount",0)) for row in stats.get("periods",[]) if row.get("period") in target_periods)
+    if target_total!=stats["currentMonth"]["reservationCount"]:
+        raise RuntimeError(f"Reservation target-period totals do not reconcile: weeks={target_total}, month={stats['currentMonth']['reservationCount']}")
+
+attach_reservation_period_counts(contract_stats)
 contract_stats["recentPerformance"], contract_stats["recentProjectPerformance"], contract_stats["recentPeoplePerformance"] = recent_performance()
 contract_stats["monthlyDetails"] = monthly_contract_details()
 detail_counts = [len(contract_stats["monthlyDetails"][key]) for key in ("new", "renewal", "other", "actualCheckout")]
@@ -1485,6 +1508,7 @@ required += ['data-desktop-module="meters"','data-desktop-menu="meters"','data-m
 required += ['function xhsNoteCountClass(','function xhsMetricCell(','xhs-note-count-green','xhs-note-count-yellow','xhs-note-count-pink','xhs-note-count-red','if(count>=6)','if(count===5)','if(count===4)']
 required += ['data-dashboard-view="overview-new"','id="overview-new"','function renderOverviewNew()','"overviewNew"','overview-new-short-rent','overview-new-rate-comprehensive','overview-new-validation']
 required += ['id="overview-contract-activity"','overview-contract-today-new-sign','overview-contract-yesterday-reservation','overview-contract-week-actual-checkout','overview-contract-month-new-sign','overview-contract-month-reservation','overview-contract-month-renewal','overview-contract-month-actual-checkout','.overview-contract-kpis .hint{display:none}','"contractActivity"','function overviewContractRangeLabel(','function overviewContractMetricDisplay(','newSignRevenue','reservationRevenue','renewalRevenue','monthCoreMatched','detailCountsMatched','id="overview-contract-detail-modal"','function openOverviewContractDetails(','overview-contract-drill-card','id="overview-new-target-comparison"','id="overview-new-target-comparison-table"']
+required += ['"reservationCount"','actualReservation','data-label="预定数量"','<th>新签实际</th><th>预定数量</th><th>新签目标</th>']
 required += ['id="business-trend"','data-dashboard-view="business-trend"','id="business-trend-chart"','id="business-trend-summary"','function businessTrendDateLabel(','function renderBusinessTrend()','"businessTrend"','newSignCount','reservationCount','最新日期在左','堆叠面积图','新签数量（底层）','预定数量（上层）','business-trend-area new-sign','business-trend-area reservation','const totalAt=','areaPath(totalAt','business-trend-line total','business-trend-value total','business-trend-value new-sign','newSign!==total','business-trend-grid vertical','month-boundary','labelY=Math.max(108,pointY-9)','business-trend-month-band','business-trend-week-band','weekRangeCoverage','monthRangeCoverage','trend-uniform-wrap','TREND_UNIFORM_WIDTH=1344','function setTrendChartWidth(','const width = setTrendChartWidth(svg)']
 required += ['id="checkout-reason-trend-card"','id="checkout-reason-trend-summary"','id="checkout-reason-trend-chart"','function renderCheckoutReasonTrend(','reasonRows','reasonCategories','displayedReasonCategories','reasonRanges','reasonMonths','reasonField','expiryCount','breachCount','renewalCount','otherCount','displayTotalCount','实际退租原因趋势','到期（底层）','续租（中层）','违约（上层）','总数折线','checkout-reason-area expiry','checkout-reason-area renewal','checkout-reason-area breach','checkout-reason-total-line','checkout-reason-month-band','checkout-reason-week-rate','续租率']
 required += ['id="contract-daily-trend-panel"','class="panel contract-daily-trend-panel"','id="contract-daily-chart-wrap"','id="contract-daily-chart"','function renderDailyLineChart()','renderBusinessTrend(); renderDailyLineChart(); renderCheckoutTrends();']
