@@ -488,7 +488,7 @@
       $('checkout-trend-future-summary').textContent=futureRows.length ? future.startDate+' 至 '+future.endDate+' · 在租中＋将搬入，按退租时间 · 合同编号跨文件去重' : '当前暂无可用未来退租数据';
       $('checkout-trend-past-summary').textContent=pastRows.length ? past.startDate+' 至 '+past.endDate+' · 过去30天按预退/实退 · 合同编号去重，排除换房清算' : '当前暂无可用实际退租数据';
       renderCheckoutTrendChart('checkout-trend-future-chart',futureRows,'future','最近','未来30天预计退租趋势',future.ranges || []);
-      renderCheckoutTrendChart('checkout-trend-past-chart',pastRows,'past','最新','过去30天实际退租趋势');
+      renderCheckoutTrendChart('checkout-trend-past-chart',pastRows,'past','最新','过去30天实际退租趋势',past.ranges || []);
     }
 
     function renderOverviewNew(){
