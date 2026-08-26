@@ -94,6 +94,9 @@ REQUIRED = (
     'checkout-reason-area breach',
     'checkout-reason-total-line',
     'checkout-reason-month-band',
+    'checkout-trend-month-band',
+    'future.months || []',
+    'past.months || []',
     'checkout-reason-week-rate',
     'past.reasonRanges || []',
     'past.reasonMonths || []',
@@ -413,6 +416,7 @@ def main() -> int:
         return 1
     for period_label, period in (("Future", future_period), ("Past", past_period)):
         ranges = period.get("ranges", [])
+        months = period.get("months", [])
         rows = period.get("rows", [])
         expected_ranges = []
         for row in rows:
@@ -440,6 +444,28 @@ def main() -> int:
             return 1
         if sum(int(item.get("checkoutCount") or 0) for item in ranges) != sum(int(row.get("checkoutCount") or 0) for row in rows):
             print(f"{period_label} checkout range totals do not reconcile with daily rows", file=sys.stderr)
+            return 1
+        expected_months = []
+        for row in rows:
+            day = date.fromisoformat(row["date"])
+            period_key = f"{day.year:04d}-{day.month:02d}"
+            if not expected_months or expected_months[-1]["periodKey"] != period_key:
+                expected_months.append({
+                    "index": len(expected_months) + 1,
+                    "periodKey": period_key,
+                    "month": period_key,
+                    "label": f"{day.month}月",
+                    "startDate": row["date"],
+                    "endDate": row["date"],
+                    "dayCount": 1,
+                    "checkoutCount": int(row.get("checkoutCount") or 0),
+                })
+            else:
+                expected_months[-1]["endDate"] = row["date"]
+                expected_months[-1]["dayCount"] += 1
+                expected_months[-1]["checkoutCount"] += int(row.get("checkoutCount") or 0)
+        if months != expected_months:
+            print(f"{period_label} checkout month summaries invalid: {months}", file=sys.stderr)
             return 1
     overview_new = payload.get("overviewNew", {})
     expected_priority = ["预定", "将搬入", "锁房"]

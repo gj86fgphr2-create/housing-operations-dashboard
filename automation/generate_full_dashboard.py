@@ -838,6 +838,28 @@ def checkout_trends():
                 ranges[-1]["checkoutCount"]+=row["checkoutCount"]
         return ranges
 
+    def month_ranges(rows):
+        ranges=[]
+        for row in rows:
+            day=datetime.strptime(row["date"],"%Y-%m-%d").date()
+            period_key=f"{day.year:04d}-{day.month:02d}"
+            if not ranges or ranges[-1]["periodKey"]!=period_key:
+                ranges.append({
+                    "index":len(ranges)+1,
+                    "periodKey":period_key,
+                    "month":period_key,
+                    "label":f"{day.month}月",
+                    "startDate":row["date"],
+                    "endDate":row["date"],
+                    "dayCount":1,
+                    "checkoutCount":row["checkoutCount"],
+                })
+            else:
+                ranges[-1]["endDate"]=row["date"]
+                ranges[-1]["dayCount"]+=1
+                ranges[-1]["checkoutCount"]+=row["checkoutCount"]
+        return ranges
+
     reason_keys=("expiryCount","breachCount","renewalCount")
     def reason_summary_ranges(rows,grouping):
         ranges=[]
@@ -869,6 +891,8 @@ def checkout_trends():
 
     future_ranges=week_ranges(future_rows)
     past_ranges=week_ranges(past_rows)
+    future_months=month_ranges(future_rows)
+    past_months=month_ranges(past_rows)
     past_reason_ranges=reason_summary_ranges(past_reason_rows,"week")
     past_reason_months=reason_summary_ranges(past_reason_rows,"month")
     occupancy_week_counts={period["key"]:sum(int(values.get(period["key"],0)) for values in checkout.values()) for period in periods}
@@ -883,6 +907,8 @@ def checkout_trends():
         "occupancyReconciled":all(month_week_counts[period["key"]]==occupancy_week_counts[period["key"]] for period in periods),
         "pastRangeCoverage":bool(past_ranges) and sum(item["dayCount"] for item in past_ranges)==len(past_rows) and past_ranges[0]["startDate"]==past_rows[0]["date"] and past_ranges[-1]["endDate"]==past_rows[-1]["date"] and all(item["week"] in ("W1","W2","W3","W4","WE") for item in past_ranges),
         "pastRangeTotalsMatched":sum(item["checkoutCount"] for item in past_ranges)==sum(row["checkoutCount"] for row in past_rows),
+        "pastMonthCoverage":bool(past_months) and sum(item["dayCount"] for item in past_months)==len(past_rows) and past_months[0]["startDate"]==past_rows[0]["date"] and past_months[-1]["endDate"]==past_rows[-1]["date"],
+        "pastMonthTotalsMatched":sum(item["checkoutCount"] for item in past_months)==sum(row["checkoutCount"] for row in past_rows),
         "pastReasonDatesMatched":[row["date"] for row in past_reason_rows]==[row["date"] for row in past_rows],
         "pastReasonDailyReconciled":all(reason_row["totalCount"]==past_row["checkoutCount"] for reason_row,past_row in zip(past_reason_rows,past_rows)),
         "pastReasonDisplayedDailyReconciled":all(row["displayTotalCount"]==row["expiryCount"]+row["renewalCount"]+row["breachCount"] and row["totalCount"]==row["displayTotalCount"]+row["otherCount"] for row in past_reason_rows),
@@ -893,12 +919,14 @@ def checkout_trends():
         "pastReasonMonthTotalsMatched":all(sum(item[key] for item in past_reason_months)==sum(row["displayTotalCount"] if key=="totalCount" else row[key] for row in past_reason_rows) for key in (*reason_keys,"totalCount")),
         "futureRangeCoverage":bool(future_ranges) and sum(item["dayCount"] for item in future_ranges)==len(future_rows) and future_ranges[0]["startDate"]==future_rows[0]["date"] and future_ranges[-1]["endDate"]==future_rows[-1]["date"] and all(item["week"] in ("W1","W2","W3","W4","WE") for item in future_ranges),
         "futureRangeTotalsMatched":sum(item["checkoutCount"] for item in future_ranges)==sum(row["checkoutCount"] for row in future_rows),
+        "futureMonthCoverage":bool(future_months) and sum(item["dayCount"] for item in future_months)==len(future_rows) and future_months[0]["startDate"]==future_rows[0]["date"] and future_months[-1]["endDate"]==future_rows[-1]["date"],
+        "futureMonthTotalsMatched":sum(item["checkoutCount"] for item in future_months)==sum(row["checkoutCount"] for row in future_rows),
     }
     if not all(validation.values()): raise RuntimeError(f"Checkout trend validation failed: {validation}")
     return {
         "asOfDate":as_of.isoformat(),
-        "past":{"startDate":past_start.isoformat(),"endDate":as_of.isoformat(),"sourceFiles":["已退租合同.xlsx"],"dateField":"预退/实退","reasonField":"退租原因","reasonCategories":["到期","违约","续租","其他"],"displayedReasonCategories":["到期","续租","违约"],"rows":past_rows,"reasonRows":past_reason_rows,"ranges":past_ranges,"reasonRanges":past_reason_ranges,"reasonMonths":past_reason_months},
-        "future":{"startDate":future_start.isoformat(),"endDate":future_end.isoformat(),"sourceFiles":["在租中合同.xlsx","将搬入合同.xlsx"],"dateField":"退租时间","sourceCounts":dict(future_source_counts),"rows":future_rows,"ranges":future_ranges},
+        "past":{"startDate":past_start.isoformat(),"endDate":as_of.isoformat(),"sourceFiles":["已退租合同.xlsx"],"dateField":"预退/实退","reasonField":"退租原因","reasonCategories":["到期","违约","续租","其他"],"displayedReasonCategories":["到期","续租","违约"],"rows":past_rows,"reasonRows":past_reason_rows,"ranges":past_ranges,"months":past_months,"reasonRanges":past_reason_ranges,"reasonMonths":past_reason_months},
+        "future":{"startDate":future_start.isoformat(),"endDate":future_end.isoformat(),"sourceFiles":["在租中合同.xlsx","将搬入合同.xlsx"],"dateField":"退租时间","sourceCounts":dict(future_source_counts),"rows":future_rows,"ranges":future_ranges,"months":future_months},
         "occupancyWeekCounts":occupancy_week_counts,
         "validation":validation,
     }
