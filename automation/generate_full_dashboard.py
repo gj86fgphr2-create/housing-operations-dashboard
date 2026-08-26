@@ -940,7 +940,7 @@ def checkout_trends():
         "validation":validation,
     }
 
-def overview_contract_activity(recent_rows,current_month):
+def overview_contract_activity(recent_rows,current_month,monthly_details):
     """Summarize deduplicated contract events for today, yesterday, current week, and current month."""
     by_date={row["date"]:row for row in recent_rows}
     week_start=as_of-timedelta(days=as_of.weekday())
@@ -962,14 +962,19 @@ def overview_contract_activity(recent_rows,current_month):
             "endDate":end.isoformat(),
             "metrics":{name:round(sum(float(row.get(source) or 0) for row in selected),2) if name.endswith("Revenue") else sum(int(row.get(source) or 0) for row in selected) for name,source in fields.items()},
         }
+    def metric_values(row):
+        return {name:round(float(row.get(source) or 0),2) if name.endswith("Revenue") else int(row.get(source) or 0) for name,source in fields.items()}
     yesterday=as_of-timedelta(days=1)
     month_start=as_of.replace(day=1)
     reservation_ws=load_workbook(run_dir/"预定合同.xlsx",read_only=True,data_only=True).active
     reservation_headers=[cell.value for cell in reservation_ws[1]]
     reservation_id_i,status_i,created_i,reservation_rent_i=idx(reservation_headers,"预定ID"),idx(reservation_headers,"状态"),idx(reservation_headers,"录入日期"),idx(reservation_headers,"租金")
+    reservation_address_i,reservation_building_i=idx(reservation_headers,"地址"),idx(reservation_headers,"小区/公寓")
+    reservation_start_i,reservation_end_i,reservation_signer_i=idx(reservation_headers,"合同开始"),idx(reservation_headers,"合同结束"),idx(reservation_headers,"预定办理人")
     seen_month_reservations=set()
     month_reservations=0
     month_reservation_revenue=0.0
+    reservation_details=[]
     for row in reservation_ws.iter_rows(min_row=2,values_only=True):
         reservation_id=norm(row[reservation_id_i])
         if not reservation_id or reservation_id in seen_month_reservations or norm(row[status_i])!="已付定": continue
@@ -978,6 +983,17 @@ def overview_contract_activity(recent_rows,current_month):
         if created_date and month_start.isoformat()<=created_date<=as_of.isoformat():
             month_reservations+=1
             month_reservation_revenue+=money(row[reservation_rent_i])
+            address=str(row[reservation_address_i] or "").strip()
+            room_numbers=re.findall(r"\d+",address)
+            reservation_details.append({
+                "date":created_date,
+                "building":str(row[reservation_building_i] or "").strip() or address or "—",
+                "roomNo":room_numbers[-1] if room_numbers else "—",
+                "leaseStart":iso(row[reservation_start_i]) or "—",
+                "leaseEnd":iso(row[reservation_end_i]) or "—",
+                "rent":round(money(row[reservation_rent_i]),2),
+                "signer":str(row[reservation_signer_i] or "").strip() or "—",
+            })
     periods=[
         period("today","今天",as_of,as_of),
         period("yesterday","昨天",yesterday,yesterday),
@@ -995,9 +1011,25 @@ def overview_contract_activity(recent_rows,current_month):
             },
         },
     ]
+    source_details={
+        "newSign":monthly_details.get("new",[]),
+        "reservation":reservation_details,
+        "renewal":monthly_details.get("renewal",[]),
+        "actualCheckout":monthly_details.get("actualCheckout",[]),
+    }
+    for item in periods:
+        start_date,end_date=item["startDate"],item["endDate"]
+        item["details"]={
+            key:[
+                {field:row.get(field,"—") for field in ("building","roomNo","leaseStart","leaseEnd","rent","signer")}
+                for row in sorted(rows,key=lambda value:(value.get("date","") ,value.get("building","") ,value.get("roomNo","")),reverse=True)
+                if start_date<=row.get("date","")<=end_date
+            ]
+            for key,rows in source_details.items()
+        }
     validation={
-        "todayMatched":periods[0]["metrics"]=={name:int(by_date.get(as_of.isoformat(),{}).get(source) or 0) for name,source in fields.items()},
-        "yesterdayMatched":periods[1]["metrics"]=={name:int(by_date.get(yesterday.isoformat(),{}).get(source) or 0) for name,source in fields.items()},
+        "todayMatched":periods[0]["metrics"]==metric_values(by_date.get(as_of.isoformat(),{})),
+        "yesterdayMatched":periods[1]["metrics"]==metric_values(by_date.get(yesterday.isoformat(),{})),
         "weekRangeValid":week_start<=as_of and (as_of-week_start).days<7,
         "monthRangeValid":month_start<=as_of and month_start.day==1,
         "monthCoreMatched":periods[3]["metrics"]=={
@@ -1009,6 +1041,7 @@ def overview_contract_activity(recent_rows,current_month):
             "renewalRevenue":round(float(current_month.get("renewalRevenue") or 0),2),
             "actualCheckout":int(current_month.get("actualCheckoutCount") or 0),
         },
+        "detailCountsMatched":all(len(item["details"][key])==int(item["metrics"][key]) for item in periods for key in ("newSign","reservation","renewal","actualCheckout")),
         "nonNegative":all(value>=0 for item in periods for value in item["metrics"].values()),
     }
     if not all(validation.values()): raise RuntimeError(f"Overview contract activity validation failed: {periods}")
@@ -1033,6 +1066,7 @@ def monthly_contract_details():
             "leaseStart": iso(row[indexes["起租时间"]]) or "—",
             "leaseEnd": iso(row[indexes["退租时间"]]) or "—",
             "leasePeriod": value("租期时长"),
+            "rent": round(money(row[indexes["租金单价"]]),2),
             "signer": value("签约人"),
             "contractId": norm(row[indexes["合同编号"]]),
         }
@@ -1041,7 +1075,7 @@ def monthly_contract_details():
     for filename in ("在租中合同.xlsx", "将搬入合同.xlsx", "已退租合同.xlsx"):
         ws = load_workbook(run_dir/filename, read_only=True, data_only=True).active
         headers = [cell.value for cell in ws[3]]
-        names = ("合同编号", "签约来源", "签约时间", "小区/公寓", "门牌号", "租客姓名", "起租时间", "退租时间", "租期时长", "签约人")
+        names = ("合同编号", "签约来源", "签约时间", "小区/公寓", "门牌号", "租客姓名", "起租时间", "退租时间", "租期时长", "租金单价", "签约人")
         indexes = {name: idx(headers, name) for name in names}
         for row in ws.iter_rows(min_row=4, values_only=True):
             contract_id = norm(row[indexes["合同编号"]])
@@ -1057,7 +1091,7 @@ def monthly_contract_details():
 
     ws = load_workbook(run_dir/"已退租合同.xlsx", read_only=True, data_only=True).active
     headers = [cell.value for cell in ws[3]]
-    names = ("合同编号", "签约来源", "预退/实退", "退租原因", "小区/公寓", "门牌号", "租客姓名", "起租时间", "退租时间", "租期时长", "签约人")
+    names = ("合同编号", "签约来源", "预退/实退", "退租原因", "小区/公寓", "门牌号", "租客姓名", "起租时间", "退租时间", "租期时长", "租金单价", "签约人")
     indexes = {name: idx(headers, name) for name in names}
     seen_checkout = set()
     for row in ws.iter_rows(min_row=4, values_only=True):
@@ -1399,7 +1433,7 @@ contract_stats.setdefault("totals",{})
 contract_stats["uniqueContracts"]=sum(1 for f in ("在租中合同.xlsx","将搬入合同.xlsx","已退租合同.xlsx") for _ in load_workbook(run_dir/f,read_only=True).active.iter_rows(min_row=4,values_only=True))
 
 overview_new=build_overview_new()
-overview_new["contractActivity"]=overview_contract_activity(contract_stats["recentPerformance"],contract_stats["currentMonth"])
+overview_new["contractActivity"]=overview_contract_activity(contract_stats["recentPerformance"],contract_stats["currentMonth"],contract_stats["monthlyDetails"])
 payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods,"overviewNew":overview_new,"businessTrend":business_trend(),"checkoutTrends":checkout_trends(),"ziyinOccupancy":ziyin_occupancy,"xhsAccountAudit":build_xhs_account_audit(old.get("xhsAccountAudit")),"xhsContent":build_xhs_content(old.get("xhsContent")),"xhsNotePublished":build_xhs_note_published(old.get("xhsNotePublished")),"xhsLeads":build_xhs_leads(old.get("xhsLeads")),"xhsAdFlow":build_xhs_ad_flow(old.get("xhsAdFlow")),"customerData":build_customer_data(old.get("customerData")),"meterManagement":build_meter_management(old.get("meterManagement"))}
 rendered=template[:payload_span[0]]+json.dumps(payload,ensure_ascii=False,separators=(",",":"))+template[payload_span[1]:]
 required=['class="nav desktop-nav"','data-desktop-module="xiaohongshu"','data-desktop-module="yuxiaor"','data-desktop-menu="xiaohongshu"','data-desktop-menu="yuxiaor"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','data-dashboard-view="occupancy-ziyin"','id="occupancy-ziyin"','ziyin-project-table','function renderZiyinOccupancy()','"ziyinOccupancy"','occupiedOverlap','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','xhs-account-updated','xhs-account-status-list','adCollectedAt','adCollectedOk','leadCollectedAt','leadCollectedOk','noteCollectedAt','noteCollectedOk','function xhsCollectedHour(','function xhsCollectedBadge(','class="xhs-collection-badge ok"','<th>聚光</th><th>留资</th><th>笔记</th>','xhs-note-count-table','xhs-view-count-table','function xhsMetricTotal(account,weeks,field)','<th>汇总</th>','xhs-daily-reading-chart','id="xhs-leads"','xhs-goal-table','xhs-lead-opened-table','xhs-lead-copied-table','function xhsLeadWeekHeading(','xhs-week-day-badge','id="xhs-lead-details"','xhs-lead-detail-account','xhs-lead-detail-table','id="xhs-ad-flow"','xhs-ad-account-table','xhs-ad-note-table','id="xhs-ad-start-date"','id="xhs-ad-end-date"','function xhsAdPrepareDateControls(','id="xhs-ad-team-filter"','id="xhs-ad-account-filter"','id="xhs-ad-matrix-head"','function renderXhsAdChart(','function renderXhsAdFlow()','function renderXhsAccountStatus()','function xhsGoalCell(','function renderXhsLeads()','function renderXhsLeadDetails()','"xhsAccountAudit"','"targetMonth"','"targets"','"dailyRows"','"xhsLeads"','"xhsAdFlow"']
@@ -1417,7 +1451,7 @@ required += ['data-desktop-module="customer"','data-desktop-menu="customer"','da
 required += ['data-desktop-module="meters"','data-desktop-menu="meters"','data-mobile-module="meters"','data-mobile-menu="meters"','id="meter-management"','data-dashboard-view="meter-management"','id="meter-collection-status"','id="meter-keep-table"','id="meter-negative-table"','id="meter-offline-table"','function renderMeterManagement()','"meterManagement"','data-label="保电状态"','keepText=row.keepElectric?\'已保电\':\'未保电\'']
 required += ['function xhsNoteCountClass(','function xhsMetricCell(','xhs-note-count-green','xhs-note-count-yellow','xhs-note-count-pink','xhs-note-count-red','if(count>=6)','if(count===5)','if(count===4)']
 required += ['data-dashboard-view="overview-new"','id="overview-new"','function renderOverviewNew()','"overviewNew"','overview-new-short-rent','overview-new-rate-comprehensive','overview-new-validation']
-required += ['id="overview-contract-activity"','overview-contract-today-new-sign','overview-contract-yesterday-reservation','overview-contract-week-actual-checkout','overview-contract-month-new-sign','overview-contract-month-reservation','overview-contract-month-renewal','overview-contract-month-actual-checkout','.overview-contract-kpis .hint{display:none}','"contractActivity"','function overviewContractRangeLabel(','function overviewContractMetricDisplay(','newSignRevenue','reservationRevenue','renewalRevenue','monthCoreMatched']
+required += ['id="overview-contract-activity"','overview-contract-today-new-sign','overview-contract-yesterday-reservation','overview-contract-week-actual-checkout','overview-contract-month-new-sign','overview-contract-month-reservation','overview-contract-month-renewal','overview-contract-month-actual-checkout','.overview-contract-kpis .hint{display:none}','"contractActivity"','function overviewContractRangeLabel(','function overviewContractMetricDisplay(','newSignRevenue','reservationRevenue','renewalRevenue','monthCoreMatched','detailCountsMatched','id="overview-contract-detail-modal"','function openOverviewContractDetails(','overview-contract-drill-card']
 required += ['id="business-trend"','data-dashboard-view="business-trend"','id="business-trend-chart"','id="business-trend-summary"','function businessTrendDateLabel(','function renderBusinessTrend()','"businessTrend"','newSignCount','reservationCount','最新日期在左','堆叠面积图','新签数量（底层）','预定数量（上层）','business-trend-area new-sign','business-trend-area reservation','const totalAt=','areaPath(totalAt','business-trend-line total','business-trend-value total','business-trend-value new-sign','newSign!==total','business-trend-grid vertical','month-boundary','labelY=Math.max(18,pointY-9)']
 required += ['id="checkout-reason-trend-card"','id="checkout-reason-trend-summary"','id="checkout-reason-trend-chart"','function renderCheckoutReasonTrend(','reasonRows','reasonCategories','displayedReasonCategories','reasonRanges','reasonMonths','reasonField','expiryCount','breachCount','renewalCount','otherCount','displayTotalCount','实际退租原因趋势','到期（底层）','续租（中层）','违约（上层）','总数折线','checkout-reason-area expiry','checkout-reason-area renewal','checkout-reason-area breach','checkout-reason-total-line','checkout-reason-month-band','checkout-reason-week-rate','续租率']
 required += ['id="contract-daily-trend-panel"','class="panel contract-daily-trend-panel"','id="contract-daily-chart-wrap"','id="contract-daily-chart"','function renderDailyLineChart()','renderBusinessTrend(); renderDailyLineChart(); renderCheckoutTrends();']

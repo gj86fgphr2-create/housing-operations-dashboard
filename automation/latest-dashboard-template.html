@@ -87,7 +87,9 @@
     @media(max-width:900px){.xhs-traffic-decline-grid{grid-template-columns:1fr}}
     @media(max-width:680px){.xhs-traffic-week-headline,.xhs-traffic-trend-head{display:block}.xhs-traffic-week-headline .field{display:block;min-width:0;margin-top:12px}.xhs-traffic-week-headline select{width:100%}.xhs-traffic-pagination{justify-content:space-between}.xhs-traffic-pagination span{min-width:0}.xhs-traffic-trend-legend{margin-top:10px}.xhs-traffic-chart{height:280px}.xhs-traffic-chart.compact{height:220px}}
     .overview-new-panel+.overview-new-panel{margin-top:16px}.overview-new-kpis,.overview-new-rate-kpis{grid-template-columns:repeat(4,minmax(160px,1fr));margin-top:14px}.overview-new-hidden-validation{display:none}.overview-contract-periods{display:grid;gap:12px;margin-top:14px}.overview-contract-period{display:grid;grid-template-columns:126px minmax(0,1fr);gap:12px;align-items:stretch}.overview-contract-period-head{display:flex;flex-direction:column;justify-content:center;padding:14px 16px;border:1px solid #bdd9df;border-radius:12px;background:linear-gradient(145deg,#eef8fa,#dff2f5)}.overview-contract-period-head strong{color:var(--primary);font-size:18px}.overview-contract-period-head span{margin-top:5px;color:#52717a;font-size:11px;line-height:1.45}.overview-contract-kpis{grid-template-columns:repeat(4,minmax(130px,1fr));gap:10px}.overview-contract-kpis .kpi{min-height:88px;padding:14px 15px;box-shadow:none}.overview-contract-kpis .value{font-size:clamp(15px,1.65vw,23px);font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:-.025em}.overview-contract-kpis .hint{display:none}.overview-contract-source{margin-top:12px;color:var(--muted);font-size:11px;line-height:1.6}.overview-contract-source strong{color:var(--text)}
+    .overview-contract-drill-card{position:relative;cursor:pointer;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}.overview-contract-drill-card::after{content:"›";position:absolute;right:10px;bottom:8px;display:grid;place-items:center;width:19px;height:19px;border-radius:99px;background:rgba(18,110,130,.09);color:var(--primary);font-size:16px;font-weight:800;line-height:1}.overview-contract-drill-card:hover{transform:translateY(-2px);border-color:#9bcbd3;box-shadow:0 8px 18px rgba(18,110,130,.10)}.overview-contract-drill-card:focus-visible{outline:3px solid rgba(18,110,130,.22);outline-offset:2px}.overview-contract-modal-open{overflow:hidden}.overview-contract-modal[hidden]{display:none}.overview-contract-modal{position:fixed;inset:0;z-index:2200;display:grid;place-items:center;padding:20px}.overview-contract-modal-backdrop{position:absolute;inset:0;background:rgba(12,32,57,.56);backdrop-filter:blur(4px)}.overview-contract-dialog{position:relative;display:flex;flex-direction:column;width:min(940px,calc(100vw - 40px));max-height:min(82vh,760px);overflow:hidden;border:1px solid #c9d7e4;border-radius:18px;background:var(--surface);box-shadow:0 24px 70px rgba(8,31,58,.28)}.overview-contract-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:18px 20px 14px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,#eef8fa,#f7fbfd 55%,#eef4f9)}.overview-contract-dialog-head h3{margin:0 0 6px;font-size:19px;color:#173b63}.overview-contract-dialog-head p{margin:0;color:var(--muted);font-size:12px}.overview-contract-dialog-close{flex:0 0 auto;display:grid;place-items:center;width:36px;height:36px;border:1px solid #cbd8e4;border-radius:10px;background:#fff;color:#405772;font-size:22px;line-height:1;cursor:pointer}.overview-contract-dialog-close:hover,.overview-contract-dialog-close:focus-visible{border-color:var(--primary);color:var(--primary);outline:none}.overview-contract-dialog-body{overflow:auto;padding:16px 20px 20px}.overview-contract-detail-wrap{max-height:560px}.overview-contract-detail-table{min-width:760px}.overview-contract-detail-table th,.overview-contract-detail-table td{white-space:nowrap}.overview-contract-detail-table th:first-child,.overview-contract-detail-table td:first-child{text-align:left}.overview-contract-detail-empty{text-align:center!important;color:var(--muted);padding:28px!important}
     @media(max-width:680px){.overview-new-kpis,.overview-new-rate-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.overview-contract-period{grid-template-columns:1fr}.overview-contract-period-head{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:10px;padding:11px 13px}.overview-contract-period-head span{margin:0;text-align:right}.overview-contract-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:680px){.overview-contract-modal{padding:8px}.overview-contract-dialog{width:calc(100vw - 16px);max-height:calc(100vh - 24px);border-radius:15px}.overview-contract-dialog-head{padding:15px 14px 12px}.overview-contract-dialog-head h3{font-size:17px}.overview-contract-dialog-body{padding:12px}.overview-contract-detail-wrap{max-height:none}.table-wrap .overview-contract-detail-table{display:block;min-width:0}.overview-contract-detail-table tbody{display:grid}.overview-contract-detail-table tr{display:grid}.overview-contract-detail-table td{display:flex;white-space:normal}.overview-contract-detail-table td:first-child{display:block}.overview-contract-detail-table td::before{content:attr(data-label)}.overview-contract-detail-table td:first-child::before{content:none}.overview-contract-detail-table thead{display:none}}
     @media(max-width:360px){.main{padding-left:10px;padding-right:10px}.kpis{grid-template-columns:1fr}.kpi{min-height:94px}.table-wrap tr{grid-template-columns:1fr}.table-wrap td{grid-column:1/-1}.overview-new-kpis,.overview-new-rate-kpis,.overview-contract-kpis{grid-template-columns:1fr}}
     .xhs-decline-block{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}.xhs-decline-head{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:13px}.xhs-decline-head h4{margin:0 0 5px;font-size:15px}.xhs-decline-head p{margin:0;color:var(--muted);font-size:12px;line-height:1.55}.xhs-decline-scroll{overflow-x:auto;padding:2px 2px 8px}.xhs-decline-grid{display:grid;grid-template-columns:repeat(3,minmax(260px,1fr));gap:13px;min-width:820px}.xhs-decline-card{min-width:0;overflow:hidden;border:1px solid #f0c6ba;border-top:4px solid var(--orange);border-radius:13px;background:linear-gradient(180deg,#fffaf7 0%,var(--surface) 42%);box-shadow:0 5px 16px rgba(109,59,31,.07)}.xhs-decline-card-head{display:flex;align-items:start;justify-content:space-between;gap:10px;padding:13px 14px 8px}.xhs-decline-rank{flex:0 0 auto;display:grid;place-items:center;width:27px;height:27px;border-radius:9px;background:#fff0e8;color:#b84a25;font-size:12px;font-weight:800}.xhs-decline-name{min-width:0;flex:1}.xhs-decline-name strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.xhs-decline-name small{display:block;margin-top:3px;color:var(--muted);font-size:10px}.xhs-decline-value{text-align:right;white-space:nowrap}.xhs-decline-value strong{display:block;color:#b84a25;font-size:20px;line-height:1}.xhs-decline-value small{color:var(--muted);font-size:10px}.xhs-decline-chart{display:block;width:100%;height:150px}.xhs-decline-line{fill:none;stroke:#df6c32;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.xhs-decline-point{fill:#fff;stroke:#df6c32;stroke-width:2}.xhs-decline-meta{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin:0 12px;padding:10px 2px;border-top:1px dashed #edcbbb;border-bottom:1px dashed #edcbbb;font-variant-numeric:tabular-nums}.xhs-decline-meta div:last-child{text-align:right}.xhs-decline-meta span{display:block;color:var(--muted);font-size:10px}.xhs-decline-meta strong{font-size:14px}.xhs-decline-arrow{color:#c85b2d;font-size:18px}.xhs-decline-note{margin:0;padding:10px 14px 13px;color:#6a4a3b;font-size:11px;line-height:1.55}.xhs-decline-empty{grid-column:1/-1;padding:34px 20px;border:1px dashed var(--line);border-radius:12px;color:var(--muted);text-align:center;font-size:12px}
     .xhs-trends-stack{display:grid;gap:16px}.xhs-trends-stack>.panel{min-width:0}.xhs-trend-metric-field{flex:0 0 180px}.xhs-trend-metric-field span{display:block;margin-bottom:5px;color:var(--muted);font-size:11px}.xhs-trend-metric-field select{width:100%;min-width:0}.xhs-trend-chart-wrap{overflow-x:auto}.xhs-trends-stack .xhs-traffic-decline-card .xhs-traffic-chart-wrap{overflow:hidden}.xhs-trends-stack .xhs-traffic-chart{width:100%;min-width:0}.xhs-trend-main-content .xhs-traffic-chart{min-width:900px}.xhs-trend-decline-content{margin-top:20px;padding-top:18px;border-top:1px solid var(--line)}.xhs-trend-decline-head h4{margin:0 0 5px;font-size:15px}.xhs-trend-decline-head p{margin:0;color:var(--muted);font-size:12px;line-height:1.55}.xhs-trend-decline-content .xhs-traffic-decline-grid{margin-top:12px}.xhs-traffic-chart-line.total{stroke:var(--blue)}.xhs-traffic-chart-point.total{stroke:var(--blue)}.xhs-traffic-chart-value.total{fill:#1e64a3}
@@ -324,7 +326,14 @@
                 <article class="kpi green"><div class="label">续租数据</div><div class="value" id="overview-contract-month-renewal">—</div><div class="hint">按签约时间</div></article>
                 <article class="kpi red"><div class="label">实际退租数据</div><div class="value" id="overview-contract-month-actual-checkout">—</div><div class="hint">排除换房清算</div></article>
               </div></section>
-          </div><p class="overview-contract-source"><strong>统计字段：</strong>新签/续租取签约时间，预定取录入日期，实际退租取预退/实退日期。</p></article>
+          </div><p class="overview-contract-source"><strong>统计字段：</strong>新签/续租取签约时间，预定取录入日期，实际退租取预退/实退日期。点击数据卡片可查看明细。</p></article>
+        <div class="overview-contract-modal" id="overview-contract-detail-modal" hidden aria-hidden="true">
+          <div class="overview-contract-modal-backdrop" data-overview-contract-close></div>
+          <section class="overview-contract-dialog" role="dialog" aria-modal="true" aria-labelledby="overview-contract-detail-title">
+            <header class="overview-contract-dialog-head"><div><h3 id="overview-contract-detail-title">合同明细</h3><p id="overview-contract-detail-meta">—</p></div><button type="button" class="overview-contract-dialog-close" id="overview-contract-detail-close" aria-label="关闭合同明细">×</button></header>
+            <div class="overview-contract-dialog-body"><div class="table-wrap overview-contract-detail-wrap"><table class="overview-contract-detail-table"><thead><tr><th>楼栋</th><th>房间号</th><th>起租日</th><th>退租日</th><th>租金</th><th>签约管家</th></tr></thead><tbody id="overview-contract-detail-table"></tbody></table></div></div>
+          </section>
+        </div>
         <div class="overview-new-hidden-validation" hidden aria-hidden="true"><span id="overview-new-base-equation">—</span><span id="overview-new-unavailable-equation">—</span><span id="overview-new-validation">正在校验…</span><span id="overview-new-other-status">—</span></div>
       </section>
 
@@ -531,6 +540,7 @@
 
     function renderOverviewNew(){
       const d=DATA.overviewNew || {};
+      setupOverviewContractModal();
       $('overview-new-total').textContent=int(d.totalRooms);
       $('overview-new-occupied').textContent=int(d.occupiedCount);
       $('overview-new-rentable').textContent=int(d.rentableCount);
@@ -568,7 +578,15 @@
         if(rangeNode) rangeNode.textContent=overviewContractRangeLabel(period.startDate,period.endDate);
         [['new-sign','newSign','newSignRevenue'],['reservation','reservation','reservationRevenue'],['renewal','renewal','renewalRevenue'],['actual-checkout','actualCheckout',null]].forEach(([id,key,revenueKey]) => {
           const node=$('overview-contract-'+period.key+'-'+id);
-          if(node) node.textContent=overviewContractMetricDisplay(metrics[key],revenueKey ? metrics[revenueKey] : null);
+          if(node){
+            node.textContent=overviewContractMetricDisplay(metrics[key],revenueKey ? metrics[revenueKey] : null);
+            const card=node.closest('.kpi');
+            if(card && card.dataset.activityDetailBound!=='true'){
+              card.dataset.activityDetailBound='true';card.classList.add('overview-contract-drill-card');card.tabIndex=0;card.setAttribute('role','button');card.setAttribute('aria-haspopup','dialog');card.setAttribute('aria-label','查看'+period.label+overviewContractMetricLabel(key)+'明细');
+              const open=()=>openOverviewContractDetails(period,key,card);
+              card.addEventListener('click',open);card.addEventListener('keydown',(event)=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();open();}});
+            }
+          }
         });
       });
     }
@@ -580,6 +598,39 @@
 
     function overviewContractMetricDisplay(count,revenue){
       return revenue===null || revenue===undefined ? int(count) : int(count)+'（'+currencyInteger(revenue)+'）';
+    }
+
+    function overviewContractMetricLabel(key){
+      return ({newSign:'新签',reservation:'预定',renewal:'续租',actualCheckout:'实际退租'})[key] || '合同';
+    }
+
+    function overviewContractEscape(value){
+      return String(value===null||value===undefined?'—':value).replace(/[&<>"']/g,(char)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[char]);
+    }
+
+    let overviewContractLastTrigger=null;
+    function setupOverviewContractModal(){
+      const modal=$('overview-contract-detail-modal');
+      if(!modal || modal.dataset.bound==='true') return;
+      modal.dataset.bound='true';
+      $('overview-contract-detail-close').addEventListener('click',closeOverviewContractDetails);
+      modal.querySelector('[data-overview-contract-close]').addEventListener('click',closeOverviewContractDetails);
+      document.addEventListener('keydown',(event)=>{if(event.key==='Escape'&&!modal.hidden) closeOverviewContractDetails();});
+    }
+
+    function openOverviewContractDetails(period,metricKey,trigger){
+      const modal=$('overview-contract-detail-modal'),rows=period.details?.[metricKey] || [],label=overviewContractMetricLabel(metricKey);
+      overviewContractLastTrigger=trigger || null;
+      $('overview-contract-detail-title').textContent=period.label+label+'明细';
+      $('overview-contract-detail-meta').textContent=overviewContractRangeLabel(period.startDate,period.endDate)+' · 共 '+int(rows.length)+' 条';
+      $('overview-contract-detail-table').innerHTML=rows.length ? rows.map((row)=>'<tr><td data-label="楼栋">'+overviewContractEscape(row.building)+'</td><td data-label="房间号">'+overviewContractEscape(row.roomNo)+'</td><td data-label="起租日">'+overviewContractEscape(row.leaseStart)+'</td><td data-label="退租日">'+overviewContractEscape(row.leaseEnd)+'</td><td data-label="租金">'+overviewContractEscape(currencyInteger(row.rent))+'</td><td data-label="签约管家">'+overviewContractEscape(row.signer)+'</td></tr>').join('') : '<tr><td colspan="6" class="overview-contract-detail-empty">该周期暂无'+overviewContractEscape(label)+'明细</td></tr>';
+      modal.hidden=false;modal.setAttribute('aria-hidden','false');document.body.classList.add('overview-contract-modal-open');$('overview-contract-detail-close').focus();
+    }
+
+    function closeOverviewContractDetails(){
+      const modal=$('overview-contract-detail-modal');if(!modal || modal.hidden) return;
+      modal.hidden=true;modal.setAttribute('aria-hidden','true');document.body.classList.remove('overview-contract-modal-open');
+      if(overviewContractLastTrigger) overviewContractLastTrigger.focus();
     }
 
     function renderKpis(d){
