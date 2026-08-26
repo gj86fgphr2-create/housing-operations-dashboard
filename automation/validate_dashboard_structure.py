@@ -54,6 +54,11 @@ REQUIRED = (
     'id="business-trend"',
     'id="business-trend-chart"',
     'id="business-trend-summary"',
+    'id="business-trend-data-wrap"',
+    'id="business-trend-data-table"',
+    'function businessTrendDateLabel(',
+    'function renderBusinessTrendTable(',
+    'renderBusinessTrendTable(rows)',
     'function renderBusinessTrend()',
     '"businessTrend"',
     '最新日期在左',
@@ -414,6 +419,12 @@ def main() -> int:
     business_section = re.search(r'<section class="section" id="business-trend".*?</section>\s*<section class="section" id="overview"', html, re.S)
     if not business_section or html.count('id="contract-daily-trend-panel"') != 1 or 'id="contract-daily-chart"' not in business_section.group(0):
         print("Contract daily trend chart is not uniquely located in the business-trend view", file=sys.stderr)
+        return 1
+    business_markup = business_section.group(0)
+    ordered_markers = ('id="business-trend-chart"', 'id="checkout-trend-future-chart"', 'id="checkout-trend-past-chart"', 'id="contract-daily-trend-panel"')
+    marker_positions = [business_markup.find(marker) for marker in ordered_markers]
+    if any(position < 0 for position in marker_positions) or marker_positions != sorted(marker_positions):
+        print(f"Business trend panel order invalid: {marker_positions}", file=sys.stderr)
         return 1
     if 'data-views="overview"><h3>近期每日合同净变化</h3>' in html:
         print("Contract daily trend chart still exists in the overview view", file=sys.stderr)
