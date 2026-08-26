@@ -260,6 +260,8 @@ def build_meter_management(fallback):
     allowed={"deviceId","deviceName","areaName","onlineStatus","powerStatus","remainingPower","updatedAt","keepElectric"}
     if any(set(row)-allowed for rows in (keep_rows,negative_rows,offline_rows) for row in rows):
         raise RuntimeError("Meter-management payload contains an unexpected device field")
+    if any(not isinstance(row.get("keepElectric"),bool) for rows in (keep_rows,negative_rows,offline_rows) for row in rows):
+        raise RuntimeError("Meter-management keep-electric state must be boolean")
     return content
 
 def latest_xhs_ad_immutable_history():
@@ -757,6 +759,7 @@ def checkout_trends():
     future_start=as_of+timedelta(days=1)
     future_end=as_of+timedelta(days=30)
     past={past_start+timedelta(days=i):0 for i in range(30)}
+    past_reasons={day:{"expiryCount":0,"breachCount":0,"renewalCount":0,"otherCount":0} for day in past}
     future={future_start+timedelta(days=i):0 for i in range(30)}
     future_seen=set()
     future_source_counts=defaultdict(int)
@@ -792,8 +795,13 @@ def checkout_trends():
         actual_checkout_date=iso(row[actual_checkout_i])
         if actual_checkout_date:
             actual_checkout_day=datetime.strptime(actual_checkout_date,"%Y-%m-%d").date()
-            if actual_checkout_day in past: past[actual_checkout_day]+=1
+            if actual_checkout_day in past:
+                past[actual_checkout_day]+=1
+                reason=norm(row[reason_i])
+                reason_key="expiryCount" if "到期" in reason else "breachCount" if "违约" in reason else "renewalCount" if "续租" in reason else "otherCount"
+                past_reasons[actual_checkout_day][reason_key]+=1
     past_rows=[{"date":day.isoformat(),"checkoutCount":past[day]} for day in sorted(past,reverse=True)]
+    past_reason_rows=[{"date":day.isoformat(),**past_reasons[day],"totalCount":sum(past_reasons[day].values())} for day in sorted(past_reasons,reverse=True)]
     future_rows=[{"date":day.isoformat(),"checkoutCount":future[day]} for day in sorted(future)]
     def month_week(day):
         if day.day<=7: return "W1"
@@ -840,13 +848,16 @@ def checkout_trends():
         "occupancyReconciled":all(month_week_counts[period["key"]]==occupancy_week_counts[period["key"]] for period in periods),
         "pastRangeCoverage":bool(past_ranges) and sum(item["dayCount"] for item in past_ranges)==len(past_rows) and past_ranges[0]["startDate"]==past_rows[0]["date"] and past_ranges[-1]["endDate"]==past_rows[-1]["date"] and all(item["week"] in ("W1","W2","W3","W4","WE") for item in past_ranges),
         "pastRangeTotalsMatched":sum(item["checkoutCount"] for item in past_ranges)==sum(row["checkoutCount"] for row in past_rows),
+        "pastReasonDatesMatched":[row["date"] for row in past_reason_rows]==[row["date"] for row in past_rows],
+        "pastReasonDailyReconciled":all(reason_row["totalCount"]==past_row["checkoutCount"] for reason_row,past_row in zip(past_reason_rows,past_rows)),
+        "pastReasonNonNegative":all(value>=0 for row in past_reason_rows for key,value in row.items() if key.endswith("Count")),
         "futureRangeCoverage":bool(future_ranges) and sum(item["dayCount"] for item in future_ranges)==len(future_rows) and future_ranges[0]["startDate"]==future_rows[0]["date"] and future_ranges[-1]["endDate"]==future_rows[-1]["date"] and all(item["week"] in ("W1","W2","W3","W4","WE") for item in future_ranges),
         "futureRangeTotalsMatched":sum(item["checkoutCount"] for item in future_ranges)==sum(row["checkoutCount"] for row in future_rows),
     }
     if not all(validation.values()): raise RuntimeError(f"Checkout trend validation failed: {validation}")
     return {
         "asOfDate":as_of.isoformat(),
-        "past":{"startDate":past_start.isoformat(),"endDate":as_of.isoformat(),"sourceFiles":["已退租合同.xlsx"],"dateField":"预退/实退","rows":past_rows,"ranges":past_ranges},
+        "past":{"startDate":past_start.isoformat(),"endDate":as_of.isoformat(),"sourceFiles":["已退租合同.xlsx"],"dateField":"预退/实退","reasonField":"退租原因","reasonCategories":["到期","违约","续租","其他"],"rows":past_rows,"reasonRows":past_reason_rows,"ranges":past_ranges},
         "future":{"startDate":future_start.isoformat(),"endDate":future_end.isoformat(),"sourceFiles":["在租中合同.xlsx","将搬入合同.xlsx"],"dateField":"退租时间","sourceCounts":dict(future_source_counts),"rows":future_rows,"ranges":future_ranges},
         "occupancyWeekCounts":occupancy_week_counts,
         "validation":validation,
@@ -1286,11 +1297,12 @@ required += ['数据明细','笔记发布明细','留资数据明细','聚光投
 required += ['class="desktop-home-link"','class="desktop-nav-groups"','class="desktop-nav-group"','class="desktop-module-toggle"','aria-expanded="false"','aria-expanded="true"']
 required += ['<div class="label">本月退房</div>','id="contract-checkout-definition">退租/（实际退/续租）','function checkoutDisplay(','checkoutActualDepartureCount']
 required += ['data-desktop-module="customer"','data-desktop-menu="customer"','data-mobile-module="customer"','data-mobile-menu="customer"','id="customer-data"','data-dashboard-view="customer-data"','id="customer-data-updated"','id="customer-daily-table"','id="customer-funnel-table"','function renderCustomerData()','"customerData"']
-required += ['data-desktop-module="meters"','data-desktop-menu="meters"','data-mobile-module="meters"','data-mobile-menu="meters"','id="meter-management"','data-dashboard-view="meter-management"','id="meter-collection-status"','id="meter-keep-table"','id="meter-negative-table"','id="meter-offline-table"','function renderMeterManagement()','"meterManagement"']
+required += ['data-desktop-module="meters"','data-desktop-menu="meters"','data-mobile-module="meters"','data-mobile-menu="meters"','id="meter-management"','data-dashboard-view="meter-management"','id="meter-collection-status"','id="meter-keep-table"','id="meter-negative-table"','id="meter-offline-table"','function renderMeterManagement()','"meterManagement"','data-label="保电状态"','keepText=row.keepElectric?\'已保电\':\'未保电\'']
 required += ['function xhsNoteCountClass(','function xhsMetricCell(','xhs-note-count-green','xhs-note-count-yellow','xhs-note-count-pink','xhs-note-count-red','if(count>=6)','if(count===5)','if(count===4)']
 required += ['data-dashboard-view="overview-new"','id="overview-new"','function renderOverviewNew()','"overviewNew"','overview-new-short-rent','overview-new-rate-comprehensive','overview-new-validation']
 required += ['id="overview-contract-activity"','overview-contract-today-new-sign','overview-contract-yesterday-reservation','overview-contract-week-actual-checkout','"contractActivity"','function overviewContractRangeLabel(']
-required += ['id="business-trend"','data-dashboard-view="business-trend"','id="business-trend-chart"','id="business-trend-summary"','id="business-trend-data-wrap"','id="business-trend-data-table"','class="business-trend-data-table"','function businessTrendDateLabel(','function renderBusinessTrendTable(','renderBusinessTrendTable(rows)','rowHtml(\'总数\'','rowHtml(\'新签\'','rowHtml(\'预定\'','"businessTrend"','newSignCount','reservationCount','最新日期在左','堆叠面积图','新签数量（底层）','预定数量（上层）','business-trend-area new-sign','business-trend-area reservation','const totalAt=','areaPath(totalAt','business-trend-line total','business-trend-value total','business-trend-value new-sign','newSign!==total','business-trend-grid vertical','labelY=Math.max(18,pointY-9)']
+required += ['id="business-trend"','data-dashboard-view="business-trend"','id="business-trend-chart"','id="business-trend-summary"','function businessTrendDateLabel(','function renderBusinessTrend()','"businessTrend"','newSignCount','reservationCount','最新日期在左','堆叠面积图','新签数量（底层）','预定数量（上层）','business-trend-area new-sign','business-trend-area reservation','const totalAt=','areaPath(totalAt','business-trend-line total','business-trend-value total','business-trend-value new-sign','newSign!==total','business-trend-grid vertical','month-boundary','labelY=Math.max(18,pointY-9)']
+required += ['id="checkout-reason-trend-card"','id="checkout-reason-trend-summary"','id="checkout-reason-trend-chart"','function renderCheckoutReasonTrend(','reasonRows','reasonCategories','reasonField','expiryCount','breachCount','renewalCount','otherCount','实际退租原因趋势','到期','违约','续租','其他']
 required += ['id="contract-daily-trend-panel"','class="panel contract-daily-trend-panel"','id="contract-daily-chart-wrap"','id="contract-daily-chart"','function renderDailyLineChart()','renderBusinessTrend(); renderDailyLineChart(); renderCheckoutTrends();']
 required += ['id="checkout-trend-grid"','id="checkout-trend-future-chart"','id="checkout-trend-past-chart"','id="checkout-trend-future-summary"','id="checkout-trend-past-summary"','function renderCheckoutTrends()','function renderCheckoutTrendChart(','"checkoutTrends"','"ranges"','"periodKey"','"week"','"label"','futureNearestFirst','pastNewestFirst','pastRangeCoverage','pastRangeTotalsMatched','futureRangeCoverage','futureRangeTotalsMatched','未来30天','过去30天','checkoutLabelY=Math.max(18,pointY-9)','checkout-trend-range-band','checkout-trend-range-total','compactLabel=compactMonth','天合计']
 required += ['function weekKeyFromLabel(','function weekDayBadgeInfo(','function weekHeading(','id="project-checkout-head"','id="building-checkout-head"']

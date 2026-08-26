@@ -54,11 +54,7 @@ REQUIRED = (
     'id="business-trend"',
     'id="business-trend-chart"',
     'id="business-trend-summary"',
-    'id="business-trend-data-wrap"',
-    'id="business-trend-data-table"',
     'function businessTrendDateLabel(',
-    'function renderBusinessTrendTable(',
-    'renderBusinessTrendTable(rows)',
     'function renderBusinessTrend()',
     '"businessTrend"',
     '最新日期在左',
@@ -74,6 +70,7 @@ REQUIRED = (
     'business-trend-value new-sign',
     'newSign!==total',
     'business-trend-grid vertical',
+    'month-boundary',
     'labelY=Math.max(18,pointY-9)',
     'id="contract-daily-trend-panel"',
     'class="panel contract-daily-trend-panel"',
@@ -86,8 +83,12 @@ REQUIRED = (
     'id="checkout-trend-past-chart"',
     'id="checkout-trend-future-summary"',
     'id="checkout-trend-past-summary"',
+    'id="checkout-reason-trend-card"',
+    'id="checkout-reason-trend-summary"',
+    'id="checkout-reason-trend-chart"',
     'function renderCheckoutTrends()',
     'function renderCheckoutTrendChart(',
+    'function renderCheckoutReasonTrend(',
     '"checkoutTrends"',
     'compactLabel=compactMonth',
     '未来30天',
@@ -346,6 +347,19 @@ def main() -> int:
     if past_period.get("sourceFiles") != ["已退租合同.xlsx"] or past_period.get("dateField") != "预退/实退":
         print(f"Past checkout source regression: {past_period.get('sourceFiles')}/{past_period.get('dateField')}", file=sys.stderr)
         return 1
+    if past_period.get("reasonField") != "退租原因" or past_period.get("reasonCategories") != ["到期", "违约", "续租", "其他"]:
+        print(f"Past checkout reason definition regression: {past_period.get('reasonField')}/{past_period.get('reasonCategories')}", file=sys.stderr)
+        return 1
+    reason_rows = past_period.get("reasonRows", [])
+    reason_keys = ("expiryCount", "breachCount", "renewalCount", "otherCount")
+    if len(reason_rows) != 30 or [row.get("date") for row in reason_rows] != [row.get("date") for row in past_period.get("rows", [])]:
+        print(f"Past checkout reason date coverage invalid: {len(reason_rows)} rows", file=sys.stderr)
+        return 1
+    for reason_row, past_row in zip(reason_rows, past_period.get("rows", [])):
+        values = [int(reason_row.get(key) or 0) for key in reason_keys]
+        if any(value < 0 for value in values) or sum(values) != int(reason_row.get("totalCount") or 0) or sum(values) != int(past_row.get("checkoutCount") or 0):
+            print(f"Past checkout reason totals do not reconcile: {reason_row}", file=sys.stderr)
+            return 1
     if not checkout_trends.get("validation", {}).get("occupancyReconciled"):
         print("Future checkout trend does not reconcile with occupancy checkout statistics", file=sys.stderr)
         return 1
@@ -421,13 +435,16 @@ def main() -> int:
         print("Contract daily trend chart is not uniquely located in the business-trend view", file=sys.stderr)
         return 1
     business_markup = business_section.group(0)
-    ordered_markers = ('id="business-trend-chart"', 'id="checkout-trend-future-chart"', 'id="checkout-trend-past-chart"', 'id="contract-daily-trend-panel"')
+    ordered_markers = ('id="business-trend-chart"', 'id="checkout-trend-future-chart"', 'id="checkout-trend-past-chart"', 'id="checkout-reason-trend-chart"', 'id="contract-daily-trend-panel"')
     marker_positions = [business_markup.find(marker) for marker in ordered_markers]
     if any(position < 0 for position in marker_positions) or marker_positions != sorted(marker_positions):
         print(f"Business trend panel order invalid: {marker_positions}", file=sys.stderr)
         return 1
     if 'data-views="overview"><h3>近期每日合同净变化</h3>' in html:
         print("Contract daily trend chart still exists in the overview view", file=sys.stderr)
+        return 1
+    if 'id="business-trend-data-table"' in business_markup or 'function renderBusinessTrendTable(' in html:
+        print("Removed business trend data table has returned", file=sys.stderr)
         return 1
     if html.count('data-dashboard-view="xhs-note-published"') < 2:
         print("XHS note-published menu missing from desktop or mobile navigation", file=sys.stderr)
@@ -453,6 +470,12 @@ def main() -> int:
     }
     if any(int(meter_summary.get(key) or 0) != len(rows) for key, rows in meter_lists.items()):
         print("Meter-management summary does not reconcile", file=sys.stderr)
+        return 1
+    if html.count('<th>保电状态</th>') != 3 or 'data-label="保电状态"' not in html:
+        print("Meter-management keep-electric status column is incomplete", file=sys.stderr)
+        return 1
+    if any(not isinstance(row, dict) or not isinstance(row.get("keepElectric"), bool) for rows in meter_lists.values() for row in rows):
+        print("Meter-management keep-electric state is invalid", file=sys.stderr)
         return 1
     note_published_rows = payload.get("xhsNotePublished", {}).get("rows", [])
     note_published_keys = {
