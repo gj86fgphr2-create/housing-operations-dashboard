@@ -801,7 +801,11 @@ def checkout_trends():
                 reason_key="expiryCount" if "到期" in reason else "breachCount" if "违约" in reason else "renewalCount" if "续租" in reason else "otherCount"
                 past_reasons[actual_checkout_day][reason_key]+=1
     past_rows=[{"date":day.isoformat(),"checkoutCount":past[day]} for day in sorted(past,reverse=True)]
-    past_reason_rows=[{"date":day.isoformat(),**past_reasons[day],"totalCount":sum(past_reasons[day].values())} for day in sorted(past_reasons,reverse=True)]
+    past_reason_rows=[]
+    for day in sorted(past_reasons,reverse=True):
+        counts=past_reasons[day]
+        displayed_total=counts["expiryCount"]+counts["renewalCount"]+counts["breachCount"]
+        past_reason_rows.append({"date":day.isoformat(),**counts,"displayTotalCount":displayed_total,"totalCount":displayed_total+counts["otherCount"]})
     future_rows=[{"date":day.isoformat(),"checkoutCount":future[day]} for day in sorted(future)]
     def month_week(day):
         if day.day<=7: return "W1"
@@ -834,8 +838,39 @@ def checkout_trends():
                 ranges[-1]["checkoutCount"]+=row["checkoutCount"]
         return ranges
 
+    reason_keys=("expiryCount","breachCount","renewalCount")
+    def reason_summary_ranges(rows,grouping):
+        ranges=[]
+        for row in rows:
+            day=datetime.strptime(row["date"],"%Y-%m-%d").date()
+            week=month_week(day)
+            group_key=f"{day.year:04d}-{day.month:02d}-{week}" if grouping=="week" else f"{day.year:04d}-{day.month:02d}"
+            if not ranges or ranges[-1]["periodKey"]!=group_key:
+                ranges.append({
+                    "index":len(ranges)+1,
+                    "periodKey":group_key,
+                    "month":f"{day.year:04d}-{day.month:02d}",
+                    "week":week if grouping=="week" else "",
+                    "label":f"{day.month}月 {week}" if grouping=="week" else f"{day.month}月",
+                    "startDate":row["date"],
+                    "endDate":row["date"],
+                    "dayCount":1,
+                    **{key:int(row[key]) for key in reason_keys},
+                    "totalCount":int(row["displayTotalCount"]),
+                })
+            else:
+                ranges[-1]["endDate"]=row["date"]
+                ranges[-1]["dayCount"]+=1
+                for key in reason_keys: ranges[-1][key]+=int(row[key])
+                ranges[-1]["totalCount"]+=int(row["displayTotalCount"])
+        for item in ranges:
+            item["renewalRate"]=item["renewalCount"]/item["totalCount"] if item["totalCount"] else 0
+        return ranges
+
     future_ranges=week_ranges(future_rows)
     past_ranges=week_ranges(past_rows)
+    past_reason_ranges=reason_summary_ranges(past_reason_rows,"week")
+    past_reason_months=reason_summary_ranges(past_reason_rows,"month")
     occupancy_week_counts={period["key"]:sum(int(values.get(period["key"],0)) for values in checkout.values()) for period in periods}
     validation={
         "thirtyDaysEach":len(past_rows)==30 and len(future_rows)==30,
@@ -850,14 +885,19 @@ def checkout_trends():
         "pastRangeTotalsMatched":sum(item["checkoutCount"] for item in past_ranges)==sum(row["checkoutCount"] for row in past_rows),
         "pastReasonDatesMatched":[row["date"] for row in past_reason_rows]==[row["date"] for row in past_rows],
         "pastReasonDailyReconciled":all(reason_row["totalCount"]==past_row["checkoutCount"] for reason_row,past_row in zip(past_reason_rows,past_rows)),
+        "pastReasonDisplayedDailyReconciled":all(row["displayTotalCount"]==row["expiryCount"]+row["renewalCount"]+row["breachCount"] and row["totalCount"]==row["displayTotalCount"]+row["otherCount"] for row in past_reason_rows),
         "pastReasonNonNegative":all(value>=0 for row in past_reason_rows for key,value in row.items() if key.endswith("Count")),
+        "pastReasonRangeCoverage":sum(item["dayCount"] for item in past_reason_ranges)==len(past_reason_rows),
+        "pastReasonRangeTotalsMatched":all(sum(item[key] for item in past_reason_ranges)==sum(row["displayTotalCount"] if key=="totalCount" else row[key] for row in past_reason_rows) for key in (*reason_keys,"totalCount")),
+        "pastReasonMonthCoverage":sum(item["dayCount"] for item in past_reason_months)==len(past_reason_rows),
+        "pastReasonMonthTotalsMatched":all(sum(item[key] for item in past_reason_months)==sum(row["displayTotalCount"] if key=="totalCount" else row[key] for row in past_reason_rows) for key in (*reason_keys,"totalCount")),
         "futureRangeCoverage":bool(future_ranges) and sum(item["dayCount"] for item in future_ranges)==len(future_rows) and future_ranges[0]["startDate"]==future_rows[0]["date"] and future_ranges[-1]["endDate"]==future_rows[-1]["date"] and all(item["week"] in ("W1","W2","W3","W4","WE") for item in future_ranges),
         "futureRangeTotalsMatched":sum(item["checkoutCount"] for item in future_ranges)==sum(row["checkoutCount"] for row in future_rows),
     }
     if not all(validation.values()): raise RuntimeError(f"Checkout trend validation failed: {validation}")
     return {
         "asOfDate":as_of.isoformat(),
-        "past":{"startDate":past_start.isoformat(),"endDate":as_of.isoformat(),"sourceFiles":["已退租合同.xlsx"],"dateField":"预退/实退","reasonField":"退租原因","reasonCategories":["到期","违约","续租","其他"],"rows":past_rows,"reasonRows":past_reason_rows,"ranges":past_ranges},
+        "past":{"startDate":past_start.isoformat(),"endDate":as_of.isoformat(),"sourceFiles":["已退租合同.xlsx"],"dateField":"预退/实退","reasonField":"退租原因","reasonCategories":["到期","违约","续租","其他"],"displayedReasonCategories":["到期","续租","违约"],"rows":past_rows,"reasonRows":past_reason_rows,"ranges":past_ranges,"reasonRanges":past_reason_ranges,"reasonMonths":past_reason_months},
         "future":{"startDate":future_start.isoformat(),"endDate":future_end.isoformat(),"sourceFiles":["在租中合同.xlsx","将搬入合同.xlsx"],"dateField":"退租时间","sourceCounts":dict(future_source_counts),"rows":future_rows,"ranges":future_ranges},
         "occupancyWeekCounts":occupancy_week_counts,
         "validation":validation,
@@ -1302,7 +1342,7 @@ required += ['function xhsNoteCountClass(','function xhsMetricCell(','xhs-note-c
 required += ['data-dashboard-view="overview-new"','id="overview-new"','function renderOverviewNew()','"overviewNew"','overview-new-short-rent','overview-new-rate-comprehensive','overview-new-validation']
 required += ['id="overview-contract-activity"','overview-contract-today-new-sign','overview-contract-yesterday-reservation','overview-contract-week-actual-checkout','"contractActivity"','function overviewContractRangeLabel(']
 required += ['id="business-trend"','data-dashboard-view="business-trend"','id="business-trend-chart"','id="business-trend-summary"','function businessTrendDateLabel(','function renderBusinessTrend()','"businessTrend"','newSignCount','reservationCount','最新日期在左','堆叠面积图','新签数量（底层）','预定数量（上层）','business-trend-area new-sign','business-trend-area reservation','const totalAt=','areaPath(totalAt','business-trend-line total','business-trend-value total','business-trend-value new-sign','newSign!==total','business-trend-grid vertical','month-boundary','labelY=Math.max(18,pointY-9)']
-required += ['id="checkout-reason-trend-card"','id="checkout-reason-trend-summary"','id="checkout-reason-trend-chart"','function renderCheckoutReasonTrend(','reasonRows','reasonCategories','reasonField','expiryCount','breachCount','renewalCount','otherCount','实际退租原因趋势','到期','违约','续租','其他']
+required += ['id="checkout-reason-trend-card"','id="checkout-reason-trend-summary"','id="checkout-reason-trend-chart"','function renderCheckoutReasonTrend(','reasonRows','reasonCategories','displayedReasonCategories','reasonRanges','reasonMonths','reasonField','expiryCount','breachCount','renewalCount','otherCount','displayTotalCount','实际退租原因趋势','到期（底层）','续租（中层）','违约（上层）','总数折线','checkout-reason-area expiry','checkout-reason-area renewal','checkout-reason-area breach','checkout-reason-total-line','checkout-reason-month-band','checkout-reason-week-rate','续租率']
 required += ['id="contract-daily-trend-panel"','class="panel contract-daily-trend-panel"','id="contract-daily-chart-wrap"','id="contract-daily-chart"','function renderDailyLineChart()','renderBusinessTrend(); renderDailyLineChart(); renderCheckoutTrends();']
 required += ['id="checkout-trend-grid"','id="checkout-trend-future-chart"','id="checkout-trend-past-chart"','id="checkout-trend-future-summary"','id="checkout-trend-past-summary"','function renderCheckoutTrends()','function renderCheckoutTrendChart(','"checkoutTrends"','"ranges"','"periodKey"','"week"','"label"','futureNearestFirst','pastNewestFirst','pastRangeCoverage','pastRangeTotalsMatched','futureRangeCoverage','futureRangeTotalsMatched','未来30天','过去30天','checkoutLabelY=Math.max(18,pointY-9)','checkout-trend-range-band','checkout-trend-range-total','compactLabel=compactMonth','天合计']
 required += ['function weekKeyFromLabel(','function weekDayBadgeInfo(','function weekHeading(','id="project-checkout-head"','id="building-checkout-head"']

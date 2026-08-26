@@ -89,6 +89,18 @@ REQUIRED = (
     'function renderCheckoutTrends()',
     'function renderCheckoutTrendChart(',
     'function renderCheckoutReasonTrend(',
+    'checkout-reason-area expiry',
+    'checkout-reason-area renewal',
+    'checkout-reason-area breach',
+    'checkout-reason-total-line',
+    'checkout-reason-month-band',
+    'checkout-reason-week-rate',
+    'past.reasonRanges || []',
+    'past.reasonMonths || []',
+    '到期（底层）',
+    '续租（中层）',
+    '违约（上层）',
+    '总数折线',
     '"checkoutTrends"',
     'compactLabel=compactMonth',
     '未来30天',
@@ -350,6 +362,9 @@ def main() -> int:
     if past_period.get("reasonField") != "退租原因" or past_period.get("reasonCategories") != ["到期", "违约", "续租", "其他"]:
         print(f"Past checkout reason definition regression: {past_period.get('reasonField')}/{past_period.get('reasonCategories')}", file=sys.stderr)
         return 1
+    if past_period.get("displayedReasonCategories") != ["到期", "续租", "违约"]:
+        print(f"Past checkout displayed reason order invalid: {past_period.get('displayedReasonCategories')}", file=sys.stderr)
+        return 1
     reason_rows = past_period.get("reasonRows", [])
     reason_keys = ("expiryCount", "breachCount", "renewalCount", "otherCount")
     if len(reason_rows) != 30 or [row.get("date") for row in reason_rows] != [row.get("date") for row in past_period.get("rows", [])]:
@@ -357,9 +372,42 @@ def main() -> int:
         return 1
     for reason_row, past_row in zip(reason_rows, past_period.get("rows", [])):
         values = [int(reason_row.get(key) or 0) for key in reason_keys]
-        if any(value < 0 for value in values) or sum(values) != int(reason_row.get("totalCount") or 0) or sum(values) != int(past_row.get("checkoutCount") or 0):
+        displayed_total = int(reason_row.get("expiryCount") or 0) + int(reason_row.get("renewalCount") or 0) + int(reason_row.get("breachCount") or 0)
+        if any(value < 0 for value in values) or displayed_total != int(reason_row.get("displayTotalCount") or 0) or sum(values) != int(reason_row.get("totalCount") or 0) or sum(values) != int(past_row.get("checkoutCount") or 0):
             print(f"Past checkout reason totals do not reconcile: {reason_row}", file=sys.stderr)
             return 1
+    summary_keys = ("expiryCount", "breachCount", "renewalCount")
+    def expected_reason_groups(grouping):
+        groups = []
+        for row in reason_rows:
+            day = date.fromisoformat(row["date"])
+            week = "W1" if day.day <= 7 else "W2" if day.day <= 14 else "W3" if day.day <= 21 else "W4" if day.day <= 28 else "WE"
+            period_key = f"{day.year:04d}-{day.month:02d}-{week}" if grouping == "week" else f"{day.year:04d}-{day.month:02d}"
+            if not groups or groups[-1]["periodKey"] != period_key:
+                groups.append({
+                    "index": len(groups) + 1,
+                    "periodKey": period_key,
+                    "month": f"{day.year:04d}-{day.month:02d}",
+                    "week": week if grouping == "week" else "",
+                    "label": f"{day.month}月 {week}" if grouping == "week" else f"{day.month}月",
+                    "startDate": row["date"],
+                    "endDate": row["date"],
+                    "dayCount": 1,
+                    **{key: int(row.get(key) or 0) for key in summary_keys},
+                    "totalCount": int(row.get("displayTotalCount") or 0),
+                })
+            else:
+                groups[-1]["endDate"] = row["date"]
+                groups[-1]["dayCount"] += 1
+                for key in summary_keys:
+                    groups[-1][key] += int(row.get(key) or 0)
+                groups[-1]["totalCount"] += int(row.get("displayTotalCount") or 0)
+        for group in groups:
+            group["renewalRate"] = group["renewalCount"] / group["totalCount"] if group["totalCount"] else 0
+        return groups
+    if past_period.get("reasonRanges") != expected_reason_groups("week") or past_period.get("reasonMonths") != expected_reason_groups("month"):
+        print("Past checkout reason WEEK/month summaries do not reconcile", file=sys.stderr)
+        return 1
     if not checkout_trends.get("validation", {}).get("occupancyReconciled"):
         print("Future checkout trend does not reconcile with occupancy checkout statistics", file=sys.stderr)
         return 1
@@ -445,6 +493,9 @@ def main() -> int:
         return 1
     if 'id="business-trend-data-table"' in business_markup or 'function renderBusinessTrendTable(' in html:
         print("Removed business trend data table has returned", file=sys.stderr)
+        return 1
+    if '<i class="other"></i>' in business_markup or 'checkout-reason-line other' in business_markup or 'checkout-reason-point other' in business_markup:
+        print("Other-reason values are still visible in the checkout reason chart", file=sys.stderr)
         return 1
     if html.count('data-dashboard-view="xhs-note-published"') < 2:
         print("XHS note-published menu missing from desktop or mobile navigation", file=sys.stderr)
