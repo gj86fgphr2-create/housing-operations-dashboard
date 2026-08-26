@@ -327,6 +327,7 @@
                 <article class="kpi red"><div class="label">实际退租数据</div><div class="value" id="overview-contract-month-actual-checkout">—</div><div class="hint">排除换房清算</div></article>
               </div></section>
           </div><p class="overview-contract-source"><strong>统计字段：</strong>新签/续租取签约时间，预定取录入日期，实际退租取预退/实退日期。点击数据卡片可查看明细。</p></article>
+        <article class="panel overview-new-panel" id="overview-new-target-comparison"><h3>实际与目标对比</h3><p class="panel-note">实际数据截至最新数据采集日；本月汇总目标为各周目标之和</p><div class="table-wrap"><table class="target-comparison-table"><thead><tr><th>周期</th><th>新签实际</th><th>新签目标</th><th>新签完成率</th><th>续租实际</th><th>续租目标</th><th>续租完成率</th></tr></thead><tbody id="overview-new-target-comparison-table"></tbody></table></div></article>
         <div class="overview-contract-modal" id="overview-contract-detail-modal" hidden aria-hidden="true">
           <div class="overview-contract-modal-backdrop" data-overview-contract-close></div>
           <section class="overview-contract-dialog" role="dialog" aria-modal="true" aria-labelledby="overview-contract-detail-title">
@@ -737,7 +738,7 @@
         actualNew:d.currentMonth.newCount,
         actualRenewal:d.currentMonth.renewalCount,
       });
-      $('contract-target-table').innerHTML = targetRows.map((r) => {
+      const targetComparisonRows = targetRows.map((r) => {
         const newRate = r.newCount ? r.actualNew/r.newCount : 0;
         const renewalRate = r.renewalCount ? r.actualRenewal/r.renewalCount : 0;
         const isFuture = Boolean(r.startDate && r.startDate > DATA.dataDate);
@@ -745,6 +746,9 @@
         const renewalStatus = r.actualRenewal >= r.renewalCount ? 'target-met' : 'target-unmet';
         return '<tr' + (isFuture ? ' class="target-future"' : '') + '><td data-label="周期" class="' + newStatus + '">' + weekHeading(r.label,DATA.dataDate.slice(0,7)) + '</td><td data-label="新签实际" class="' + newStatus + '">' + int(r.actualNew) + '</td><td data-label="新签目标" class="' + newStatus + '">' + int(r.newCount) + '</td><td data-label="新签完成率" class="rate ' + newStatus + '">' + pct(newRate) + '</td><td data-label="续租实际" class="' + renewalStatus + '">' + int(r.actualRenewal) + '</td><td data-label="续租目标" class="' + renewalStatus + '">' + int(r.renewalCount) + '</td><td data-label="续租完成率" class="rate ' + renewalStatus + '">' + pct(renewalRate) + '</td></tr>';
       }).join('');
+      $('contract-target-table').innerHTML = targetComparisonRows;
+      const overviewNewTargetTable = $('overview-new-target-comparison-table');
+      if(overviewNewTargetTable) overviewNewTargetTable.innerHTML = targetComparisonRows;
       $('contract-period-table').innerHTML = d.periods.map((r) => '<tr><td data-label="周期">' + weekHeading(r.period,DATA.dataDate.slice(0,7)) + '</td><td data-label="新签">' + int(r.newCount) + '</td><td data-label="新签业绩" class="currency">' + currency(r.newRevenue) + '</td><td data-label="续租">' + int(r.renewalCount) + '</td><td data-label="续租业绩" class="currency">' + currency(r.renewalRevenue) + '</td><td data-label="其他">' + int(r.otherCount) + '</td><td data-label="其他业绩" class="currency">' + currency(r.otherRevenue) + '</td></tr>').join('');
       $('contract-person-table').innerHTML = d.people.filter((r) => Number(r.newCount || 0) !== 0 || Number(r.renewalCount || 0) !== 0 || Number(r.otherCount || 0) !== 0).sort((a,b) => Number(b.newCount || 0)-Number(a.newCount || 0) || Number(b.renewalCount || 0)-Number(a.renewalCount || 0) || Number(b.otherCount || 0)-Number(a.otherCount || 0)).map((r) => '<tr><td data-label="签约人">' + r.name + '</td><td data-label="新签">' + int(r.newCount) + '</td><td data-label="新签业绩" class="currency">' + currency(r.newRevenue) + '</td><td data-label="续租">' + int(r.renewalCount) + '</td><td data-label="续租业绩" class="currency">' + currency(r.renewalRevenue) + '</td><td data-label="其他">' + int(r.otherCount) + '</td><td data-label="其他业绩" class="currency">' + currency(r.otherRevenue) + '</td></tr>').join('');
       const projectMonthlyRows = d.projectMonthly.map((r) => '<tr class="' + projectRowClass(r.name) + '"><td data-label="项目">' + projectDisplayName(r.name) + '</td><td data-label="新签数量">' + int(r.newCount) + '</td><td data-label="续租数量">' + int(r.renewalCount) + '</td><td data-label="其他数量">' + int(r.otherCount) + '</td><td data-label="实际退租数量">' + int(r.actualCheckoutCount) + '</td><td data-label="退租中（续租数量）">' + int(r.checkoutRenewalCount) + '</td></tr>').join('');
