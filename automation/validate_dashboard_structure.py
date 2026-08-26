@@ -71,7 +71,12 @@ REQUIRED = (
     'newSign!==total',
     'business-trend-grid vertical',
     'month-boundary',
-    'labelY=Math.max(18,pointY-9)',
+    'labelY=Math.max(108,pointY-9)',
+    'business-trend-month-band',
+    'business-trend-week-band',
+    'business-trend-week-label',
+    'content.ranges || []',
+    'content.months || []',
     'id="contract-daily-trend-panel"',
     'class="panel contract-daily-trend-panel"',
     'id="contract-daily-chart-wrap"',
@@ -331,6 +336,21 @@ def main() -> int:
         return 1
     if any(int(row.get("newSignCount") or 0) < 0 or int(row.get("reservationCount") or 0) < 0 for row in business_rows):
         print("Business trend contains negative counts", file=sys.stderr)
+        return 1
+    business_total = sum(int(row.get("newSignCount") or 0) + int(row.get("reservationCount") or 0) for row in business_rows)
+    for grouping in ("ranges", "months"):
+        summaries = business_trend.get(grouping, [])
+        if not summaries or sum(int(item.get("dayCount") or 0) for item in summaries) != len(business_rows):
+            print(f"Business trend {grouping} coverage invalid", file=sys.stderr)
+            return 1
+        if sum(int(item.get("totalCount") or 0) for item in summaries) != business_total:
+            print(f"Business trend {grouping} totals do not reconcile", file=sys.stderr)
+            return 1
+        if any(int(item.get("totalCount") or 0) != int(item.get("newSignCount") or 0) + int(item.get("reservationCount") or 0) for item in summaries):
+            print(f"Business trend {grouping} category totals do not reconcile", file=sys.stderr)
+            return 1
+    if any(item.get("week") not in ("W1", "W2", "W3", "W4", "WE") for item in business_trend.get("ranges", [])):
+        print("Business trend WEEK labels invalid", file=sys.stderr)
         return 1
     if not all(business_trend.get("validation", {}).values()):
         print(f"Business trend validation failed: {business_trend.get('validation')}", file=sys.stderr)

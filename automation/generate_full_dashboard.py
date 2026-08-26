@@ -753,14 +753,45 @@ def business_trend():
         created=datetime.strptime(created_date,"%Y-%m-%d").date()
         if created in rows: rows[created]["reservationCount"]+=1
     trend_rows=[{"date":day.isoformat(),**rows[day]} for day in sorted(rows,reverse=True)]
+    def summary_ranges(grouping):
+        ranges=[]
+        for row in trend_rows:
+            day=datetime.strptime(row["date"],"%Y-%m-%d").date()
+            week="W1" if day.day<=7 else "W2" if day.day<=14 else "W3" if day.day<=21 else "W4" if day.day<=28 else "WE"
+            period_key=f"{day.year:04d}-{day.month:02d}-{week}" if grouping=="week" else f"{day.year:04d}-{day.month:02d}"
+            if not ranges or ranges[-1]["periodKey"]!=period_key:
+                ranges.append({
+                    "periodKey":period_key,
+                    "month":f"{day.year:04d}-{day.month:02d}",
+                    "week":week if grouping=="week" else "",
+                    "startDate":row["date"],
+                    "endDate":row["date"],
+                    "dayCount":1,
+                    "newSignCount":int(row["newSignCount"]),
+                    "reservationCount":int(row["reservationCount"]),
+                })
+            else:
+                ranges[-1]["endDate"]=row["date"]
+                ranges[-1]["dayCount"]+=1
+                ranges[-1]["newSignCount"]+=int(row["newSignCount"])
+                ranges[-1]["reservationCount"]+=int(row["reservationCount"])
+        for item in ranges:
+            item["totalCount"]=item["newSignCount"]+item["reservationCount"]
+        return ranges
+    trend_ranges=summary_ranges("week")
+    trend_months=summary_ranges("month")
     validation={
         "thirtyDays":len(trend_rows)==30,
         "newestFirst":all(trend_rows[i]["date"]>trend_rows[i+1]["date"] for i in range(len(trend_rows)-1)),
         "continuous":all((datetime.strptime(trend_rows[i]["date"],"%Y-%m-%d").date()-datetime.strptime(trend_rows[i+1]["date"],"%Y-%m-%d").date()).days==1 for i in range(len(trend_rows)-1)),
         "nonNegative":all(row["newSignCount"]>=0 and row["reservationCount"]>=0 for row in trend_rows),
+        "weekRangeCoverage":sum(item["dayCount"] for item in trend_ranges)==len(trend_rows),
+        "weekRangeTotalsMatched":sum(item["totalCount"] for item in trend_ranges)==sum(row["newSignCount"]+row["reservationCount"] for row in trend_rows),
+        "monthRangeCoverage":sum(item["dayCount"] for item in trend_months)==len(trend_rows),
+        "monthRangeTotalsMatched":sum(item["totalCount"] for item in trend_months)==sum(row["newSignCount"]+row["reservationCount"] for row in trend_rows),
     }
     if not all(validation.values()): raise RuntimeError(f"Business trend validation failed: {validation}")
-    return {"asOfDate":as_of.isoformat(),"startDate":start.isoformat(),"endDate":as_of.isoformat(),"rows":trend_rows,"validation":validation}
+    return {"asOfDate":as_of.isoformat(),"startDate":start.isoformat(),"endDate":as_of.isoformat(),"rows":trend_rows,"ranges":trend_ranges,"months":trend_months,"validation":validation}
 
 def checkout_trends():
     """Build future checkout from active/move-in contracts and past actual checkout from terminated contracts."""
@@ -1452,7 +1483,7 @@ required += ['data-desktop-module="meters"','data-desktop-menu="meters"','data-m
 required += ['function xhsNoteCountClass(','function xhsMetricCell(','xhs-note-count-green','xhs-note-count-yellow','xhs-note-count-pink','xhs-note-count-red','if(count>=6)','if(count===5)','if(count===4)']
 required += ['data-dashboard-view="overview-new"','id="overview-new"','function renderOverviewNew()','"overviewNew"','overview-new-short-rent','overview-new-rate-comprehensive','overview-new-validation']
 required += ['id="overview-contract-activity"','overview-contract-today-new-sign','overview-contract-yesterday-reservation','overview-contract-week-actual-checkout','overview-contract-month-new-sign','overview-contract-month-reservation','overview-contract-month-renewal','overview-contract-month-actual-checkout','.overview-contract-kpis .hint{display:none}','"contractActivity"','function overviewContractRangeLabel(','function overviewContractMetricDisplay(','newSignRevenue','reservationRevenue','renewalRevenue','monthCoreMatched','detailCountsMatched','id="overview-contract-detail-modal"','function openOverviewContractDetails(','overview-contract-drill-card']
-required += ['id="business-trend"','data-dashboard-view="business-trend"','id="business-trend-chart"','id="business-trend-summary"','function businessTrendDateLabel(','function renderBusinessTrend()','"businessTrend"','newSignCount','reservationCount','最新日期在左','堆叠面积图','新签数量（底层）','预定数量（上层）','business-trend-area new-sign','business-trend-area reservation','const totalAt=','areaPath(totalAt','business-trend-line total','business-trend-value total','business-trend-value new-sign','newSign!==total','business-trend-grid vertical','month-boundary','labelY=Math.max(18,pointY-9)']
+required += ['id="business-trend"','data-dashboard-view="business-trend"','id="business-trend-chart"','id="business-trend-summary"','function businessTrendDateLabel(','function renderBusinessTrend()','"businessTrend"','newSignCount','reservationCount','最新日期在左','堆叠面积图','新签数量（底层）','预定数量（上层）','business-trend-area new-sign','business-trend-area reservation','const totalAt=','areaPath(totalAt','business-trend-line total','business-trend-value total','business-trend-value new-sign','newSign!==total','business-trend-grid vertical','month-boundary','labelY=Math.max(108,pointY-9)','business-trend-month-band','business-trend-week-band','weekRangeCoverage','monthRangeCoverage']
 required += ['id="checkout-reason-trend-card"','id="checkout-reason-trend-summary"','id="checkout-reason-trend-chart"','function renderCheckoutReasonTrend(','reasonRows','reasonCategories','displayedReasonCategories','reasonRanges','reasonMonths','reasonField','expiryCount','breachCount','renewalCount','otherCount','displayTotalCount','实际退租原因趋势','到期（底层）','续租（中层）','违约（上层）','总数折线','checkout-reason-area expiry','checkout-reason-area renewal','checkout-reason-area breach','checkout-reason-total-line','checkout-reason-month-band','checkout-reason-week-rate','续租率']
 required += ['id="contract-daily-trend-panel"','class="panel contract-daily-trend-panel"','id="contract-daily-chart-wrap"','id="contract-daily-chart"','function renderDailyLineChart()','renderBusinessTrend(); renderDailyLineChart(); renderCheckoutTrends();']
 required += ['id="checkout-trend-grid"','id="checkout-trend-future-chart"','id="checkout-trend-past-chart"','id="checkout-trend-future-summary"','id="checkout-trend-past-summary"','function renderCheckoutTrends()','function renderCheckoutTrendChart(','"checkoutTrends"','"ranges"','"periodKey"','"week"','"label"','futureNearestFirst','pastNewestFirst','pastRangeCoverage','pastRangeTotalsMatched','futureRangeCoverage','futureRangeTotalsMatched','未来30天','过去30天','checkoutLabelY=Math.max(18,pointY-9)','checkout-trend-range-band','checkout-trend-range-total','compactLabel=compactMonth','天合计']
