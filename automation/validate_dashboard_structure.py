@@ -31,12 +31,9 @@ REQUIRED = (
     'data-mobile-menu="yuxiaor"',
     'data-mobile-module="customer"',
     'data-mobile-menu="customer"',
-    'data-desktop-module="meters"',
-    'data-desktop-menu="meters"',
-    'data-mobile-module="meters"',
-    'data-mobile-menu="meters"',
+    'data-todo-workbench-link',
+    'href="https://todo.xiyuan.chat/meter.html"',
     'id="meter-management"',
-    'data-dashboard-view="meter-management"',
     'id="meter-collection-status"',
     'id="meter-keep-table"',
     'id="meter-negative-table"',
@@ -568,8 +565,11 @@ def main() -> int:
     if html.count('data-dashboard-view="customer-data"') < 2:
         print("Customer data menu missing from desktop or mobile navigation", file=sys.stderr)
         return 1
-    if html.count('data-dashboard-view="meter-management"') < 2:
-        print("Meter-management menu missing from desktop or mobile navigation", file=sys.stderr)
+    if html.count('data-todo-workbench-link') != 2:
+        print("Todo workbench link missing from desktop or mobile navigation", file=sys.stderr)
+        return 1
+    if 'data-desktop-module="meters"' in html or 'data-mobile-module="meters"' in html:
+        print("Legacy meter-management menu must stay hidden", file=sys.stderr)
         return 1
     meter = payload.get("meterManagement", {})
     meter_summary = meter.get("summary", {})
