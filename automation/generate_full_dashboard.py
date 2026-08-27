@@ -1078,13 +1078,14 @@ def overview_contract_activity(recent_rows,current_month,monthly_details):
     if not all(validation.values()): raise RuntimeError(f"Overview contract activity validation failed: {periods}")
     for item in periods:
         new_sign_rows=item["details"]["newSign"]
+        positive_rent_rows=[row for row in new_sign_rows if float(row.get("rent") or 0)>0]
         lease_days=[]
-        for row in new_sign_rows:
+        for row in positive_rent_rows:
             start_date,end_date=row.get("leaseStart"),row.get("leaseEnd")
             if re.fullmatch(r"\d{4}-\d{2}-\d{2}",str(start_date or "")) and re.fullmatch(r"\d{4}-\d{2}-\d{2}",str(end_date or "")):
                 days=(datetime.strptime(end_date,"%Y-%m-%d").date()-datetime.strptime(start_date,"%Y-%m-%d").date()).days
                 if days>=0: lease_days.append(days)
-        rents=[float(row.get("rent") or 0) for row in new_sign_rows if float(row.get("rent") or 0)>0]
+        rents=[float(row["rent"]) for row in positive_rent_rows]
         item["metrics"]["newSignAverageLeaseDays"]=round(sum(lease_days)/len(lease_days)) if lease_days else 0
         item["metrics"]["newSignAverageRent"]=round(sum(rents)/len(rents),2) if rents else 0
         item["metrics"]["newSignLeaseSampleCount"]=len(lease_days)
@@ -1522,6 +1523,7 @@ required += ['function xhsNoteCountClass(','function xhsMetricCell(','xhs-note-c
 required += ['data-dashboard-view="overview-new"','id="overview-new"','function renderOverviewNew()','"overviewNew"','overview-new-short-rent','overview-new-rate-comprehensive','overview-new-validation']
 required += ['id="overview-contract-activity"','overview-contract-today-new-sign','overview-contract-yesterday-reservation','overview-contract-week-actual-checkout','overview-contract-month-new-sign','overview-contract-month-reservation','overview-contract-month-renewal','overview-contract-month-actual-checkout','.overview-contract-kpis .hint{display:none}','"contractActivity"','function overviewContractRangeLabel(','function overviewContractMetricDisplay(','newSignRevenue','reservationRevenue','renewalRevenue','monthCoreMatched','detailCountsMatched','id="overview-contract-detail-modal"','function openOverviewContractDetails(','overview-contract-drill-card','id="overview-new-target-comparison"','id="overview-new-target-comparison-table"']
 required += ['newSignAverageLeaseDays','newSignAverageRent','newSignLeaseSampleCount','newSignRentSampleCount','function overviewContractNewSignDisplay(','grid-template-columns:minmax(230px,1.35fr) minmax(145px,1fr) minmax(145px,1fr) minmax(92px,.62fr)']
+required += ['"newSignLeaseSampleCount"','"newSignRentSampleCount"']
 required += ['"reservationCount"','actualReservation','data-label="预定数量"','<th>新签实际</th><th>预定数量</th><th>新签目标</th>']
 required += ['id="business-trend"','data-dashboard-view="business-trend"','id="business-trend-chart"','id="business-trend-summary"','function businessTrendDateLabel(','function renderBusinessTrend()','"businessTrend"','newSignCount','reservationCount','最新日期在左','堆叠面积图','新签数量（底层）','预定数量（上层）','business-trend-area new-sign','business-trend-area reservation','const totalAt=','areaPath(totalAt','business-trend-line total','business-trend-value total','business-trend-value new-sign','newSign!==total','business-trend-grid vertical','month-boundary','labelY=Math.max(108,pointY-9)','business-trend-month-band','business-trend-week-band','weekRangeCoverage','monthRangeCoverage','trend-uniform-wrap','TREND_UNIFORM_WIDTH=1344','function setTrendChartWidth(','const width = setTrendChartWidth(svg)']
 required += ['id="checkout-reason-trend-card"','id="checkout-reason-trend-summary"','id="checkout-reason-trend-chart"','function renderCheckoutReasonTrend(','reasonRows','reasonCategories','displayedReasonCategories','reasonRanges','reasonMonths','reasonField','expiryCount','breachCount','renewalCount','otherCount','displayTotalCount','实际退租原因趋势','到期（底层）','续租（中层）','违约（上层）','总数折线','checkout-reason-area expiry','checkout-reason-area renewal','checkout-reason-area breach','checkout-reason-total-line','checkout-reason-month-band','checkout-reason-week-rate','续租率']
