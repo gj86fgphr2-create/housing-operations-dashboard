@@ -607,7 +607,7 @@
     }
 
     function overviewContractNewSignDisplay(metrics){
-      return int(metrics.newSign)+'（'+currencyInteger(metrics.newSignRevenue)+' / '+int(metrics.newSignAverageLeaseDays)+'天 / '+currencyInteger(metrics.newSignAverageRent)+'/月）';
+      return int(metrics.newSign)+'（'+currencyInteger(metrics.newSignRevenue)+' / '+int(metrics.newSignAverageLeaseDays)+'天 / '+currencyInteger(metrics.newSignAverageRent)+'）';
     }
 
     function overviewContractMetricLabel(key){
@@ -752,7 +752,7 @@
         const isFuture = Boolean(r.startDate && r.startDate > DATA.dataDate);
         const newStatus = r.actualNew >= r.newCount ? 'target-met' : 'target-unmet';
         const renewalStatus = r.actualRenewal >= r.renewalCount ? 'target-met' : 'target-unmet';
-        return '<tr' + (isFuture ? ' class="target-future"' : '') + '><td data-label="周期" class="' + newStatus + '">' + weekHeading(r.label,DATA.dataDate.slice(0,7)) + '</td><td data-label="新签实际" class="' + newStatus + '">' + int(r.actualNew) + '</td><td data-label="预定数量">' + int(r.actualReservation) + '</td><td data-label="新签目标" class="' + newStatus + '">' + int(r.newCount) + '</td><td data-label="新签完成率" class="rate ' + newStatus + '">' + pct(newRate) + '</td><td data-label="续租实际" class="' + renewalStatus + '">' + int(r.actualRenewal) + '</td><td data-label="续租目标" class="' + renewalStatus + '">' + int(r.renewalCount) + '</td><td data-label="续租完成率" class="rate ' + renewalStatus + '">' + pct(renewalRate) + '</td></tr>';
+        return '<tr' + (isFuture ? ' class="target-future"' : '') + '><td data-label="周期" class="' + newStatus + '">' + weekHeading(r.label,DATA.dataDate.slice(0,7)) + '</td><td data-label="新签实际" class="' + newStatus + '">' + int(r.actualNew) + '</td><td data-label="预定数量" class="' + newStatus + '">' + int(r.actualReservation) + '</td><td data-label="新签目标" class="' + newStatus + '">' + int(r.newCount) + '</td><td data-label="新签完成率" class="rate ' + newStatus + '">' + pct(newRate) + '</td><td data-label="续租实际" class="' + renewalStatus + '">' + int(r.actualRenewal) + '</td><td data-label="续租目标" class="' + renewalStatus + '">' + int(r.renewalCount) + '</td><td data-label="续租完成率" class="rate ' + renewalStatus + '">' + pct(renewalRate) + '</td></tr>';
       }).join('');
       $('contract-target-table').innerHTML = targetComparisonRows;
       const overviewNewTargetTable = $('overview-new-target-comparison-table');
