@@ -134,6 +134,10 @@ REQUIRED = (
     'id="customer-data-updated"',
     'id="customer-wechat-trend-chart"',
     'id="customer-wechat-trend-table"',
+    'class="customer-wechat-chart-stage"',
+    'class="customer-wechat-matrix"',
+    'col span="30"',
+    "matrixRows=[['total','新增客户']",
     'customer-wechat-week-band-full-height',
     'height="287"',
     'function renderCustomerData()',
@@ -637,6 +641,9 @@ def main() -> int:
         return 1
     if any(marker in html for marker in ('id="customer-daily-table"', 'id="customer-funnel-table"', 'id="customer-kpi-published"')):
         print("Legacy customer seven-day panels must stay hidden", file=sys.stderr)
+        return 1
+    if 'class="table-wrap customer-wechat-table-wrap"' in html:
+        print("Legacy vertical customer trend table must stay removed", file=sys.stderr)
         return 1
     if html.count('data-todo-workbench-link') != 2:
         print("Todo workbench link missing from desktop or mobile navigation", file=sys.stderr)
