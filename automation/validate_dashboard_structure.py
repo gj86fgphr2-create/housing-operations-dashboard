@@ -561,6 +561,14 @@ def main() -> int:
     if '<i class="other"></i>' in business_markup or 'checkout-reason-line other' in business_markup or 'checkout-reason-point other' in business_markup:
         print("Other-reason values are still visible in the checkout reason chart", file=sys.stderr)
         return 1
+    desktop_yuxiaor = re.search(r'<nav class="desktop-secondary-nav" data-desktop-menu="yuxiaor".*?</nav>', html, re.S)
+    mobile_yuxiaor = re.search(r'<nav class="mobile-menu mobile-secondary-nav" data-mobile-menu="yuxiaor".*?</nav>', html, re.S)
+    if not desktop_yuxiaor or 'occupancy-ziyin' in desktop_yuxiaor.group(0):
+        print("Ziyin occupancy menu must stay hidden on desktop", file=sys.stderr)
+        return 1
+    if mobile_yuxiaor and 'occupancy-ziyin' in mobile_yuxiaor.group(0):
+        print("Ziyin occupancy menu must stay hidden on mobile", file=sys.stderr)
+        return 1
     if html.count('data-dashboard-view="xhs-note-published"') < 2:
         print("XHS note-published menu missing from desktop or mobile navigation", file=sys.stderr)
         return 1
