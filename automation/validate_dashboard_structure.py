@@ -599,6 +599,9 @@ def main() -> int:
         'xhs-decline-source-warning',
         '认证已过期',
         '当前折线使用认证到期前的有效历史数据',
+        '折线图最新日期在左',
+        'const chartRows=account.rows.slice(-14).reverse()',
+        'latestRow=chartRows[0]',
     ]
     if any(marker not in html for marker in reading_decline_markers):
         print("XHS reading decline three-chart layout invalid", file=sys.stderr)
