@@ -134,6 +134,8 @@ REQUIRED = (
     'id="customer-data-updated"',
     'id="customer-wechat-trend-chart"',
     'id="customer-wechat-trend-table"',
+    'customer-wechat-week-band-full-height',
+    'height="287"',
     'function renderCustomerData()',
     'function renderCustomerWechatTrend()',
     '"customerData"',
