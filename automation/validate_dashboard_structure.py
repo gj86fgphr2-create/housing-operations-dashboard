@@ -132,8 +132,6 @@ REQUIRED = (
     'id="customer-data"',
     'data-dashboard-view="customer-data"',
     'id="customer-data-updated"',
-    'id="customer-daily-table"',
-    'id="customer-funnel-table"',
     'id="customer-wechat-trend-chart"',
     'id="customer-wechat-trend-table"',
     'function renderCustomerData()',
@@ -634,6 +632,9 @@ def main() -> int:
         return 1
     if html.count('data-dashboard-view="customer-data"') < 2:
         print("Customer data menu missing from desktop or mobile navigation", file=sys.stderr)
+        return 1
+    if any(marker in html for marker in ('id="customer-daily-table"', 'id="customer-funnel-table"', 'id="customer-kpi-published"')):
+        print("Legacy customer seven-day panels must stay hidden", file=sys.stderr)
         return 1
     if html.count('data-todo-workbench-link') != 2:
         print("Todo workbench link missing from desktop or mobile navigation", file=sys.stderr)

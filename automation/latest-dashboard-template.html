@@ -253,20 +253,8 @@
       </section>
 
       <section class="section" id="customer-data" data-views="customer-data">
-        <div class="section-head"><div><h2>客服数据</h2><p>运营团队专业号与客服表格共同覆盖的最近 7 个自然日。</p></div><div class="account-updated" id="customer-data-updated">—</div></div>
-        <div class="kpis">
-          <article class="kpi blue"><div class="label">发布数</div><div class="value" id="customer-kpi-published">—</div><div class="hint">运营团队两账号合计</div></article>
-          <article class="kpi purple"><div class="label">当天阅读数</div><div class="value" id="customer-kpi-reading">—</div><div class="hint">同日专业号阅读合计</div></article>
-          <article class="kpi orange"><div class="label">专业号进线数</div><div class="value" id="customer-kpi-inbound">—</div><div class="hint">私信进线用户</div></article>
-          <article class="kpi green"><div class="label">专业号留资数</div><div class="value" id="customer-kpi-leads">—</div><div class="hint">复制个人微信</div></article>
-          <article class="kpi blue"><div class="label">微信添加数</div><div class="value" id="customer-kpi-wechat">—</div><div class="hint">客服表格小红书渠道</div></article>
-          <article class="kpi orange"><div class="label">看房（实际）</div><div class="value" id="customer-kpi-tours">—</div><div class="hint">客服表格记录</div></article>
-          <article class="kpi purple"><div class="label">定金数</div><div class="value" id="customer-kpi-deposits">—</div><div class="hint">客服表格记录</div></article>
-          <article class="kpi green"><div class="label">签约数（成交）</div><div class="value" id="customer-kpi-signed">—</div><div class="hint">客服表格成交</div></article>
-        </div>
+        <div class="section-head"><div><h2>客服数据</h2><p>微信客户新增趋势，按渠道、WEEK 与月份汇总。</p></div><div class="account-updated" id="customer-data-updated">—</div></div>
         <div class="xhs-ad-stack">
-          <article class="panel"><h3>近 7 天每日数据</h3><p class="panel-note" id="customer-daily-summary">正在汇总…</p><div class="table-wrap"><table><thead><tr><th>日期</th><th>发布数</th><th>当天阅读数</th><th>专业号进线数</th><th>专业号留资数</th><th>微信添加数</th><th>看房（实际）</th><th>定金数</th><th>签约数（成交）</th></tr></thead><tbody id="customer-daily-table"></tbody></table></div></article>
-          <article class="panel"><h3>近 7 天漏斗转化</h3><p class="panel-note">环节比例按 7 天汇总值计算；每篇发布阅读为均值，其余为相邻环节转化率。</p><div class="table-wrap"><table><thead><tr><th>环节</th><th>7 天汇总</th><th>相对上一环节</th></tr></thead><tbody id="customer-funnel-table"></tbody></table></div><p class="panel-note" id="customer-source-note">同日跨来源汇总，不代表按客户 ID 追踪；个别单日比例可能超过 100%。</p></article>
           <article class="panel customer-wechat-panel">
             <div class="customer-wechat-head"><div><h3>微信客户趋势</h3><p class="panel-note" id="customer-wechat-trend-summary">正在汇总待办工作台数据…</p></div><div class="customer-wechat-badge" id="customer-wechat-trend-badge">近30天</div></div>
             <div class="customer-wechat-legend"><span><i class="total"></i>新增微信客户</span><span><i class="xiaohongshu"></i>小红书</span><span><i class="xianyu"></i>咸鱼</span><span><i class="other"></i>其他</span></div>
@@ -1508,19 +1496,8 @@
       html+='<tr class="summary-row"><td>近30天汇总</td><td>'+int(trend.windowRecordCount||0)+'</td><td>'+int((trend.channelTotals||{}).xiaohongshu||0)+'</td><td>'+int((trend.channelTotals||{}).xianyu||0)+'</td><td>'+int((trend.channelTotals||{}).other||0)+'</td></tr>';table.innerHTML=html;
     }
     function renderCustomerData(){
-      const content=DATA.customerData || {}, rows=content.dailyRows || [], totals=content.totals || {}, funnel=content.funnel || {};
-      const values={published:'customer-kpi-published',reading:'customer-kpi-reading',inbound:'customer-kpi-inbound',leads:'customer-kpi-leads',wechatAdds:'customer-kpi-wechat',actualTours:'customer-kpi-tours',deposits:'customer-kpi-deposits',signed:'customer-kpi-signed'};
-      Object.keys(values).forEach((key) => { $(values[key]).textContent=rows.length ? int(totals[key] || 0) : '—'; });
-      $('customer-data-updated').textContent=content.generatedAt ? '数据更新：'+content.generatedAt : '暂无可用数据';
-      $('customer-daily-summary').textContent=rows.length ? content.startDate+' 至 '+content.endDate+' · 运营团队：'+(content.accounts || []).map((account) => account.operator).join('、') : '暂无三套来源共同覆盖的数据。';
-      const labels={published:'发布数',reading:'当天阅读数',inbound:'专业号进线数',leads:'专业号留资数',wechatAdds:'微信添加数',actualTours:'看房（实际）',deposits:'定金数',signed:'签约数（成交）'};
-      const daily=rows.map((row) => '<tr><td data-label="日期">'+xhsSafe(row.date)+'</td>'+Object.keys(labels).map((key) => '<td data-label="'+labels[key]+'">'+int(row[key])+'</td>').join('')+'</tr>').join('');
-      const totalRow=rows.length ? '<tr class="xhs-ad-total-row"><td data-label="日期">7 天汇总</td>'+Object.keys(labels).map((key) => '<td data-label="'+labels[key]+'">'+int(totals[key] || 0)+'</td>').join('')+'</tr>' : '';
-      $('customer-daily-table').innerHTML=daily+totalRow || '<tr><td data-label="日期">暂无可比数据</td><td colspan="8">—</td></tr>';
-      const rate=(value,digits=1) => value===null || value===undefined || !Number.isFinite(value) ? '—' : (value*100).toFixed(digits)+'%';
-      const stages=[['发布数','published','—'],['当天阅读数','reading',funnel.readsPerPost===null || funnel.readsPerPost===undefined ? '—' : Number(funnel.readsPerPost).toFixed(1)+' / 篇'],['专业号进线数','inbound',rate(funnel.readingToInbound)],['专业号留资数','leads',rate(funnel.inboundToLeads)],['微信添加数','wechatAdds',rate(funnel.leadsToWechat)],['看房（实际）','actualTours',rate(funnel.wechatToActualTours)],['定金数','deposits',rate(funnel.actualToursToDeposits)],['签约数（成交）','signed',rate(funnel.depositsToSigned)]];
-      $('customer-funnel-table').innerHTML=rows.length ? stages.map((stage) => '<tr><td data-label="环节">'+stage[0]+'</td><td data-label="7 天汇总">'+int(totals[stage[1]] || 0)+'</td><td data-label="相对上一环节">'+stage[2]+'</td></tr>').join('') : '<tr><td data-label="环节">暂无可比数据</td><td colspan="2">—</td></tr>';
-      $('customer-source-note').textContent=content.sourceNote || '同日跨来源汇总，不代表按客户 ID 追踪；个别单日比例可能超过 100%。';
+      const trend=((DATA.customerData || {}).wechatTrend || {});
+      $('customer-data-updated').textContent=trend.generatedAt ? '数据更新：'+String(trend.generatedAt).replace('T',' ').slice(0,16) : '暂无可用数据';
       renderCustomerWechatTrend();
     }
     function renderMeterManagement(){
