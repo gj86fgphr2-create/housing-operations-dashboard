@@ -87,6 +87,14 @@ REQUIRED = (
     'id="checkout-trend-grid"',
     'id="checkout-trend-future-chart"',
     'id="checkout-trend-past-chart"',
+    'id="checkout-reason-detail-table"',
+    'class="checkout-reason-table"',
+    '过去30天退租原因明细',
+    '总数包含其他原因',
+    '<th>日期</th><th>实际退租</th><th>到期</th><th>违约</th><th>续租</th><th>其他</th>',
+    'reasonTotals.actual',
+    'reasonTotals.other',
+    '30天合计',
     'id="checkout-trend-future-summary"',
     'id="checkout-trend-past-summary"',
     'id="checkout-reason-trend-card"',
@@ -536,7 +544,7 @@ def main() -> int:
         print("Contract daily trend chart is not uniquely located in the business-trend view", file=sys.stderr)
         return 1
     business_markup = business_section.group(0)
-    ordered_markers = ('id="business-trend-chart"', 'id="checkout-trend-future-chart"', 'id="checkout-trend-past-chart"', 'id="checkout-reason-trend-chart"', 'id="contract-daily-trend-panel"')
+    ordered_markers = ('id="business-trend-chart"', 'id="checkout-trend-future-chart"', 'id="checkout-trend-past-chart"', 'id="checkout-reason-detail-table"', 'id="checkout-reason-trend-chart"', 'id="contract-daily-trend-panel"')
     marker_positions = [business_markup.find(marker) for marker in ordered_markers]
     if any(position < 0 for position in marker_positions) or marker_positions != sorted(marker_positions):
         print(f"Business trend panel order invalid: {marker_positions}", file=sys.stderr)
