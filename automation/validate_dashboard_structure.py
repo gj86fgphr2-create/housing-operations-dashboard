@@ -611,9 +611,17 @@ def main() -> int:
         print("XHS reading decline three-chart layout invalid", file=sys.stderr)
         return 1
     reading_rows = payload.get("xhsContent", {}).get("accountDailyReading", [])
-    partial_profiles = {row.get("profile") for row in reading_rows if row.get("dataStatus") == "partial" and row.get("readingCount") is not None}
-    if not {"account-02", "account-04", "account-07"}.issubset(partial_profiles):
-        print("XHS partial reading history missing from decline input", file=sys.stderr)
+    reading_keys = [(row.get("profile"), row.get("date")) for row in reading_rows]
+    reading_profiles = {row.get("profile") for row in reading_rows}
+    allowed_reading_states = {"ok", "partial"}
+    if not reading_rows or len(reading_keys) != len(set(reading_keys)):
+        print("XHS reading history contains missing or duplicate account-date rows", file=sys.stderr)
+        return 1
+    if len(reading_profiles) != 8 or any(row.get("dataStatus") not in allowed_reading_states for row in reading_rows):
+        print("XHS reading history account coverage or data status invalid", file=sys.stderr)
+        return 1
+    if any(row.get("readingCount") is None or int(row.get("readingCount")) < 0 for row in reading_rows):
+        print("XHS reading history contains an invalid reading value", file=sys.stderr)
         return 1
     if html.count('data-dashboard-view="xhs-note-published"') < 2:
         print("XHS note-published menu missing from desktop or mobile navigation", file=sys.stderr)
