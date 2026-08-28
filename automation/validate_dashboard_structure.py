@@ -134,8 +134,12 @@ REQUIRED = (
     'id="customer-data-updated"',
     'id="customer-daily-table"',
     'id="customer-funnel-table"',
+    'id="customer-wechat-trend-chart"',
+    'id="customer-wechat-trend-table"',
     'function renderCustomerData()',
+    'function renderCustomerWechatTrend()',
     '"customerData"',
+    '"wechatTrend"',
     'id="xhs-account"',
     'id="xhs-account-updated"',
     'id="xhs-account-table"',
@@ -729,6 +733,31 @@ def main() -> int:
             return 1
         if any(customer.get("totals", {}).get(field) != sum(int(row.get(field) or 0) for row in customer_rows) for field in customer_fields):
             print("Customer data totals do not reconcile", file=sys.stderr)
+            return 1
+    wechat_trend = customer.get("wechatTrend", {})
+    wechat_rows = wechat_trend.get("dailyRows", [])
+    if wechat_rows:
+        wechat_fields = ("xiaohongshu", "xianyu", "other")
+        try:
+            dates = [date.fromisoformat(row["date"]) for row in wechat_rows]
+        except (KeyError, ValueError):
+            print("WeChat customer trend contains invalid dates", file=sys.stderr)
+            return 1
+        if len(wechat_rows) != 30 or len(set(dates)) != 30 or any(dates[index] - dates[index + 1] != timedelta(days=1) for index in range(29)):
+            print(f"WeChat customer trend 30-day coverage invalid: {dates}", file=sys.stderr)
+            return 1
+        if any(int(row.get("total") or 0) != sum(int(row.get(field) or 0) for field in wechat_fields) for row in wechat_rows):
+            print("WeChat customer trend daily channels do not reconcile", file=sys.stderr)
+            return 1
+        window_total = sum(int(row.get("total") or 0) for row in wechat_rows)
+        if int(wechat_trend.get("windowRecordCount") or 0) != window_total:
+            print("WeChat customer trend window total does not reconcile", file=sys.stderr)
+            return 1
+        if any(int(wechat_trend.get("channelTotals", {}).get(field) or 0) != sum(int(row.get(field) or 0) for row in wechat_rows) for field in wechat_fields):
+            print("WeChat customer trend channel summary does not reconcile", file=sys.stderr)
+            return 1
+        if sum(int(group.get("total") or 0) for group in wechat_trend.get("weeks", [])) != window_total or sum(int(group.get("total") or 0) for group in wechat_trend.get("months", [])) != window_total:
+            print("WeChat customer trend WEEK/month bands do not reconcile", file=sys.stderr)
             return 1
 
     print(f"dashboard structure valid: {dashboard}")
