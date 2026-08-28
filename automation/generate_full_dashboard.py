@@ -274,6 +274,47 @@ def build_customer_wechat_trend():
     channel_totals={field:sum(row[field] for row in rows) for field in ("xiaohongshu","xianyu","other")}
     return {"generatedAt":str(loaded.get("updatedAt") or datetime.fromtimestamp(source.stat().st_mtime).astimezone().strftime("%Y-%m-%d %H:%M")),"sourceRecordCount":len(normalized),"windowRecordCount":sum(row["total"] for row in rows),"startDate":start_date.isoformat(),"endDate":end_date.isoformat(),"dailyRows":rows,"weeks":summarize("weekKey"),"months":summarize("monthKey"),"channelTotals":channel_totals}
 
+def build_customer_visit_trend():
+    """Aggregate visit records by date, area and visit method without publishing customer details."""
+    source=Path(os.environ.get("TODO_CUSTOMER_VISITS_FILE","/opt/yuxiaor-automation/notifications/state/customer-visits.json"))
+    fields=("total","south","north","otherArea","online","offline","otherMethod")
+    empty={"generatedAt":"","sourceRecordCount":0,"windowRecordCount":0,"futureRecordCount":0,"startDate":"","endDate":"","dailyRows":[],"weeks":[],"months":[],"totals":{field:0 for field in fields}}
+    if not source.is_file(): return empty
+    loaded=json.loads(source.read_text(encoding="utf-8"))
+    records=loaded.get("records",[]) if isinstance(loaded,dict) else []
+    normalized=[]
+    for record in records:
+        date_text=str(record.get("visitTime") or "").strip()[:10]
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}",date_text): continue
+        try: day=datetime.strptime(date_text,"%Y-%m-%d").date()
+        except ValueError: continue
+        area_text=str(record.get("area") or "").strip()
+        area="south" if area_text=="南亭区域" else "north" if area_text=="北亭区域" else "otherArea"
+        method_text=str(record.get("visitMethod") or "").strip()
+        method="online" if method_text=="线上" else "offline" if method_text=="线下" else "otherMethod"
+        normalized.append((day,area,method))
+    end_date=datetime.now().astimezone().date(); start_date=end_date-timedelta(days=29)
+    counts=defaultdict(lambda:{field:0 for field in fields})
+    for day,area,method in normalized:
+        if start_date<=day<=end_date:
+            counts[day]["total"]+=1; counts[day][area]+=1; counts[day][method]+=1
+    rows=[]
+    for offset in range(30):
+        day=end_date-timedelta(days=offset); values=counts[day]
+        week_suffix="W1" if day.day<=7 else "W2" if day.day<=14 else "W3" if day.day<=21 else "W4" if day.day<=28 else "WE"
+        rows.append({"date":day.isoformat(),"monthKey":day.strftime("%Y-%m"),"weekKey":f"{day.month}{week_suffix}",**values})
+    def summarize(key):
+        grouped={}
+        for row in rows:
+            group_key=row[key]
+            if group_key not in grouped: grouped[group_key]={"key":group_key,"startDate":row["date"],"endDate":row["date"],**{field:0 for field in fields}}
+            group=grouped[group_key]
+            group["startDate"]=min(group["startDate"],row["date"]); group["endDate"]=max(group["endDate"],row["date"])
+            for field in fields: group[field]+=row[field]
+        return list(grouped.values())
+    totals={field:sum(row[field] for row in rows) for field in fields}
+    return {"generatedAt":str(loaded.get("updatedAt") or datetime.fromtimestamp(source.stat().st_mtime).astimezone().strftime("%Y-%m-%d %H:%M")),"sourceRecordCount":len(normalized),"windowRecordCount":totals["total"],"futureRecordCount":sum(day>end_date for day,_,_ in normalized),"startDate":start_date.isoformat(),"endDate":end_date.isoformat(),"dailyRows":rows,"weeks":summarize("weekKey"),"months":summarize("monthKey"),"totals":totals}
+
 def build_meter_management(fallback):
     """Attach the last complete, sanitized meter snapshot and latest run status."""
     data_path=Path(os.environ.get("METER_MANAGEMENT_JSON","/opt/yuxiaor-automation/data/meter-management/latest.json"))
@@ -1544,6 +1585,7 @@ overview_new=build_overview_new()
 overview_new["contractActivity"]=overview_contract_activity(contract_stats["recentPerformance"],contract_stats["currentMonth"],contract_stats["monthlyDetails"])
 customer_data=build_customer_data(old.get("customerData"))
 customer_data["wechatTrend"]=build_customer_wechat_trend()
+customer_data["visitTrend"]=build_customer_visit_trend()
 payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods,"overviewNew":overview_new,"businessTrend":business_trend(),"checkoutTrends":checkout_trends(),"ziyinOccupancy":ziyin_occupancy,"xhsAccountAudit":build_xhs_account_audit(old.get("xhsAccountAudit")),"xhsContent":build_xhs_content(old.get("xhsContent")),"xhsNotePublished":build_xhs_note_published(old.get("xhsNotePublished")),"xhsLeads":build_xhs_leads(old.get("xhsLeads")),"xhsAdFlow":build_xhs_ad_flow(old.get("xhsAdFlow")),"customerData":customer_data,"meterManagement":build_meter_management(old.get("meterManagement"))}
 rendered=template[:payload_span[0]]+json.dumps(payload,ensure_ascii=False,separators=(",",":"))+template[payload_span[1]:]
 required=['class="nav desktop-nav"','data-desktop-module="xiaohongshu"','data-desktop-module="yuxiaor"','data-desktop-menu="xiaohongshu"','data-desktop-menu="yuxiaor"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','id="occupancy-ziyin"','ziyin-project-table','function renderZiyinOccupancy()','"ziyinOccupancy"','occupiedOverlap','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','xhs-account-updated','xhs-account-status-list','adCollectedAt','adCollectedOk','leadCollectedAt','leadCollectedOk','noteCollectedAt','noteCollectedOk','function xhsCollectedHour(','function xhsCollectedBadge(','class="xhs-collection-badge ok"','<th>聚光</th><th>留资</th><th>笔记</th>','xhs-note-count-table','xhs-view-count-table','function xhsMetricTotal(account,weeks,field)','<th>汇总</th>','xhs-daily-reading-chart','id="xhs-leads"','xhs-goal-table','xhs-lead-opened-table','xhs-lead-copied-table','function xhsLeadWeekHeading(','xhs-week-day-badge','id="xhs-lead-details"','xhs-lead-detail-account','xhs-lead-detail-table','id="xhs-ad-flow"','xhs-ad-account-table','xhs-ad-note-table','id="xhs-ad-start-date"','id="xhs-ad-end-date"','function xhsAdPrepareDateControls(','id="xhs-ad-team-filter"','id="xhs-ad-account-filter"','id="xhs-ad-matrix-head"','function renderXhsAdChart(','function renderXhsAdFlow()','function renderXhsAccountStatus()','function xhsGoalCell(','function renderXhsLeads()','function renderXhsLeadDetails()','"xhsAccountAudit"','"targetMonth"','"targets"','"dailyRows"','"xhsLeads"','"xhsAdFlow"']
@@ -1561,7 +1603,7 @@ required += ['id="xhs-note-published-type"','图文数量','视频数量','待�
 required += ['数据明细','笔记发布明细','留资数据明细','聚光投放明细','data-mobile-menu="xhs-details"','data-mobile-submenu="xhs-details"','id="xhs-ad-details"','data-dashboard-view="xhs-ad-details"','id="xhs-ad-details-updated"','id="xhs-ad-detail-account-filter"','id="xhs-ad-detail-start-date"','id="xhs-ad-detail-end-date"','id="xhs-ad-detail-date-reset"','id="xhs-ad-details-count"','id="xhs-ad-details-table"','function renderXhsAdDetails(']
 required += ['class="desktop-home-link"','class="desktop-nav-groups"','class="desktop-nav-group"','class="desktop-module-toggle"','aria-expanded="false"','aria-expanded="true"']
 required += ['<div class="label">本月退房</div>','id="contract-checkout-definition">退租/（实际退/续租）','function checkoutDisplay(','checkoutActualDepartureCount']
-required += ['data-desktop-module="customer"','data-desktop-menu="customer"','data-mobile-module="customer"','data-mobile-menu="customer"','id="customer-data"','data-dashboard-view="customer-data"','id="customer-data-updated"','id="customer-wechat-trend-chart"','id="customer-wechat-trend-table"','class="customer-wechat-chart-stage"','class="customer-wechat-matrix"','col span="30"','matrixRows=[[\'total\',\'新增客户\']','customer-wechat-week-band-full-height','height="287"','function renderCustomerData()','function renderCustomerWechatTrend()','"customerData"','"wechatTrend"']
+required += ['data-desktop-module="customer"','data-desktop-menu="customer"','data-mobile-module="customer"','data-mobile-menu="customer"','id="customer-data"','data-dashboard-view="customer-data"','id="customer-data-updated"','id="customer-wechat-trend-chart"','id="customer-wechat-trend-table"','id="customer-visit-trend-chart"','id="customer-visit-trend-table"','class="customer-wechat-chart-stage"','class="customer-wechat-matrix"','col span="30"','matrixRows=[[\'total\',\'新增客户\']','matrixRows=[[\'total\',\'带看客户\']','customer-wechat-week-band-full-height','customer-visit-week-band-full-height','height="287"','function renderCustomerData()','function renderCustomerWechatTrend()','function renderCustomerVisitTrend()','"customerData"','"wechatTrend"','"visitTrend"']
 required += ['data-todo-workbench-link','href="https://todo.xiyuan.chat/meter.html"','id="meter-management"','id="meter-collection-status"','id="meter-keep-table"','id="meter-negative-table"','id="meter-offline-table"','function renderMeterManagement()','"meterManagement"','data-label="保电状态"','keepText=row.keepElectric?\'已保电\':\'未保电\'']
 required += ['function xhsNoteCountClass(','function xhsMetricCell(','xhs-note-count-green','xhs-note-count-yellow','xhs-note-count-pink','xhs-note-count-red','if(count>=6)','if(count===5)','if(count===4)']
 required += ['data-dashboard-view="overview-new"','id="overview-new"','function renderOverviewNew()','"overviewNew"','overview-new-short-rent','overview-new-rate-comprehensive','overview-new-validation']
@@ -1633,6 +1675,18 @@ if wechat_rows:
     if wechat_trend.get("windowRecordCount")!=sum(row["total"] for row in wechat_rows): raise RuntimeError("WeChat customer trend window total does not reconcile")
     if any(wechat_trend.get("channelTotals",{}).get(field)!=sum(row[field] for row in wechat_rows) for field in wechat_fields): raise RuntimeError("WeChat customer trend channel summary does not reconcile")
     if sum(group["total"] for group in wechat_trend.get("weeks",[]))!=wechat_trend["windowRecordCount"] or sum(group["total"] for group in wechat_trend.get("months",[]))!=wechat_trend["windowRecordCount"]: raise RuntimeError("WeChat customer trend WEEK/month bands do not reconcile")
+visit_trend=payload["customerData"].get("visitTrend",{})
+visit_rows=visit_trend.get("dailyRows",[])
+if visit_rows:
+    visit_fields=("south","north","otherArea","online","offline","otherMethod")
+    dates=[datetime.strptime(row["date"],"%Y-%m-%d").date() for row in visit_rows]
+    if len(visit_rows)!=30 or len(set(dates))!=30 or any(dates[index]-dates[index+1]!=timedelta(days=1) for index in range(29)): raise RuntimeError("Customer visit trend must contain 30 descending natural days")
+    if any(row["total"]!=row["south"]+row["north"]+row["otherArea"] or row["total"]!=row["online"]+row["offline"]+row["otherMethod"] for row in visit_rows): raise RuntimeError("Customer visit trend dimensions do not reconcile")
+    if visit_trend.get("windowRecordCount")!=sum(row["total"] for row in visit_rows): raise RuntimeError("Customer visit trend window total does not reconcile")
+    if any(visit_trend.get("totals",{}).get(field)!=sum(row[field] for row in visit_rows) for field in ("total",)+visit_fields): raise RuntimeError("Customer visit trend summary does not reconcile")
+    if sum(group["total"] for group in visit_trend.get("weeks",[]))!=visit_trend["windowRecordCount"] or sum(group["total"] for group in visit_trend.get("months",[]))!=visit_trend["windowRecordCount"]: raise RuntimeError("Customer visit trend WEEK/month bands do not reconcile")
+    allowed_visit_keys={"date","monthKey","weekKey","total","south","north","otherArea","online","offline","otherMethod"}
+    if any(set(row)!=allowed_visit_keys for row in visit_rows): raise RuntimeError("Customer visit trend contains an unexpected or private field")
 account_audit_rows=payload["xhsAccountAudit"].get("accounts",[])
 if len(account_audit_rows)!=len(XHS_ACCOUNTS) or any(not all(key in row for key in ("adCollectedAt","adCollectedOk","leadCollectedAt","leadCollectedOk","noteCollectedAt","noteCollectedOk")) for row in account_audit_rows): raise RuntimeError("XHS account collection timestamps invalid")
 note_published_rows=payload["xhsNotePublished"].get("rows",[])

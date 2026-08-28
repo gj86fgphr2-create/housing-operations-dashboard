@@ -134,16 +134,22 @@ REQUIRED = (
     'id="customer-data-updated"',
     'id="customer-wechat-trend-chart"',
     'id="customer-wechat-trend-table"',
+    'id="customer-visit-trend-chart"',
+    'id="customer-visit-trend-table"',
     'class="customer-wechat-chart-stage"',
     'class="customer-wechat-matrix"',
     'col span="30"',
     "matrixRows=[['total','新增客户']",
+    "matrixRows=[['total','带看客户']",
     'customer-wechat-week-band-full-height',
+    'customer-visit-week-band-full-height',
     'height="287"',
     'function renderCustomerData()',
     'function renderCustomerWechatTrend()',
+    'function renderCustomerVisitTrend()',
     '"customerData"',
     '"wechatTrend"',
+    '"visitTrend"',
     'id="xhs-account"',
     'id="xhs-account-updated"',
     'id="xhs-account-table"',
@@ -776,6 +782,35 @@ def main() -> int:
             return 1
         if sum(int(group.get("total") or 0) for group in wechat_trend.get("weeks", [])) != window_total or sum(int(group.get("total") or 0) for group in wechat_trend.get("months", [])) != window_total:
             print("WeChat customer trend WEEK/month bands do not reconcile", file=sys.stderr)
+            return 1
+    visit_trend = customer.get("visitTrend", {})
+    visit_rows = visit_trend.get("dailyRows", [])
+    if visit_rows:
+        visit_fields = ("south", "north", "otherArea", "online", "offline", "otherMethod")
+        allowed_visit_keys = {"date", "monthKey", "weekKey", "total", *visit_fields}
+        try:
+            dates = [date.fromisoformat(row["date"]) for row in visit_rows]
+        except (KeyError, ValueError):
+            print("Customer visit trend contains invalid dates", file=sys.stderr)
+            return 1
+        if len(visit_rows) != 30 or len(set(dates)) != 30 or any(dates[index] - dates[index + 1] != timedelta(days=1) for index in range(29)):
+            print(f"Customer visit trend 30-day coverage invalid: {dates}", file=sys.stderr)
+            return 1
+        if any(int(row.get("total") or 0) != int(row.get("south") or 0) + int(row.get("north") or 0) + int(row.get("otherArea") or 0) or int(row.get("total") or 0) != int(row.get("online") or 0) + int(row.get("offline") or 0) + int(row.get("otherMethod") or 0) for row in visit_rows):
+            print("Customer visit trend dimensions do not reconcile", file=sys.stderr)
+            return 1
+        if any(set(row) != allowed_visit_keys for row in visit_rows):
+            print("Customer visit trend contains an unexpected or private field", file=sys.stderr)
+            return 1
+        window_total = sum(int(row.get("total") or 0) for row in visit_rows)
+        if int(visit_trend.get("windowRecordCount") or 0) != window_total:
+            print("Customer visit trend window total does not reconcile", file=sys.stderr)
+            return 1
+        if any(int(visit_trend.get("totals", {}).get(field) or 0) != sum(int(row.get(field) or 0) for row in visit_rows) for field in ("total",) + visit_fields):
+            print("Customer visit trend summary does not reconcile", file=sys.stderr)
+            return 1
+        if sum(int(group.get("total") or 0) for group in visit_trend.get("weeks", [])) != window_total or sum(int(group.get("total") or 0) for group in visit_trend.get("months", [])) != window_total:
+            print("Customer visit trend WEEK/month bands do not reconcile", file=sys.stderr)
             return 1
 
     print(f"dashboard structure valid: {dashboard}")
