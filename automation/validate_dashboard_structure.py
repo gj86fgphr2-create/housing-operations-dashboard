@@ -590,6 +590,24 @@ def main() -> int:
     if "if (view === 'xhs-trends') requestAnimationFrame(() => { renderXhsReadingChart(); renderXhsReadingDeclines(); renderXhsTraffic(); });" not in html:
         print("XHS trends view render trigger invalid", file=sys.stderr)
         return 1
+    reading_decline_markers = [
+        '.xhs-decline-scroll{overflow:visible',
+        '.xhs-decline-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))',
+        '@media(max-width:900px){.xhs-decline-grid{grid-template-columns:1fr}',
+        'xhs-decline-point-value',
+        '最近14个有效采集日阅读趋势',
+        'xhs-decline-source-warning',
+        '认证已过期',
+        '当前折线使用认证到期前的有效历史数据',
+    ]
+    if any(marker not in html for marker in reading_decline_markers):
+        print("XHS reading decline three-chart layout invalid", file=sys.stderr)
+        return 1
+    reading_rows = payload.get("xhsContent", {}).get("accountDailyReading", [])
+    partial_profiles = {row.get("profile") for row in reading_rows if row.get("dataStatus") == "partial" and row.get("readingCount") is not None}
+    if not {"account-02", "account-04", "account-07"}.issubset(partial_profiles):
+        print("XHS partial reading history missing from decline input", file=sys.stderr)
+        return 1
     if html.count('data-dashboard-view="xhs-note-published"') < 2:
         print("XHS note-published menu missing from desktop or mobile navigation", file=sys.stderr)
         return 1

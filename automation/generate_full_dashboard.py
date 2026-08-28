@@ -108,11 +108,13 @@ def build_xhs_content(fallback):
     if daily_path.is_file():
         with daily_path.open(encoding="utf-8-sig",newline="") as handle:
             for row in csv.DictReader(handle):
-                if row.get("status") == "ok" and row.get("date"):
-                    reading_count=int(row.get("reading_count") or 0)
-                    daily_totals[row["date"]]+=reading_count
+                status=str(row.get("status") or "").strip().lower()
+                if status in ("ok","partial") and row.get("date") and str(row.get("reading_count") or "").strip():
+                    reading_count=int(float(row.get("reading_count") or 0))
+                    if status == "ok":
+                        daily_totals[row["date"]]+=reading_count
                     account=next((item for item in XHS_ACCOUNTS if item["profile"]==row.get("profile")),None)
-                    account_daily.append({"profile":row.get("profile", ""),"accountName":(account or {}).get("name") or row.get("account_name") or row.get("profile", ""),"date":row["date"],"readingCount":reading_count})
+                    account_daily.append({"profile":row.get("profile", ""),"accountName":(account or {}).get("name") or row.get("account_name") or row.get("profile", ""),"date":row["date"],"readingCount":reading_count,"dataStatus":status,"dataNote":str(row.get("error") or "").strip()})
     account_daily.sort(key=lambda row:(row["profile"],row["date"]))
     return {"generatedAt":summary.get("generated_at","")[:19].replace("T"," "),"month":f"{end_date.year:04d}-{end_date.month:02d}","weeks":weeks,"accounts":accounts,"dailyReading":[{"date":date,"readingCount":count} for date,count in sorted(daily_totals.items(),reverse=True)],"accountDailyReading":account_daily}
 
@@ -1541,6 +1543,8 @@ required += ['function trendEdgeCenterOffsets(','function trendCenteredX(','edge
 required += ['id="checkout-trend-grid"','id="checkout-trend-future-chart"','id="checkout-trend-past-chart"','id="checkout-trend-future-summary"','id="checkout-trend-past-summary"','function renderCheckoutTrends()','function renderCheckoutTrendChart(','"checkoutTrends"','"ranges"','"periodKey"','"week"','"label"','futureNearestFirst','pastNewestFirst','pastRangeCoverage','pastRangeTotalsMatched','futureRangeCoverage','futureRangeTotalsMatched','未来30天','过去30天','checkoutLabelY=Math.max(18,pointY-9)','checkout-trend-range-band','checkout-trend-range-total','compactLabel=compactMonth','天合计']
 required += ['function weekKeyFromLabel(','function weekDayBadgeInfo(','function weekHeading(','id="project-checkout-head"','id="building-checkout-head"']
 required += ['id="xhs-reading-decline-grid"','function renderXhsReadingDeclines()','function xhsDeclineSparkline(','"accountDailyReading"','上7个有效采集日平均－近7个有效采集日平均']
+required += ['.xhs-decline-scroll{overflow:visible','.xhs-decline-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))','@media(max-width:900px){.xhs-decline-grid{grid-template-columns:1fr}','xhs-decline-point-value','最近14个有效采集日阅读趋势']
+required += ['xhs-decline-source-warning','认证已过期','当前折线使用认证到期前的有效历史数据']
 required += ["if (view === 'xhs-trends') requestAnimationFrame(() => { renderXhsReadingChart(); renderXhsReadingDeclines(); renderXhsTraffic(); });",'集中查看阅读与留资走势及下降账号']
 required += ['<a href="#xhs-leads" data-dashboard-view="xhs-leads">目标</a>','<h3>笔记数量与目标</h3>']
 required += ['id="xhs-trends"','data-dashboard-view="xhs-trends"','id="xhs-trends-updated"','id="xhs-trend-title"','id="xhs-trend-metric"','id="xhs-trend-main-content"','id="xhs-trend-decline-content"','id="xhs-traffic-decline-summary"','value="totalLeads"','value="organicLeads"','value="paidLeads"','const labelStep=1','xhsTrafficDeclineAccounts(accountRows.filter((row) => row.date!==today),metric)','renderXhsTrafficTrendChart(\'xhs-traffic-decline-chart-\'+index,account.rows,true,metric)','function renderXhsTrafficTrendChart(svgId,rows,compact=false,metric=','已隐藏当日未完整数据','每个日期与数值均完整展示','rows.filter((row) => row.date!==today).slice(0,30)','Number(row.date.slice(5,7))+\'-\'+Number(row.date.slice(8,10))']
