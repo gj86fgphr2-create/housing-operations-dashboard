@@ -360,7 +360,7 @@ def main() -> int:
     as_of = date.fromisoformat(payload.get("dataDate"))
     checkout_specs = (
         ("past", as_of - timedelta(days=29), as_of, True),
-        ("future", as_of + timedelta(days=1), as_of + timedelta(days=30), False),
+        ("future", as_of, as_of + timedelta(days=29), False),
     )
     for key, start, end, newest_first in checkout_specs:
         period = checkout_trends.get(key, {})

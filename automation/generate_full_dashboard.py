@@ -796,8 +796,8 @@ def business_trend():
 def checkout_trends():
     """Build future checkout from active/move-in contracts and past actual checkout from terminated contracts."""
     past_start=as_of-timedelta(days=29)
-    future_start=as_of+timedelta(days=1)
-    future_end=as_of+timedelta(days=30)
+    future_start=as_of
+    future_end=as_of+timedelta(days=29)
     past={past_start+timedelta(days=i):0 for i in range(30)}
     past_reasons={day:{"expiryCount":0,"breachCount":0,"renewalCount":0,"otherCount":0} for day in past}
     future={future_start+timedelta(days=i):0 for i in range(30)}
@@ -1520,7 +1520,7 @@ required += ['数据明细','笔记发布明细','留资数据明细','聚光投
 required += ['class="desktop-home-link"','class="desktop-nav-groups"','class="desktop-nav-group"','class="desktop-module-toggle"','aria-expanded="false"','aria-expanded="true"']
 required += ['<div class="label">本月退房</div>','id="contract-checkout-definition">退租/（实际退/续租）','function checkoutDisplay(','checkoutActualDepartureCount']
 required += ['data-desktop-module="customer"','data-desktop-menu="customer"','data-mobile-module="customer"','data-mobile-menu="customer"','id="customer-data"','data-dashboard-view="customer-data"','id="customer-data-updated"','id="customer-daily-table"','id="customer-funnel-table"','function renderCustomerData()','"customerData"']
-required += ['data-desktop-module="meters"','data-desktop-menu="meters"','data-mobile-module="meters"','data-mobile-menu="meters"','id="meter-management"','data-dashboard-view="meter-management"','id="meter-collection-status"','id="meter-keep-table"','id="meter-negative-table"','id="meter-offline-table"','function renderMeterManagement()','"meterManagement"','data-label="保电状态"','keepText=row.keepElectric?\'已保电\':\'未保电\'']
+required += ['data-todo-workbench-link','href="https://todo.xiyuan.chat/meter.html"','id="meter-management"','id="meter-collection-status"','id="meter-keep-table"','id="meter-negative-table"','id="meter-offline-table"','function renderMeterManagement()','"meterManagement"','data-label="保电状态"','keepText=row.keepElectric?\'已保电\':\'未保电\'']
 required += ['function xhsNoteCountClass(','function xhsMetricCell(','xhs-note-count-green','xhs-note-count-yellow','xhs-note-count-pink','xhs-note-count-red','if(count>=6)','if(count===5)','if(count===4)']
 required += ['data-dashboard-view="overview-new"','id="overview-new"','function renderOverviewNew()','"overviewNew"','overview-new-short-rent','overview-new-rate-comprehensive','overview-new-validation']
 required += ['<a href="#overview-new" data-dashboard-view="overview-new">总览</a>','<a href="#business-trend" data-dashboard-view="business-trend">趋势</a>']
@@ -1560,7 +1560,7 @@ if rendered.count('data-dashboard-view="xhs-note-published"') < 2: raise Runtime
 if rendered.count('data-dashboard-view="xhs-lead-details"') < 2: raise RuntimeError("XHS lead-details menu must exist on desktop and mobile")
 if rendered.count('data-dashboard-view="xhs-ad-details"') < 2: raise RuntimeError("XHS ad-details menu must exist on desktop and mobile")
 if rendered.count('data-dashboard-view="customer-data"') < 2: raise RuntimeError("Customer data menu must exist on desktop and mobile")
-if rendered.count('data-dashboard-view="meter-management"') < 2: raise RuntimeError("Meter-management menu must exist on desktop and mobile")
+if rendered.count('data-todo-workbench-link') != 2 or 'data-desktop-module="meters"' in rendered or 'data-mobile-module="meters"' in rendered: raise RuntimeError("Todo workbench must replace the meter-management menu on desktop and mobile")
 if rendered.count('data-dashboard-view="overview-new"') < 2: raise RuntimeError("Overview-new menu must exist on desktop and mobile")
 if rendered.count('data-dashboard-view="business-trend"') < 2: raise RuntimeError("Business-trend menu must exist on desktop and mobile")
 customer_rows=payload["customerData"].get("dailyRows",[])
