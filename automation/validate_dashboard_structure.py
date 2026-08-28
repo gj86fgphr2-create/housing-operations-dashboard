@@ -569,6 +569,16 @@ def main() -> int:
     if mobile_yuxiaor and 'occupancy-ziyin' in mobile_yuxiaor.group(0):
         print("Ziyin occupancy menu must stay hidden on mobile", file=sys.stderr)
         return 1
+    xhs_desktop_menu = re.search(r'<nav class="desktop-secondary-nav" data-desktop-menu="xiaohongshu".*?</nav>', html, re.S)
+    xhs_mobile_menu = re.search(r'<nav class="mobile-menu mobile-secondary-nav xhs-menu" data-mobile-menu="xiaohongshu".*?</nav>', html, re.S)
+    target_marker = '<a href="#xhs-leads" data-dashboard-view="xhs-leads">目标</a>'
+    if html.count(target_marker) != 2:
+        print("XHS target menu label missing from desktop or mobile navigation", file=sys.stderr)
+        return 1
+    for menu_name, menu in (("desktop", xhs_desktop_menu), ("mobile", xhs_mobile_menu)):
+        if not menu or not (menu.group(0).index('data-dashboard-view="xhs-account"') < menu.group(0).index('data-dashboard-view="xhs-leads"') < menu.group(0).index('data-dashboard-view="xhs-notes"')):
+            print(f"XHS target menu order invalid on {menu_name}", file=sys.stderr)
+            return 1
     if html.count('data-dashboard-view="xhs-note-published"') < 2:
         print("XHS note-published menu missing from desktop or mobile navigation", file=sys.stderr)
         return 1
