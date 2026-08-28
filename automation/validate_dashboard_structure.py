@@ -579,6 +579,17 @@ def main() -> int:
         if not menu or not (menu.group(0).index('data-dashboard-view="xhs-account"') < menu.group(0).index('data-dashboard-view="xhs-leads"') < menu.group(0).index('data-dashboard-view="xhs-notes"')):
             print(f"XHS target menu order invalid on {menu_name}", file=sys.stderr)
             return 1
+    xhs_notes_section = re.search(r'<section class="section" id="xhs-notes".*?</section>\s*<section class="section" id="xhs-note-published"', html, re.S)
+    xhs_trends_section = re.search(r'<section class="section" id="xhs-trends".*?</section>\s*<section class="section" id="xhs-traffic"', html, re.S)
+    if not xhs_notes_section or 'xhs-daily-reading-chart' in xhs_notes_section.group(0) or 'xhs-reading-decline-grid' in xhs_notes_section.group(0):
+        print("XHS reading trend panel must stay removed from notes", file=sys.stderr)
+        return 1
+    if not xhs_trends_section or xhs_trends_section.group(0).count('<article class="panel">') != 2 or 'id="xhs-daily-reading-chart"' not in xhs_trends_section.group(0) or 'id="xhs-reading-decline-grid"' not in xhs_trends_section.group(0) or xhs_trends_section.group(0).index('id="xhs-daily-reading-chart"') > xhs_trends_section.group(0).index('id="xhs-traffic-trend-chart"'):
+        print("XHS reading trend panel placement invalid", file=sys.stderr)
+        return 1
+    if "if (view === 'xhs-trends') requestAnimationFrame(() => { renderXhsReadingChart(); renderXhsReadingDeclines(); renderXhsTraffic(); });" not in html:
+        print("XHS trends view render trigger invalid", file=sys.stderr)
+        return 1
     if html.count('data-dashboard-view="xhs-note-published"') < 2:
         print("XHS note-published menu missing from desktop or mobile navigation", file=sys.stderr)
         return 1
