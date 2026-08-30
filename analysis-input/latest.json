@@ -1,22 +1,22 @@
 {
-  "generatedAt": "2026-08-30T16:00:49.878319+08:00",
+  "generatedAt": "2026-08-30T17:00:55.213518+08:00",
   "source": "yuxiaor-server-export",
   "snapshotDate": "2026-08-30",
   "dashboardUrl": "https://gj86fgphr2-create.github.io/housing-operations-dashboard/#operations-brief",
   "overview": {
     "rooms": 692,
     "occupied": 548,
-    "comprehensive": 610,
+    "comprehensive": 611,
     "vacancy": 144,
     "rentableVacancy": 64,
     "unrentableVacancy": 80,
     "occupancyRate": 0.791907514450867,
-    "comprehensiveRate": 0.8815028901734104
+    "comprehensiveRate": 0.8829479768786127
   },
   "riskSignals": {
     "lockCount": 45,
     "preorderCount": 35,
-    "moveInCount": 27,
+    "moveInCount": 28,
     "mappedUnknownCount": 0
   },
   "validation": {
@@ -43,15 +43,15 @@
         "definition": "在租中/已出租+空房不可租中的已预订和将搬入",
         "occupiedCount": 548,
         "preorderCount": 35,
-        "moveInCount": 27,
-        "dashboardComprehensiveCount": 610,
+        "moveInCount": 28,
+        "dashboardComprehensiveCount": 611,
         "ok": true
       }
     }
   },
   "performance": {
     "currentMonth": {
-      "newCount": 108,
+      "newCount": 109,
       "renewalCount": 47,
       "actualCheckoutCount": 188,
       "checkoutRenewalCount": 42
@@ -131,8 +131,8 @@
       },
       {
         "date": "2026-08-30",
-        "newCount": 3,
-        "newRevenue": 13905.3,
+        "newCount": 4,
+        "newRevenue": 18701.3,
         "renewalCount": 1,
         "renewalRevenue": 900.0,
         "otherCount": 0,
@@ -144,7 +144,7 @@
     "projects": [
       {
         "name": "北亭项目",
-        "newCount": 10,
+        "newCount": 11,
         "renewalCount": 7,
         "otherCount": 2,
         "actualCheckoutCount": 21
@@ -158,7 +158,7 @@
       },
       {
         "name": "北亭整体项目",
-        "newCount": 10,
+        "newCount": 11,
         "renewalCount": 7,
         "otherCount": 2,
         "actualCheckoutCount": 20
@@ -249,7 +249,7 @@
       }
     ],
     "items": {
-      "new": 3,
+      "new": 4,
       "renewal": 1,
       "actualCheckout": 8,
       "reservation": 1
@@ -257,7 +257,7 @@
   },
   "today": {
     "date": "2026-08-30",
-    "newCount": 3,
+    "newCount": 4,
     "renewalCount": 1,
     "actualCheckoutCount": 8,
     "reservationCount": 1
