@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-05T18:00:59.380605+08:00",
+  "generatedAt": "2026-09-05T19:01:18.246935+08:00",
   "source": "yuxiaor-server-export",
   "snapshotDate": "2026-09-05",
   "dashboardUrl": "https://gj86fgphr2-create.github.io/housing-operations-dashboard/#operations-brief",
@@ -14,7 +14,7 @@
     "comprehensiveRate": 0.8294797687861272
   },
   "riskSignals": {
-    "lockCount": 43,
+    "lockCount": 45,
     "preorderCount": 11,
     "moveInCount": 16,
     "mappedUnknownCount": 0
@@ -24,8 +24,8 @@
     "reconciliation": {
       "lockMonitoring": {
         "field": "锁房备注",
-        "sourceCount": 43,
-        "dashboardCount": 43,
+        "sourceCount": 45,
+        "dashboardCount": 45,
         "ok": true
       },
       "vacancyMonitoring": {
@@ -52,7 +52,7 @@
   "performance": {
     "currentMonth": {
       "newCount": 59,
-      "renewalCount": 11,
+      "renewalCount": 12,
       "actualCheckoutCount": 65,
       "checkoutRenewalCount": 9
     },
@@ -133,8 +133,8 @@
         "date": "2026-09-05",
         "newCount": 7,
         "newRevenue": 62946.0,
-        "renewalCount": 1,
-        "renewalRevenue": 8250.0,
+        "renewalCount": 2,
+        "renewalRevenue": 9250.0,
         "otherCount": 0,
         "actualCheckoutCount": 11,
         "reservationCount": 1,
@@ -187,7 +187,7 @@
       {
         "name": "公司自持项目",
         "newCount": 15,
-        "renewalCount": 4,
+        "renewalCount": 5,
         "otherCount": 1,
         "actualCheckoutCount": 16
       },
@@ -250,7 +250,7 @@
     ],
     "items": {
       "new": 7,
-      "renewal": 1,
+      "renewal": 2,
       "actualCheckout": 11,
       "reservation": 1
     }
@@ -258,7 +258,7 @@
   "today": {
     "date": "2026-09-05",
     "newCount": 7,
-    "renewalCount": 1,
+    "renewalCount": 2,
     "actualCheckoutCount": 11,
     "reservationCount": 1
   }
