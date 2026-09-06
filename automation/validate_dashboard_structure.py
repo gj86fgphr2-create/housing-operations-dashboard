@@ -151,6 +151,17 @@ REQUIRED = (
     'function renderCustomerData()',
     'function renderCustomerWechatTrend()',
     'function renderCustomerVisitTrend()',
+    'id="steward-quick-ranges"',
+    'data-steward-range="this-month"',
+    'data-steward-range="last-month"',
+    'data-steward-range="this-week"',
+    'data-steward-range="last-week"',
+    'id="steward-keeper-summary"',
+    'id="steward-summary-rows"',
+    'function stewardDateRange(',
+    'function renderStewardSummary(',
+    '成交数量 ÷ 带看数量',
+    '结果可能超过 100%',
     '"customerData"',
     '"wechatTrend"',
     '"visitTrend"',
@@ -848,6 +859,30 @@ def main() -> int:
         if sum(int(group.get("total") or 0) for group in visit_trend.get("weeks", [])) != window_total or sum(int(group.get("total") or 0) for group in visit_trend.get("months", [])) != window_total:
             print("Customer visit trend WEEK/month bands do not reconcile", file=sys.stderr)
             return 1
+    steward_activity = payload.get("stewardActivity", {})
+    steward_rows = steward_activity.get("rows", [])
+    try:
+        steward_as_of = date.fromisoformat(steward_activity.get("asOfDate", ""))
+    except (TypeError, ValueError):
+        print("Steward activity as-of date invalid", file=sys.stderr)
+        return 1
+    steward_keys = [(row.get("date"), row.get("steward")) for row in steward_rows]
+    if len(steward_keys) != len(set(steward_keys)):
+        print("Steward activity contains duplicate date/steward rows", file=sys.stderr)
+        return 1
+    if any(set(row) != {"date", "steward", "visits", "reservations", "deals"} for row in steward_rows):
+        print("Steward activity contains an unexpected field", file=sys.stderr)
+        return 1
+    if any(not row.get("steward") or any(int(row.get(field) or 0) < 0 for field in ("visits", "reservations", "deals")) for row in steward_rows):
+        print("Steward activity contains invalid counts", file=sys.stderr)
+        return 1
+    try:
+        if any(row.get("date") and date.fromisoformat(row["date"]) > steward_as_of for row in steward_rows):
+            print("Steward activity includes a future date", file=sys.stderr)
+            return 1
+    except ValueError:
+        print("Steward activity contains an invalid date", file=sys.stderr)
+        return 1
 
     print(f"dashboard structure valid: {dashboard}")
     return 0

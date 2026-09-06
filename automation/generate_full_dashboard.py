@@ -16,6 +16,7 @@ XHS_ACCOUNTS = [
     {"profile":"account-07","name":"广州大学城租房-维特","operator":"珂珂","team":"管家团队"},
     {"profile":"account-08","name":"大学城租房 | 研舍","operator":"传坤","team":"管家团队"},
     {"profile":"account-09","name":"番禺大学城租房-尚维特","operator":"余路","team":"管家团队"},
+    {"profile":"account-11","name":"红豆小天地-尚维特","operator":"","team":"管家团队"},
 ]
 
 def xhs_owner_team(name):
@@ -315,6 +316,46 @@ def build_customer_visit_trend():
     totals={field:sum(row[field] for row in rows) for field in fields}
     return {"generatedAt":str(loaded.get("updatedAt") or datetime.fromtimestamp(source.stat().st_mtime).astimezone().strftime("%Y-%m-%d %H:%M")),"sourceRecordCount":len(normalized),"windowRecordCount":totals["total"],"futureRecordCount":sum(day>end_date for day,_,_ in normalized),"startDate":start_date.isoformat(),"endDate":end_date.isoformat(),"dailyRows":rows,"weeks":summarize("weekKey"),"months":summarize("monthKey"),"totals":totals}
 
+def build_customer_visit_conversion():
+    """Measure first-visit timing from todo customer addition dates without publishing identifiers."""
+    customers_path=Path(os.environ.get("TODO_CUSTOMERS_FILE","/opt/yuxiaor-automation/notifications/state/operations-customers.json"))
+    visits_path=Path(os.environ.get("TODO_CUSTOMER_VISITS_FILE","/opt/yuxiaor-automation/notifications/state/customer-visits.json"))
+    definitions=(("same","当天带看率",0),("3","3天内带看率",3),("5","5天内带看率",5),("7","7天内带看率",7),("over7","超过7天带看率",8))
+    empty={"generatedAt":"","asOfDate":"","sourceCustomerCount":0,"sourceVisitCount":0,"matchedCustomerCount":0,"metrics":[{"key":key,"label":label,"hits":0,"eligible":0,"rate":None} for key,label,_ in definitions]}
+    if not customers_path.is_file() or not visits_path.is_file(): return empty
+    customers_loaded=json.loads(customers_path.read_text(encoding="utf-8")); visits_loaded=json.loads(visits_path.read_text(encoding="utf-8"))
+    customer_records=customers_loaded.get("records",[]) if isinstance(customers_loaded,dict) else []
+    visit_records=visits_loaded.get("records",[]) if isinstance(visits_loaded,dict) else []
+    as_of=datetime.now().astimezone().date(); customers={}
+    for record in customer_records:
+        wechat=str(record.get("wechatId") or "").strip().casefold(); date_text=str(record.get("addedDate") or "").strip()[:10]
+        if not wechat or not re.fullmatch(r"\d{4}-\d{2}-\d{2}",date_text): continue
+        try: added=datetime.strptime(date_text,"%Y-%m-%d").date()
+        except ValueError: continue
+        if added>as_of: continue
+        if wechat not in customers or added<customers[wechat]: customers[wechat]=added
+    visits=defaultdict(list); valid_visit_count=0
+    for record in visit_records:
+        wechat=str(record.get("wechatId") or "").strip().casefold(); date_text=str(record.get("visitTime") or "").strip()[:10]
+        if not wechat or not re.fullmatch(r"\d{4}-\d{2}-\d{2}",date_text): continue
+        try: visit_day=datetime.strptime(date_text,"%Y-%m-%d").date()
+        except ValueError: continue
+        if visit_day>as_of: continue
+        visits[wechat].append(visit_day); valid_visit_count+=1
+    lags=[]
+    for wechat,added in customers.items():
+        valid=sorted(day for day in visits.get(wechat,[]) if day>=added)
+        lags.append({"age":(as_of-added).days,"lag":(valid[0]-added).days if valid else None})
+    metrics=[]
+    for key,label,min_age in definitions:
+        eligible=[row for row in lags if row["age"]>=min_age]
+        if key=="same": hits=sum(row["lag"]==0 for row in eligible)
+        elif key=="over7": hits=sum(row["lag"] is not None and row["lag"]>7 for row in eligible)
+        else: hits=sum(row["lag"] is not None and row["lag"]<=int(key) for row in eligible)
+        metrics.append({"key":key,"label":label,"hits":hits,"eligible":len(eligible),"rate":hits/len(eligible) if eligible else None})
+    newest=max(customers_path.stat().st_mtime,visits_path.stat().st_mtime)
+    return {"generatedAt":datetime.fromtimestamp(newest).astimezone().strftime("%Y-%m-%d %H:%M"),"asOfDate":as_of.isoformat(),"sourceCustomerCount":len(customers),"sourceVisitCount":valid_visit_count,"matchedCustomerCount":sum(row["lag"] is not None for row in lags),"metrics":metrics}
+
 def build_meter_management(fallback):
     """Attach the last complete, sanitized meter snapshot and latest run status."""
     data_path=Path(os.environ.get("METER_MANAGEMENT_JSON","/opt/yuxiaor-automation/data/meter-management/latest.json"))
@@ -608,6 +649,94 @@ def xhs_collection_times(path):
         if isinstance(account,dict) and account.get("profile")
     }
 
+def aggregate_steward_activity(visits, deals, as_of):
+    """Publish aggregate counts only. One contract per stage; attribution by last visit."""
+    from datetime import date
+    def day(value):
+        try: return date.fromisoformat(str(value or "")[:10]).isoformat()
+        except ValueError: return ""
+    def wechat(value): return str(value or "").strip().casefold()
+    rows=defaultdict(lambda:{"visits":0,"reservations":0,"deals":0})
+    by_id={str(v.get("id")):v for v in visits if v.get("id")}
+    by_wechat=defaultdict(list)
+    invalid_visits=future_visits=0
+    for v in visits:
+        d=day(v.get("visitTime"))
+        if not d: invalid_visits+=1; continue
+        if d>as_of: future_visits+=1; continue
+        rows[(d,str(v.get("steward") or "").strip() or "待确认")]["visits"]+=1
+        if wechat(v.get("wechatId")): by_wechat[wechat(v.get("wechatId"))].append(v)
+    groups=defaultdict(list)
+    for i,d in enumerate(deals):
+        stage="reservations" if d.get("stage")=="reservation" else "deals"
+        cid=str(d.get("sourceContractId") or "").strip()
+        # Unlinked manual entries are not contract conversions.
+        if not cid: continue
+        groups[(stage,cid)].append(d)
+    unresolved=missing_dates=future_contracts=0
+    for (stage,cid),items in groups.items():
+        dates={day(d.get("signDate")) for d in items if day(d.get("signDate"))}
+        signed=next(iter(dates)) if len(dates)==1 else ""
+        if signed and signed>as_of: future_contracts+=1; continue
+        candidates=[]
+        for d in items:
+            source=by_id.get(str(d.get("sourceVisitId")),{})
+            key=wechat(d.get("wechatId")) or wechat(source.get("wechatId"))
+            candidates.extend(by_wechat.get(key,[]) if key else [source] if source else [])
+        candidates=[v for v in candidates if signed and day(v.get("visitTime")) and day(v.get("visitTime"))<=signed]
+        steward="待确认"
+        if candidates:
+            latest=max(str(v.get("visitTime")) for v in candidates)
+            names={str(v.get("steward") or "").strip() for v in candidates if str(v.get("visitTime"))==latest}
+            if len(names)==1 and next(iter(names)): steward=next(iter(names))
+        if not signed: missing_dates+=1
+        if steward=="待确认": unresolved+=1
+        rows[(signed,steward)][stage]+=1
+    return {"rows":[{"date":d,"steward":s,**counts} for (d,s),counts in sorted(rows.items(),reverse=True)],
+            "audit":{"sourceVisits":len(visits),"invalidVisits":invalid_visits,"futureVisits":future_visits,
+                     "uniqueContracts":len(groups),"futureContracts":future_contracts,"unresolvedContracts":unresolved,"missingSignDates":missing_dates}}
+
+def build_steward_activity():
+    paths=[Path(os.environ.get("TODO_CUSTOMER_VISITS_FILE","/opt/yuxiaor-automation/notifications/state/customer-visits.json")),
+           Path(os.environ.get("TODO_CUSTOMER_DEALS_FILE","/opt/yuxiaor-automation/notifications/state/customer-deals.json"))]
+    from zoneinfo import ZoneInfo
+    as_of=datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
+    if not all(p.is_file() for p in paths): return {"rows":[],"audit":{},"sourceStatus":"missing","asOfDate":as_of}
+    docs=[json.loads(p.read_text(encoding="utf-8")) for p in paths]
+    result=aggregate_steward_activity(docs[0].get("records",[]),docs[1].get("records",[]),as_of)
+    result["asOfDate"]=as_of
+    result["sourceUpdatedAt"]={"visits":docs[0].get("updatedAt",""),"deals":docs[1].get("updatedAt","")}
+    result["sourceStatus"]="ok"
+    return result
+
+def build_xhs_collection_metadata():
+    """Explicit source timestamps; do not substitute file mtime or page generation."""
+    from zoneinfo import ZoneInfo
+    def normalize(value):
+        try:
+            dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+            if dt.tzinfo is None: return ""
+            return dt.astimezone(ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S")
+        except (TypeError, ValueError): return ""
+    def raw_time(summary):
+        if not summary: return ""
+        try:
+            raw = json.loads(summary.with_name("latest.json").read_text(encoding="utf-8"))
+            return normalize(raw.get("generated_at"))
+        except (OSError, ValueError, AttributeError): return ""
+    ad_time = ""
+    history = latest_xhs_ad_immutable_history()
+    if history:
+        with history.open(encoding="utf-8-sig", newline="") as handle:
+            times = [normalize(row.get("first_collected_at")) for row in csv.DictReader(handle)]
+            ad_time = max(times, default="")
+    else:
+        ad_time = raw_time(latest_xhs_ad_note_summary())
+    return {"content":raw_time(latest_xhs_summary()),
+            "leads":raw_time(latest_xhs_lead_summary()),
+            "ads":ad_time,
+            "published":""}
+
 def build_xhs_account_audit(fallback):
     """Derive login health and per-source collection times from the newest raw batches."""
     summary_path=latest_xhs_lead_summary()
@@ -706,11 +835,114 @@ def build_xhs_leads(fallback):
             })
     return attach_xhs_lead_targets({"generatedAt":summary.get("generated_at","")[:19].replace("T"," "),"month":f"{end_date.year:04d}-{end_date.month:02d}","weeks":weeks,"accounts":accounts,"detailStart":detail_start,"detailEnd":end_date.isoformat(),"dailyRows":daily_rows})
 
+def build_customer_lead_wechat_conversion(wechat_trend):
+    """Compare operations-team XHS copy leads with XHS-source WeChat additions."""
+    summary_path=latest_xhs_lead_summary()
+    empty={"generatedAt":"","xhsGeneratedAt":"","customerGeneratedAt":str(wechat_trend.get("generatedAt") or ""),"startDate":"","endDate":"","dailyRows":[],"weeks":[],"months":[],"totals":{"xhsLeads":0,"wechatAdds":0,"conversionRate":None}}
+    if not summary_path or not wechat_trend.get("dailyRows"): return empty
+    summary=json.loads(summary_path.read_text(encoding="utf-8"))
+    xhs_counts=defaultdict(int)
+    valid_dates=[]
+    operations_profiles={account["profile"] for account in XHS_ACCOUNTS if account["team"]=="运营团队"}
+    for row in summary.get("account_time_rows",[]):
+        if str(row.get("profile") or "").strip() not in operations_profiles: continue
+        date_text=str(row.get("date") or "").strip()
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}",date_text): continue
+        try: day=datetime.strptime(date_text,"%Y-%m-%d").date()
+        except ValueError: continue
+        xhs_counts[day]+=int(row.get("personal_wechat_copy_leads") or 0)
+        valid_dates.append(day)
+    customer_counts={}
+    for row in wechat_trend.get("dailyRows",[]):
+        date_text=str(row.get("date") or "").strip()
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}",date_text): continue
+        try: day=datetime.strptime(date_text,"%Y-%m-%d").date()
+        except ValueError: continue
+        customer_counts[day]=int(row.get("xiaohongshu") or 0)
+    if not valid_dates and not customer_counts: return empty
+    end_date=max(valid_dates+list(customer_counts)); start_date=end_date-timedelta(days=29)
+    rows=[]
+    for offset in range(30):
+        day=end_date-timedelta(days=offset); xhs_leads=xhs_counts.get(day,0); wechat_adds=customer_counts.get(day,0)
+        week_suffix="W1" if day.day<=7 else "W2" if day.day<=14 else "W3" if day.day<=21 else "W4" if day.day<=28 else "WE"
+        rows.append({"date":day.isoformat(),"monthKey":day.strftime("%Y-%m"),"weekKey":f"{day.month}{week_suffix}","xhsLeads":xhs_leads,"wechatAdds":wechat_adds,"conversionRate":wechat_adds/xhs_leads if xhs_leads else None})
+    def summarize(key):
+        grouped={}
+        for row in rows:
+            group_key=row[key]
+            if group_key not in grouped: grouped[group_key]={"key":group_key,"startDate":row["date"],"endDate":row["date"],"xhsLeads":0,"wechatAdds":0,"conversionRate":None}
+            group=grouped[group_key]
+            group["startDate"]=min(group["startDate"],row["date"]); group["endDate"]=max(group["endDate"],row["date"])
+            group["xhsLeads"]+=row["xhsLeads"]; group["wechatAdds"]+=row["wechatAdds"]
+        for group in grouped.values(): group["conversionRate"]=group["wechatAdds"]/group["xhsLeads"] if group["xhsLeads"] else None
+        return list(grouped.values())
+    totals={"xhsLeads":sum(row["xhsLeads"] for row in rows),"wechatAdds":sum(row["wechatAdds"] for row in rows)}
+    totals["conversionRate"]=totals["wechatAdds"]/totals["xhsLeads"] if totals["xhsLeads"] else None
+    xhs_generated=str(summary.get("generated_at") or "")[:19].replace("T"," "); customer_generated=str(wechat_trend.get("generatedAt") or "")
+    return {"generatedAt":" · ".join(part for part in (xhs_generated,customer_generated) if part),"xhsGeneratedAt":xhs_generated,"customerGeneratedAt":customer_generated,"startDate":start_date.isoformat(),"endDate":end_date.isoformat(),"dailyRows":rows,"weeks":summarize("weekKey"),"months":summarize("monthKey"),"totals":totals}
+
+def build_customer_xhs_service_daily(lead_wechat):
+    """Join sanitized XHS daily leads to todo customer, visit and completed-deal records."""
+    customers_path=Path(os.environ.get("TODO_CUSTOMERS_FILE","/opt/yuxiaor-automation/notifications/state/operations-customers.json"))
+    visits_path=Path(os.environ.get("TODO_CUSTOMER_VISITS_FILE","/opt/yuxiaor-automation/notifications/state/customer-visits.json"))
+    deals_path=Path(os.environ.get("TODO_CUSTOMER_DEALS_FILE","/opt/yuxiaor-automation/notifications/state/customer-deals.json"))
+    empty={"generatedAt":"","startDate":"","endDate":"","dailyRows":[],"totals":{"xhsLeads":0,"wechatAdds":0,"visits":0,"deals":0},"sourceCounts":{"xhsCustomers":0,"matchedVisits":0,"matchedDeals":0,"unmatchedVisits":0,"unmatchedDeals":0,"reservationExcluded":0},"sourceNote":""}
+    lead_rows=lead_wechat.get("dailyRows",[]) if isinstance(lead_wechat,dict) else []
+    if not lead_rows or not all(path.is_file() for path in (customers_path,visits_path,deals_path)): return empty
+    customers_loaded=json.loads(customers_path.read_text(encoding="utf-8")); visits_loaded=json.loads(visits_path.read_text(encoding="utf-8")); deals_loaded=json.loads(deals_path.read_text(encoding="utf-8"))
+    customers=customers_loaded.get("records",[]) if isinstance(customers_loaded,dict) else []
+    visits=visits_loaded.get("records",[]) if isinstance(visits_loaded,dict) else []
+    deals=deals_loaded.get("records",[]) if isinstance(deals_loaded,dict) else []
+    xhs_wechat={str(row.get("wechatId") or "").strip().casefold() for row in customers if str(row.get("channelSource") or "").strip()=="小红书" and str(row.get("wechatId") or "").strip()}
+    allowed_dates={str(row.get("date") or "") for row in lead_rows}
+    visit_counts=defaultdict(int); deal_counts=defaultdict(int)
+    unmatched_visits=unmatched_deals=reservation_excluded=0
+    for row in visits:
+        date_text=str(row.get("visitTime") or "").strip()[:10]
+        if date_text not in allowed_dates: continue
+        wechat=str(row.get("wechatId") or "").strip().casefold()
+        if wechat and wechat in xhs_wechat: visit_counts[date_text]+=1
+        else: unmatched_visits+=1
+    for row in deals:
+        date_text=str(row.get("signDate") or "").strip()[:10]
+        if date_text not in allowed_dates: continue
+        if str(row.get("stage") or "").strip()=="reservation":
+            reservation_excluded+=1
+            continue
+        wechat=str(row.get("wechatId") or "").strip().casefold()
+        if wechat and wechat in xhs_wechat: deal_counts[date_text]+=1
+        else: unmatched_deals+=1
+    rows=[{"date":str(row["date"]),"xhsLeads":int(row.get("xhsLeads") or 0),"wechatAdds":int(row.get("wechatAdds") or 0),"visits":visit_counts[str(row["date"])],"deals":deal_counts[str(row["date"])]} for row in lead_rows]
+    totals={field:sum(row[field] for row in rows) for field in ("xhsLeads","wechatAdds","visits","deals")}
+    newest=max(path.stat().st_mtime for path in (customers_path,visits_path,deals_path))
+    return {"generatedAt":datetime.fromtimestamp(newest).astimezone().strftime("%Y-%m-%d %H:%M"),"startDate":rows[-1]["date"],"endDate":rows[0]["date"],"dailyRows":rows,"totals":totals,"sourceCounts":{"xhsCustomers":len(xhs_wechat),"matchedVisits":totals["visits"],"matchedDeals":totals["deals"],"unmatchedVisits":unmatched_visits,"unmatchedDeals":unmatched_deals,"reservationExcluded":reservation_excluded},"sourceNote":"添加微信按渠道来源为小红书统计；带看和成交按微信号关联小红书来源客户，成交排除预定客户。仅发布按日汇总。"}
+
 def extract_data(path):
     text = path.read_text(encoding="utf-8")
     match = re.search(r"const DATA\s*=\s*(\{.*?\});", text, re.S)
     if not match: raise RuntimeError(f"DATA payload missing: {path}")
     return text, json.loads(match.group(1)), match.span(1)
+
+def yuxiaor_collection_time(directory):
+    """Use the successful source batch receipt, never page/file generation time."""
+    try:
+        manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
+        required = {"房源详情", "在租中合同", "已退租合同", "将搬入合同", "预定合同"}
+        results = manifest.get("results", [])
+        if not required.issubset({row.get("label") for row in results}):
+            return ""
+        if not all((directory / (label + ".xlsx")).is_file() for label in required):
+            return ""
+        completed = datetime.fromisoformat(manifest["completedAt"].replace("Z", "+00:00"))
+        if completed.tzinfo is None:
+            return ""
+        from zoneinfo import ZoneInfo
+        local = completed.astimezone(ZoneInfo("Asia/Shanghai"))
+        if local.strftime("%Y-%m-%d") != manifest.get("runDate"):
+            return ""
+        return local.strftime("%Y-%m-%d %H:%M:%S")
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return ""
 
 template, old, payload_span = extract_data(template_path)
 _, current, _ = extract_data(source_path)
@@ -1052,8 +1284,8 @@ def checkout_trends():
         "validation":validation,
     }
 
-def overview_contract_activity(recent_rows,current_month,monthly_details):
-    """Summarize deduplicated contract events for today, yesterday, current week, and current month."""
+def overview_contract_activity(recent_rows,current_month,previous_month,monthly_details):
+    """Summarize contract events through the complete previous natural month."""
     by_date={row["date"]:row for row in recent_rows}
     week_start=as_of-timedelta(days=as_of.weekday())
     fields={
@@ -1078,11 +1310,15 @@ def overview_contract_activity(recent_rows,current_month,monthly_details):
         return {name:round(float(row.get(source) or 0),2) if name.endswith("Revenue") else int(row.get(source) or 0) for name,source in fields.items()}
     yesterday=as_of-timedelta(days=1)
     month_start=as_of.replace(day=1)
+    previous_month_end=month_start-timedelta(days=1)
+    previous_month_start=previous_month_end.replace(day=1)
+    activity_start=previous_month_start
     reservation_ws=load_workbook(run_dir/"预定合同.xlsx",read_only=True,data_only=True).active
     reservation_headers=[cell.value for cell in reservation_ws[1]]
     reservation_id_i,status_i,created_i,reservation_rent_i=idx(reservation_headers,"预定ID"),idx(reservation_headers,"状态"),idx(reservation_headers,"录入日期"),idx(reservation_headers,"租金")
     reservation_address_i,reservation_building_i=idx(reservation_headers,"地址"),idx(reservation_headers,"小区/公寓")
     reservation_start_i,reservation_end_i,reservation_signer_i=idx(reservation_headers,"合同开始"),idx(reservation_headers,"合同结束"),idx(reservation_headers,"预定办理人")
+    reservation_sign_date_i=idx(reservation_headers,"预计签约日期")
     seen_month_reservations=set()
     month_reservations=0
     month_reservation_revenue=0.0
@@ -1092,20 +1328,39 @@ def overview_contract_activity(recent_rows,current_month,monthly_details):
         if not reservation_id or reservation_id in seen_month_reservations or norm(row[status_i])!="已付定": continue
         seen_month_reservations.add(reservation_id)
         created_date=iso(row[created_i])
-        if created_date and month_start.isoformat()<=created_date<=as_of.isoformat():
-            month_reservations+=1
-            month_reservation_revenue+=money(row[reservation_rent_i])
+        if created_date and activity_start.isoformat()<=created_date<=as_of.isoformat():
+            if month_start.isoformat()<=created_date:
+                month_reservations+=1
+                month_reservation_revenue+=money(row[reservation_rent_i])
             address=str(row[reservation_address_i] or "").strip()
             room_numbers=re.findall(r"\d+",address)
             reservation_details.append({
                 "date":created_date,
                 "building":str(row[reservation_building_i] or "").strip() or address or "—",
                 "roomNo":room_numbers[-1] if room_numbers else "—",
+                "signDate":iso(row[reservation_sign_date_i]) or "—",
                 "leaseStart":iso(row[reservation_start_i]) or "—",
                 "leaseEnd":iso(row[reservation_end_i]) or "—",
                 "rent":round(money(row[reservation_rent_i]),2),
                 "signer":str(row[reservation_signer_i] or "").strip() or "—",
             })
+    # Previous-month reservations may disappear from the current snapshot after
+    # conversion. Recover them from immutable hourly exports and deduplicate by ID.
+    historical_reservation_details={}
+    run_root=run_dir.resolve().parent.parent
+    for snapshot in sorted(run_root.glob(f"{previous_month_start:%Y-%m}-*/*/预定合同.xlsx")):
+        try:
+            ws=load_workbook(snapshot,read_only=True,data_only=True).active
+            headers=[cell.value for cell in ws[1]]
+            indexes={name:idx(headers,name) for name in ("预定ID","状态","录入日期","租金","地址","小区/公寓","合同开始","合同结束","预定办理人","预计签约日期")}
+            for row in ws.iter_rows(min_row=2,values_only=True):
+                rid=norm(row[indexes["预定ID"]]); created=iso(row[indexes["录入日期"]])
+                if not rid or rid in historical_reservation_details or norm(row[indexes["状态"]])!="已付定" or not created or not previous_month_start.isoformat()<=created<=previous_month_end.isoformat(): continue
+                address=str(row[indexes["地址"]] or "").strip(); numbers=re.findall(r"\d+",address)
+                historical_reservation_details[rid]={"date":created,"building":str(row[indexes["小区/公寓"]] or "").strip() or address or "—","roomNo":numbers[-1] if numbers else "—","signDate":iso(row[indexes["预计签约日期"]]) or "—","leaseStart":iso(row[indexes["合同开始"]]) or "—","leaseEnd":iso(row[indexes["合同结束"]]) or "—","rent":round(money(row[indexes["租金"]]),2),"signer":str(row[indexes["预定办理人"]] or "").strip() or "—"}
+        except (OSError,ValueError,KeyError):
+            continue
+    previous_reservations=list(historical_reservation_details.values())
     periods=[
         period("today","今天",as_of,as_of),
         period("yesterday","昨天",yesterday,yesterday),
@@ -1122,6 +1377,10 @@ def overview_contract_activity(recent_rows,current_month,monthly_details):
                 "actualCheckout":int(current_month.get("actualCheckoutCount") or 0),
             },
         },
+        {
+            "key":"previous-month","label":"上月","startDate":previous_month_start.isoformat(),"endDate":previous_month_end.isoformat(),
+            "metrics":{"newSign":int(previous_month.get("newCount") or 0),"newSignRevenue":round(float(previous_month.get("newRevenue") or 0),2),"reservation":len(previous_reservations),"reservationRevenue":round(sum(float(row.get("rent") or 0) for row in previous_reservations),2),"renewal":int(previous_month.get("renewalCount") or 0),"renewalRevenue":round(float(previous_month.get("renewalRevenue") or 0),2),"actualCheckout":int(previous_month.get("actualCheckoutCount") or 0)},
+        },
     ]
     source_details={
         "newSign":monthly_details.get("new",[]),
@@ -1129,12 +1388,18 @@ def overview_contract_activity(recent_rows,current_month,monthly_details):
         "renewal":monthly_details.get("renewal",[]),
         "actualCheckout":monthly_details.get("actualCheckout",[]),
     }
+    def sorted_detail_rows(rows,key):
+        if key=="reservation":
+            return sorted(rows,key=lambda value:(value.get("leaseStart") in (None,"","—"),value.get("leaseStart") or "",value.get("building") or "",value.get("roomNo") or ""))
+        return sorted(rows,key=lambda value:(value.get("date","") ,value.get("building","") ,value.get("roomNo","")),reverse=True)
+
     for item in periods:
+        if item["key"]=="previous-month": source_details["reservation"]=previous_reservations
         start_date,end_date=item["startDate"],item["endDate"]
         item["details"]={
             key:[
-                {field:row.get(field,"—") for field in ("building","roomNo","leaseStart","leaseEnd","rent","signer")}
-                for row in sorted(rows,key=lambda value:(value.get("date","") ,value.get("building","") ,value.get("roomNo","")),reverse=True)
+                {field:row.get(field,"—") for field in ("building","roomNo","signDate","leaseStart","leaseEnd","rent","signer")}
+                for row in sorted_detail_rows(rows,key)
                 if start_date<=row.get("date","")<=end_date
             ]
             for key,rows in source_details.items()
@@ -1153,11 +1418,17 @@ def overview_contract_activity(recent_rows,current_month,monthly_details):
             "renewalRevenue":round(float(current_month.get("renewalRevenue") or 0),2),
             "actualCheckout":int(current_month.get("actualCheckoutCount") or 0),
         },
+        "previousMonthRangeValid":previous_month_start.day==1 and previous_month_end+timedelta(days=1)==month_start,
+        "previousMonthCoreMatched":periods[4]["metrics"]["newSign"]==int(previous_month.get("newCount") or 0) and periods[4]["metrics"]["renewal"]==int(previous_month.get("renewalCount") or 0) and periods[4]["metrics"]["actualCheckout"]==int(previous_month.get("actualCheckoutCount") or 0),
         "detailCountsMatched":all(len(item["details"][key])==int(item["metrics"][key]) for item in periods for key in ("newSign","reservation","renewal","actualCheckout")),
         "nonNegative":all(value>=0 for item in periods for value in item["metrics"].values()),
     }
     if not all(validation.values()): raise RuntimeError(f"Overview contract activity validation failed: {periods}")
     for item in periods:
+        for rows in item["details"].values():
+            for row in rows:
+                start_date,end_date=row.get("leaseStart"),row.get("leaseEnd")
+                row["leaseDays"]=(datetime.strptime(end_date,"%Y-%m-%d").date()-datetime.strptime(start_date,"%Y-%m-%d").date()).days if re.fullmatch(r"\d{4}-\d{2}-\d{2}",str(start_date or "")) and re.fullmatch(r"\d{4}-\d{2}-\d{2}",str(end_date or "")) and end_date>=start_date else "—"
         new_sign_rows=item["details"]["newSign"]
         positive_rent_rows=[row for row in new_sign_rows if float(row.get("rent") or 0)>0]
         lease_days=[]
@@ -1173,8 +1444,19 @@ def overview_contract_activity(recent_rows,current_month,monthly_details):
         item["metrics"]["newSignRentSampleCount"]=len(rents)
     return {"asOfDate":as_of.isoformat(),"weekStart":week_start.isoformat(),"periods":periods,"validation":validation}
 
-def monthly_contract_details():
-    """Build current-month new, renewal, other, and actual-checkout detail rows."""
+def monthly_contract_details(start_date=None,end_date=None):
+    """Build contract detail rows for an inclusive date range.
+
+    The default remains the current month. A wider range is used only by the
+    overview when yesterday or this week crosses a month boundary.
+    """
+    month_start=as_of.replace(day=1)
+    range_start=start_date or month_start
+    range_end=end_date or as_of
+    if range_start>range_end:
+        raise RuntimeError(f"Invalid contract detail range: {range_start}..{range_end}")
+    range_start_text=range_start.isoformat()
+    range_end_text=range_end.isoformat()
     month_prefix = f"{as_of.year:04d}-{as_of.month:02d}"
     details = {"new": [], "renewal": [], "other": [], "actualCheckout": []}
 
@@ -1189,6 +1471,7 @@ def monthly_contract_details():
             "building": value("小区/公寓"),
             "roomNo": room_match.group(0) if room_match else "—",
             "customerName": value("租客姓名"),
+            "signDate": iso(row[indexes["签约时间"]]) or "—",
             "leaseStart": iso(row[indexes["起租时间"]]) or "—",
             "leaseEnd": iso(row[indexes["退租时间"]]) or "—",
             "leasePeriod": value("租期时长"),
@@ -1209,7 +1492,7 @@ def monthly_contract_details():
                 continue
             seen_signing.add(contract_id)
             sign_date = iso(row[indexes["签约时间"]])
-            if not sign_date.startswith(month_prefix):
+            if not sign_date or not range_start_text<=sign_date<=range_end_text:
                 continue
             key = signing_category(row[indexes["签约来源"]])
             if key != "uncategorized":
@@ -1217,7 +1500,7 @@ def monthly_contract_details():
 
     ws = load_workbook(run_dir/"已退租合同.xlsx", read_only=True, data_only=True).active
     headers = [cell.value for cell in ws[3]]
-    names = ("合同编号", "签约来源", "预退/实退", "退租原因", "小区/公寓", "门牌号", "租客姓名", "起租时间", "退租时间", "租期时长", "租金单价", "签约人")
+    names = ("合同编号", "签约来源", "签约时间", "预退/实退", "退租原因", "小区/公寓", "门牌号", "租客姓名", "起租时间", "退租时间", "租期时长", "租金单价", "签约人")
     indexes = {name: idx(headers, name) for name in names}
     seen_checkout = set()
     for row in ws.iter_rows(min_row=4, values_only=True):
@@ -1226,13 +1509,56 @@ def monthly_contract_details():
             continue
         seen_checkout.add(contract_id)
         checkout_date = iso(row[indexes["预退/实退"]])
-        if not checkout_date.startswith(month_prefix) or norm(row[indexes["退租原因"]]) == "换房清算":
+        if not checkout_date or not range_start_text<=checkout_date<=range_end_text or norm(row[indexes["退租原因"]]) == "换房清算":
             continue
         details["actualCheckout"].append(detail_row(row, indexes, checkout_date))
 
     for rows in details.values():
         rows.sort(key=lambda row: (row["date"], row["contractId"]), reverse=True)
-    return {"month": month_prefix, **details}
+    return {"month":month_prefix,"startDate":range_start_text,"endDate":range_end_text,**details}
+
+def build_active_contract_profile():
+    """Deduplicated active and moving-in contract averages with auditable samples."""
+    groups={"all":[],"renting":[],"moving":[]}
+    seen_all=set()
+    invalid={"rent":0,"lease":0,"checkout":0}
+    for filename,key,label in (("在租中合同.xlsx","renting","在租中"),("将搬入合同.xlsx","moving","将搬入")):
+        ws=load_workbook(run_dir/filename,read_only=True,data_only=True).active
+        headers=[cell.value for cell in ws[3]]
+        names=("合同编号","小区/公寓","门牌号","起租时间","退租时间","租期时长","租金单价","签约人")
+        indexes={name:idx(headers,name) for name in names}
+        seen_group=set()
+        for source in ws.iter_rows(min_row=4,values_only=True):
+            contract_id=norm(source[indexes["合同编号"]])
+            if not contract_id or contract_id in seen_group: continue
+            seen_group.add(contract_id)
+            start=iso(source[indexes["起租时间"]]); end=iso(source[indexes["退租时间"]])
+            rent=money(source[indexes["租金单价"]])
+            rent_valid=rent>0
+            lease_days=(datetime.strptime(end,"%Y-%m-%d").date()-datetime.strptime(start,"%Y-%m-%d").date()).days if start and end else None
+            lease_valid=lease_days is not None and lease_days>=0
+            checkout_valid=bool(end)
+            room_match=re.search(r"\d+",str(source[indexes["门牌号"]] or ""))
+            excluded=[]
+            if not rent_valid: excluded.append("平均租金：租金缺失、非数字或小于等于0")
+            if not lease_valid: excluded.append("平均租期：起退租日期缺失或顺序异常")
+            if not checkout_valid: excluded.append("平均退租日期：退租日缺失")
+            row={"contractId":contract_id,"status":label,"building":str(source[indexes["小区/公寓"]] or "").strip() or "—","roomNo":room_match.group(0) if room_match else "—","leaseStart":start or "—","leaseEnd":end or "—","sourceLeasePeriod":str(source[indexes["租期时长"]] or "").strip() or "—","leaseDays":lease_days if lease_valid else "—","rent":round(rent,2) if rent_valid else "—","signer":str(source[indexes["签约人"]] or "").strip() or "—","rentIncluded":rent_valid,"leaseIncluded":lease_valid,"checkoutIncluded":checkout_valid,"excludedReason":"；".join(excluded) or "全部纳入"}
+            groups[key].append(row)
+            if contract_id not in seen_all:
+                seen_all.add(contract_id);groups["all"].append(row)
+    result=[]
+    for key,label in (("all","全部有效合同"),("renting","在租中合同"),("moving","将搬入合同")):
+        rows=groups[key]
+        rents=[float(row["rent"]) for row in rows if row["rentIncluded"]]
+        leases=[int(row["leaseDays"]) for row in rows if row["leaseIncluded"]]
+        checkout_ordinals=[datetime.strptime(row["leaseEnd"],"%Y-%m-%d").date().toordinal() for row in rows if row["checkoutIncluded"]]
+        average_checkout=datetime.fromordinal(int(sum(checkout_ordinals)/len(checkout_ordinals)+0.5)).date().isoformat() if checkout_ordinals else "—"
+        result.append({"key":key,"label":label,"contractCount":len(rows),"averageRent":round(sum(rents)/len(rents),2) if rents else None,"averageLeaseDays":round(sum(leases)/len(leases)) if leases else None,"averageCheckoutDate":average_checkout,"samples":{"rent":len(rents),"lease":len(leases),"checkout":len(checkout_ordinals)},"details":sorted(rows,key=lambda row:(row["leaseEnd"]=="—",row["leaseEnd"],row["building"],row["roomNo"]))})
+    group_ids={key:{row["contractId"] for row in rows} for key,rows in groups.items()}
+    validation={"groupSumMatched":group_ids["all"]==group_ids["renting"]|group_ids["moving"],"allUnique":len(groups["all"])==len(seen_all),"sourceGroupsUnique":all(len(groups[key])==len(group_ids[key]) for key in ("renting","moving")),"nonNegativeLease":all(row["leaseDays"]=="—" or row["leaseDays"]>=0 for row in groups["all"]),"sampleBounds":all(all(0<=group["samples"][field]<=group["contractCount"] for field in ("rent","lease","checkout")) for group in result)}
+    if not all(validation.values()): raise RuntimeError(f"Active contract profile validation failed: {validation}")
+    return {"groups":result,"sourceFiles":["在租中合同.xlsx","将搬入合同.xlsx"],"validation":validation}
 
 building_rows={row["name"]:row for row in current["buildingData"]}
 
@@ -1582,11 +1908,20 @@ contract_stats.setdefault("totals",{})
 contract_stats["uniqueContracts"]=sum(1 for f in ("在租中合同.xlsx","将搬入合同.xlsx","已退租合同.xlsx") for _ in load_workbook(run_dir/f,read_only=True).active.iter_rows(min_row=4,values_only=True))
 
 overview_new=build_overview_new()
-overview_new["contractActivity"]=overview_contract_activity(contract_stats["recentPerformance"],contract_stats["currentMonth"],contract_stats["monthlyDetails"])
+overview_new["activeContractProfile"]=build_active_contract_profile()
+activity_start=(as_of.replace(day=1)-timedelta(days=1)).replace(day=1)
+contract_activity_details=monthly_contract_details(activity_start,as_of)
+overview_new["contractActivity"]=overview_contract_activity(contract_stats["recentPerformance"],contract_stats["currentMonth"],contract_stats["previousMonth"],contract_activity_details)
 customer_data=build_customer_data(old.get("customerData"))
 customer_data["wechatTrend"]=build_customer_wechat_trend()
+customer_data["leadWechatConversion"]=build_customer_lead_wechat_conversion(customer_data["wechatTrend"])
+customer_data["xhsServiceDaily"]=build_customer_xhs_service_daily(customer_data["leadWechatConversion"])
 customer_data["visitTrend"]=build_customer_visit_trend()
+customer_data["visitConversion"]=build_customer_visit_conversion()
 payload={"dataDate":current["dataDate"],"generatedDate":datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),"projectData":project_data,"buildingData":list(building_rows.values()),"contractStats":contract_stats,"baseProjectNames":base_names,"checkoutPeriods":periods,"overviewNew":overview_new,"businessTrend":business_trend(),"checkoutTrends":checkout_trends(),"ziyinOccupancy":ziyin_occupancy,"xhsAccountAudit":build_xhs_account_audit(old.get("xhsAccountAudit")),"xhsContent":build_xhs_content(old.get("xhsContent")),"xhsNotePublished":build_xhs_note_published(old.get("xhsNotePublished")),"xhsLeads":build_xhs_leads(old.get("xhsLeads")),"xhsAdFlow":build_xhs_ad_flow(old.get("xhsAdFlow")),"customerData":customer_data,"meterManagement":build_meter_management(old.get("meterManagement"))}
+payload["yuxiaorCollectedAt"] = yuxiaor_collection_time(run_dir)
+payload["xhsCollectionTimes"] = build_xhs_collection_metadata()
+payload["stewardActivity"] = build_steward_activity()
 rendered=template[:payload_span[0]]+json.dumps(payload,ensure_ascii=False,separators=(",",":"))+template[payload_span[1]:]
 required=['class="nav desktop-nav"','data-desktop-module="xiaohongshu"','data-desktop-module="yuxiaor"','data-desktop-menu="xiaohongshu"','data-desktop-menu="yuxiaor"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','id="occupancy-ziyin"','ziyin-project-table','function renderZiyinOccupancy()','"ziyinOccupancy"','occupiedOverlap','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','xhs-account-updated','xhs-account-status-list','adCollectedAt','adCollectedOk','leadCollectedAt','leadCollectedOk','noteCollectedAt','noteCollectedOk','function xhsCollectedHour(','function xhsCollectedBadge(','class="xhs-collection-badge ok"','<th>聚光</th><th>留资</th><th>笔记</th>','xhs-note-count-table','xhs-view-count-table','function xhsMetricTotal(account,weeks,field)','<th>汇总</th>','xhs-daily-reading-chart','id="xhs-leads"','xhs-goal-table','xhs-lead-opened-table','xhs-lead-copied-table','function xhsLeadWeekHeading(','xhs-week-day-badge','id="xhs-lead-details"','xhs-lead-detail-account','xhs-lead-detail-table','id="xhs-ad-flow"','xhs-ad-account-table','xhs-ad-note-table','id="xhs-ad-start-date"','id="xhs-ad-end-date"','function xhsAdPrepareDateControls(','id="xhs-ad-team-filter"','id="xhs-ad-account-filter"','id="xhs-ad-matrix-head"','function renderXhsAdChart(','function renderXhsAdFlow()','function renderXhsAccountStatus()','function xhsGoalCell(','function renderXhsLeads()','function renderXhsLeadDetails()','"xhsAccountAudit"','"targetMonth"','"targets"','"dailyRows"','"xhsLeads"','"xhsAdFlow"']
 required=[marker for marker in required if marker not in ('data-dashboard-view="operations-brief"','data-dashboard-view="overview"')]
@@ -1603,12 +1938,15 @@ required += ['id="xhs-note-published-type"','图文数量','视频数量','待�
 required += ['数据明细','笔记发布明细','留资数据明细','聚光投放明细','data-mobile-menu="xhs-details"','data-mobile-submenu="xhs-details"','id="xhs-ad-details"','data-dashboard-view="xhs-ad-details"','id="xhs-ad-details-updated"','id="xhs-ad-detail-account-filter"','id="xhs-ad-detail-start-date"','id="xhs-ad-detail-end-date"','id="xhs-ad-detail-date-reset"','id="xhs-ad-details-count"','id="xhs-ad-details-table"','function renderXhsAdDetails(']
 required += ['class="desktop-home-link"','class="desktop-nav-groups"','class="desktop-nav-group"','class="desktop-module-toggle"','aria-expanded="false"','aria-expanded="true"']
 required += ['<div class="label">本月退房</div>','id="contract-checkout-definition">退租/（实际退/续租）','function checkoutDisplay(','checkoutActualDepartureCount']
-required += ['data-desktop-module="customer"','data-desktop-menu="customer"','data-mobile-module="customer"','data-mobile-menu="customer"','id="customer-data"','data-dashboard-view="customer-data"','id="customer-data-updated"','id="customer-wechat-trend-chart"','id="customer-wechat-trend-table"','id="customer-visit-trend-chart"','id="customer-visit-trend-table"','class="customer-wechat-chart-stage"','class="customer-wechat-matrix"','col span="30"','matrixRows=[[\'total\',\'新增客户\']','matrixRows=[[\'total\',\'带看客户\']','customer-wechat-week-band-full-height','customer-visit-week-band-full-height','height="287"','function renderCustomerData()','function renderCustomerWechatTrend()','function renderCustomerVisitTrend()','"customerData"','"wechatTrend"','"visitTrend"']
+required += ['data-desktop-module="customer"','data-desktop-menu="customer"','data-mobile-module="customer"','data-mobile-menu="customer"','id="customer-data"','data-dashboard-view="customer-data"','id="customer-data-updated"','id="customer-lead-wechat-chart"','id="customer-lead-wechat-table"','customer-lead-wechat-panel','customer-lead-week-band-full-height','function renderCustomerLeadWechatConversion()','"leadWechatConversion"','id="customer-xhs-service-daily-table"','id="customer-xhs-service-daily-summary"','function renderCustomerXhsServiceDaily()','"xhsServiceDaily"','id="customer-wechat-trend-chart"','id="customer-wechat-trend-table"','id="customer-visit-trend-chart"','id="customer-visit-trend-table"','class="customer-wechat-chart-stage"','class="customer-wechat-matrix"','col span="30"','matrixRows=[[\'total\',\'新增客户\']','matrixRows=[[\'total\',\'带看客户\']','customer-wechat-week-band-full-height','customer-visit-week-band-full-height','height="287"','function renderCustomerData()','function renderCustomerWechatTrend()','function renderCustomerVisitTrend()','function renderCustomerVisitConversion()','id="customer-visit-conversion"','customer-conversion-grid','"customerData"','"wechatTrend"','"visitTrend"','"visitConversion"']
+required += ['id="steward-quick-ranges"','data-steward-range="this-month"','data-steward-range="last-month"','data-steward-range="this-week"','data-steward-range="last-week"','id="steward-keeper-summary"','id="steward-summary-rows"','function stewardDateRange(','function renderStewardSummary(','成交数量 ÷ 带看数量','结果可能超过 100%']
 required += ['data-todo-workbench-link','href="https://todo.xiyuan.chat/meter.html"','id="meter-management"','id="meter-collection-status"','id="meter-keep-table"','id="meter-negative-table"','id="meter-offline-table"','function renderMeterManagement()','"meterManagement"','data-label="保电状态"','keepText=row.keepElectric?\'已保电\':\'未保电\'']
 required += ['function xhsNoteCountClass(','function xhsMetricCell(','xhs-note-count-green','xhs-note-count-yellow','xhs-note-count-pink','xhs-note-count-red','if(count>=6)','if(count===5)','if(count===4)']
 required += ['data-dashboard-view="overview-new"','id="overview-new"','function renderOverviewNew()','"overviewNew"','overview-new-short-rent','overview-new-rate-comprehensive','overview-new-validation']
 required += ['<a href="#overview-new" data-dashboard-view="overview-new">总览</a>','<a href="#business-trend" data-dashboard-view="business-trend">趋势</a>']
 required += ['id="overview-contract-activity"','overview-contract-today-new-sign','overview-contract-yesterday-reservation','overview-contract-week-actual-checkout','overview-contract-month-new-sign','overview-contract-month-reservation','overview-contract-month-renewal','overview-contract-month-actual-checkout','.overview-contract-kpis .hint{display:none}','"contractActivity"','function overviewContractRangeLabel(','function overviewContractMetricDisplay(','newSignRevenue','reservationRevenue','renewalRevenue','monthCoreMatched','detailCountsMatched','id="overview-contract-detail-modal"','function openOverviewContractDetails(','overview-contract-drill-card','id="overview-new-target-comparison"','id="overview-new-target-comparison-table"']
+required += ['overview-contract-previous-month-new-sign','overview-contract-previous-month-reservation','overview-contract-previous-month-renewal','overview-contract-previous-month-actual-checkout','data-label="租期天数"','previousMonthRangeValid','previousMonthCoreMatched']
+required += ['id="overview-active-contract-profile"','id="overview-active-profile-modal"','function renderActiveContractProfile()','"activeContractProfile"','averageCheckoutDate','groupSumMatched','data-label="排除说明"']
 required += ['newSignAverageLeaseDays','newSignAverageRent','newSignLeaseSampleCount','newSignRentSampleCount','function overviewContractNewSignDisplay(','grid-template-columns:minmax(230px,1.35fr) minmax(145px,1fr) minmax(145px,1fr) minmax(92px,.62fr)']
 required += ['"newSignLeaseSampleCount"','"newSignRentSampleCount"']
 required += ['"reservationCount"','actualReservation','data-label="预定数量"','<th>新签实际</th><th>预定数量</th><th>新签目标</th>']
@@ -1675,6 +2013,30 @@ if wechat_rows:
     if wechat_trend.get("windowRecordCount")!=sum(row["total"] for row in wechat_rows): raise RuntimeError("WeChat customer trend window total does not reconcile")
     if any(wechat_trend.get("channelTotals",{}).get(field)!=sum(row[field] for row in wechat_rows) for field in wechat_fields): raise RuntimeError("WeChat customer trend channel summary does not reconcile")
     if sum(group["total"] for group in wechat_trend.get("weeks",[]))!=wechat_trend["windowRecordCount"] or sum(group["total"] for group in wechat_trend.get("months",[]))!=wechat_trend["windowRecordCount"]: raise RuntimeError("WeChat customer trend WEEK/month bands do not reconcile")
+lead_wechat=payload["customerData"].get("leadWechatConversion",{})
+lead_wechat_rows=lead_wechat.get("dailyRows",[])
+if lead_wechat_rows:
+    dates=[datetime.strptime(row["date"],"%Y-%m-%d").date() for row in lead_wechat_rows]
+    if len(lead_wechat_rows)!=30 or len(set(dates))!=30 or any(dates[index]-dates[index+1]!=timedelta(days=1) for index in range(29)): raise RuntimeError("Lead-to-WeChat conversion must contain 30 descending natural days")
+    if any(set(row)!={"date","monthKey","weekKey","xhsLeads","wechatAdds","conversionRate"} for row in lead_wechat_rows): raise RuntimeError("Lead-to-WeChat conversion contains an unexpected or private field")
+    if any(row["conversionRate"] is not None and abs(float(row["conversionRate"])-row["wechatAdds"]/row["xhsLeads"])>1e-12 for row in lead_wechat_rows if row["xhsLeads"]): raise RuntimeError("Lead-to-WeChat daily rate does not reconcile")
+    lead_wechat_totals=lead_wechat.get("totals",{})
+    if lead_wechat_totals.get("xhsLeads")!=sum(row["xhsLeads"] for row in lead_wechat_rows) or lead_wechat_totals.get("wechatAdds")!=sum(row["wechatAdds"] for row in lead_wechat_rows): raise RuntimeError("Lead-to-WeChat totals do not reconcile")
+    if sum(group["xhsLeads"] for group in lead_wechat.get("weeks",[]))!=lead_wechat_totals["xhsLeads"] or sum(group["wechatAdds"] for group in lead_wechat.get("months",[]))!=lead_wechat_totals["wechatAdds"]: raise RuntimeError("Lead-to-WeChat WEEK/month bands do not reconcile")
+xhs_service=payload["customerData"].get("xhsServiceDaily",{})
+xhs_service_rows=xhs_service.get("dailyRows",[])
+if xhs_service_rows:
+    dates=[datetime.strptime(row["date"],"%Y-%m-%d").date() for row in xhs_service_rows]
+    allowed_keys={"date","xhsLeads","wechatAdds","visits","deals"}
+    if len(xhs_service_rows)!=30 or len(set(dates))!=30 or any(dates[index]-dates[index+1]!=timedelta(days=1) for index in range(29)): raise RuntimeError("XHS customer-service daily table must contain 30 descending natural days")
+    if any(set(row)!=allowed_keys for row in xhs_service_rows): raise RuntimeError("XHS customer-service daily table contains an unexpected or private field")
+    if xhs_service.get("startDate")!=xhs_service_rows[-1]["date"] or xhs_service.get("endDate")!=xhs_service_rows[0]["date"]: raise RuntimeError("XHS customer-service daily period does not match rows")
+    for field in ("xhsLeads","wechatAdds","visits","deals"):
+        if xhs_service.get("totals",{}).get(field)!=sum(row[field] for row in xhs_service_rows): raise RuntimeError(f"XHS customer-service {field} total does not reconcile")
+    lead_by_date={row["date"]:row for row in lead_wechat_rows}
+    if any(row["date"] not in lead_by_date or row["xhsLeads"]!=lead_by_date[row["date"]]["xhsLeads"] or row["wechatAdds"]!=lead_by_date[row["date"]]["wechatAdds"] for row in xhs_service_rows): raise RuntimeError("XHS customer-service lead/WeChat sources do not reconcile")
+    source_counts=xhs_service.get("sourceCounts",{})
+    if source_counts.get("matchedVisits")!=xhs_service["totals"]["visits"] or source_counts.get("matchedDeals")!=xhs_service["totals"]["deals"]: raise RuntimeError("XHS customer-service matched source counts do not reconcile")
 visit_trend=payload["customerData"].get("visitTrend",{})
 visit_rows=visit_trend.get("dailyRows",[])
 if visit_rows:
@@ -1687,6 +2049,20 @@ if visit_rows:
     if sum(group["total"] for group in visit_trend.get("weeks",[]))!=visit_trend["windowRecordCount"] or sum(group["total"] for group in visit_trend.get("months",[]))!=visit_trend["windowRecordCount"]: raise RuntimeError("Customer visit trend WEEK/month bands do not reconcile")
     allowed_visit_keys={"date","monthKey","weekKey","total","south","north","otherArea","online","offline","otherMethod"}
     if any(set(row)!=allowed_visit_keys for row in visit_rows): raise RuntimeError("Customer visit trend contains an unexpected or private field")
+visit_conversion=payload["customerData"].get("visitConversion",{})
+conversion_metrics=visit_conversion.get("metrics",[])
+if [row.get("key") for row in conversion_metrics] != ["same","3","5","7","over7"]: raise RuntimeError("Customer visit conversion metric order invalid")
+if any(set(row)!={"key","label","hits","eligible","rate"} for row in conversion_metrics): raise RuntimeError("Customer visit conversion contains an unexpected or private field")
+if any(int(row.get("hits") or 0)>int(row.get("eligible") or 0) for row in conversion_metrics): raise RuntimeError("Customer visit conversion exceeds its eligible cohort")
+if any(row.get("rate") is not None and abs(float(row["rate"])-(int(row["hits"])/int(row["eligible"])))>1e-12 for row in conversion_metrics if int(row.get("eligible") or 0)>0): raise RuntimeError("Customer visit conversion rate does not reconcile")
+steward_activity=payload.get("stewardActivity",{})
+steward_rows=steward_activity.get("rows",[])
+try: steward_as_of=datetime.strptime(steward_activity.get("asOfDate",""),"%Y-%m-%d").date()
+except ValueError: raise RuntimeError("Steward activity as-of date invalid")
+if len({(row.get("date"),row.get("steward")) for row in steward_rows})!=len(steward_rows): raise RuntimeError("Steward activity contains duplicate date/steward rows")
+if any(set(row)!={"date","steward","visits","reservations","deals"} for row in steward_rows): raise RuntimeError("Steward activity contains an unexpected field")
+if any(not row.get("steward") or any(int(row.get(field) or 0)<0 for field in ("visits","reservations","deals")) for row in steward_rows): raise RuntimeError("Steward activity contains invalid counts")
+if any(row.get("date") and datetime.strptime(row["date"],"%Y-%m-%d").date()>steward_as_of for row in steward_rows): raise RuntimeError("Steward activity includes a future date")
 account_audit_rows=payload["xhsAccountAudit"].get("accounts",[])
 if len(account_audit_rows)!=len(XHS_ACCOUNTS) or any(not all(key in row for key in ("adCollectedAt","adCollectedOk","leadCollectedAt","leadCollectedOk","noteCollectedAt","noteCollectedOk")) for row in account_audit_rows): raise RuntimeError("XHS account collection timestamps invalid")
 note_published_rows=payload["xhsNotePublished"].get("rows",[])
