@@ -258,6 +258,93 @@ def fetch_once(args: argparse.Namespace) -> dict[str, Any]:
         "keepElectricDevices": keep_electric,
         "negativeDevices": negative,
         "offlineDevices": offline,
+        "allDevices": devices,
+    }
+
+
+def load_accounts(args: argparse.Namespace) -> list[dict[str, str]]:
+    """Load credentials without ever copying them into generated snapshots."""
+    if args.accounts_file.is_file():
+        loaded = json.loads(args.accounts_file.read_text(encoding="utf-8"))
+        if not isinstance(loaded, list) or not loaded:
+            raise CollectionError("WTYZ accounts file must contain a non-empty list")
+        accounts = loaded
+    else:
+        accounts = [{
+            "key": "primary", "name": "原电表账号", "projectId": args.project_id,
+            "username": args.username, "password": args.password,
+        }]
+    result: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for index, value in enumerate(accounts, 1):
+        if not isinstance(value, dict):
+            raise CollectionError(f"Account {index} is not an object")
+        account = {name: str(value.get(name) or "").strip() for name in (
+            "key", "name", "projectId", "username", "password"
+        )}
+        if not all(account.values()):
+            raise CollectionError(f"Account {index} is missing a required field")
+        if not re_fullmatch_key(account["key"]) or account["key"] in seen:
+            raise CollectionError(f"Account {index} has an invalid or duplicate key")
+        seen.add(account["key"])
+        result.append(account)
+    return result
+
+
+def re_fullmatch_key(value: str) -> bool:
+    return bool(value) and all(character.isalnum() or character in "-_" for character in value)
+
+
+def account_args(args: argparse.Namespace, account: dict[str, str]) -> argparse.Namespace:
+    values = vars(args).copy()
+    values.update(username=account["username"], password=account["password"], project_id=account["projectId"])
+    return argparse.Namespace(**values)
+
+
+def snapshot_path(args: argparse.Namespace, key: str) -> Path:
+    return args.output_dir / "accounts" / f"{key}-latest.json"
+
+
+def add_offline_counts(args: argparse.Namespace, accounts: list[dict[str, Any]], successful: set[str]) -> None:
+    state_path = args.output_dir / "offline-history.json"
+    try:
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        state = {"version": 1, "counts": {}}
+    counts = state.get("counts") if isinstance(state.get("counts"), dict) else {}
+    for account in accounts:
+        key = str(account["key"])
+        for row in account.get("offlineDevices", []):
+            source_key = f'{key}:{row["deviceId"]}'
+            if key in successful:
+                counts[source_key] = int(counts.get(source_key) or 0) + 1
+            row["offlineCount"] = int(counts.get(source_key) or 0)
+    atomic_json(state_path, {"version": 1, "updatedAt": now_text(), "counts": counts})
+
+
+def merge_accounts(accounts: list[dict[str, Any]], status: str) -> dict[str, Any]:
+    unique: dict[str, dict[str, Any]] = {}
+    for account in accounts:
+        for row in account.get("allDevices", []):
+            sanitized = {key: value for key, value in row.items() if key != "offlineCount"}
+            unique.setdefault(row["deviceId"], sanitized)
+    devices = list(unique.values())
+    offline = sorted((row for row in devices if row["onlineStatus"] == "离线"), key=lambda row: (row["updatedAt"] or "", row["deviceName"]), reverse=True)
+    negative = sorted((row for row in devices if row["remainingPower"] is not None and row["remainingPower"] < 0), key=lambda row: (row["remainingPower"], row["deviceName"]))
+    keep = sorted((row for row in devices if row["keepElectric"]), key=lambda row: (row["updatedAt"] or "", row["deviceName"]), reverse=True)
+    public_accounts=[]
+    for account in accounts:
+        public_accounts.append({name: account[name] for name in (
+            "key", "name", "projectId", "status", "stale", "collectedAt", "summary",
+            "keepElectricDevices", "negativeDevices", "offlineDevices"
+        )})
+    return {
+        "schemaVersion": 2, "source": "微亭易租设备管理", "projectId": "multiple",
+        "collectedAt": now_text(), "collectionState": status,
+        "summary": {"total": len(devices), "online": sum(row["onlineStatus"] == "在线" for row in devices),
+                    "offline": len(offline), "negative": len(negative), "keepElectric": len(keep)},
+        "keepElectricDevices": keep, "negativeDevices": negative, "offlineDevices": offline,
+        "accounts": public_accounts,
     }
 
 
@@ -274,57 +361,50 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--timeout", type=int, default=int(os.environ.get("WTYZ_TIMEOUT", "30")))
     parser.add_argument("--page-size", type=int, default=100)
     parser.add_argument("--max-pages", type=int, default=100)
+    parser.add_argument("--accounts-file", type=Path, default=Path(os.environ.get("WTYZ_ACCOUNTS_FILE", "/home/ubuntu/wtyz-meter-collector/config/accounts.json")))
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
-    if not args.username or not args.password:
-        print("WTYZ_USERNAME and WTYZ_PASSWORD are required", file=sys.stderr)
-        return 2
     if args.attempts != 2:
         print("WTYZ_ATTEMPTS must remain 2 (initial collection plus one retry)", file=sys.stderr)
         return 2
     started = time.monotonic()
-    last_error = ""
-    for attempt in range(1, args.attempts + 1):
-        try:
-            payload = fetch_once(args)
-            payload["attemptsUsed"] = attempt
-            payload["durationSeconds"] = round(time.monotonic() - started, 2)
-            atomic_json(args.output_dir / "latest.json", payload)
-            atomic_json(
-                args.output_dir / "status.json",
-                {
-                    "state": "ok",
-                    "collectedAt": payload["collectedAt"],
-                    "attemptsUsed": attempt,
-                    "durationSeconds": payload["durationSeconds"],
-                },
-            )
-            print(
-                json.dumps(
-                    {"state": "ok", **payload["summary"], "attemptsUsed": attempt},
-                    ensure_ascii=False,
-                )
-            )
-            return 0
-        except Exception as exc:  # keep last good data and expose only a sanitized failure status
-            last_error = str(exc).replace(args.password, "***")[:300]
-            print(f"meter collection attempt {attempt}/{args.attempts} failed: {last_error}", file=sys.stderr)
-            if attempt < args.attempts:
-                time.sleep(args.retry_delay)
-    atomic_json(
-        args.output_dir / "status.json",
-        {
-            "state": "failed",
-            "failedAt": now_text(),
-            "attemptsUsed": args.attempts,
-            "durationSeconds": round(time.monotonic() - started, 2),
-            "error": last_error,
-        },
-    )
-    return 1
+    configs = load_accounts(args)
+    snapshots: list[dict[str, Any]] = []
+    outcomes: list[dict[str, Any]] = []
+    successful: set[str] = set()
+    for config in configs:
+        error = ""
+        current = None
+        for attempt in range(1, args.attempts + 1):
+            try:
+                current = fetch_once(account_args(args, config))
+                current.update(key=config["key"], name=config["name"], status="ok", stale=False, attemptsUsed=attempt)
+                atomic_json(snapshot_path(args, config["key"]), current)
+                successful.add(config["key"])
+                break
+            except Exception as exc:
+                error = str(exc).replace(config["password"], "***")[:300]
+                if attempt < args.attempts:
+                    time.sleep(args.retry_delay)
+        if current is None:
+            try:
+                current = json.loads(snapshot_path(args, config["key"]).read_text(encoding="utf-8"))
+                current.update(key=config["key"], name=config["name"], status="failed", stale=True)
+            except (OSError, json.JSONDecodeError):
+                current = {"key": config["key"], "name": config["name"], "projectId": config["projectId"], "status": "failed", "stale": True, "collectedAt": "", "summary": {"total": 0, "online": 0, "offline": 0, "negative": 0, "keepElectric": 0}, "keepElectricDevices": [], "negativeDevices": [], "offlineDevices": [], "allDevices": []}
+        snapshots.append(current)
+        outcomes.append({"key": config["key"], "name": config["name"], "projectId": config["projectId"], "state": current["status"], "stale": current["stale"], "attemptsUsed": current.get("attemptsUsed", args.attempts), **({"error": error} if error else {})})
+    add_offline_counts(args, snapshots, successful)
+    state = "ok" if len(successful) == len(configs) else "partial" if successful else "failed"
+    payload = merge_accounts(snapshots, state)
+    payload["durationSeconds"] = round(time.monotonic() - started, 2)
+    atomic_json(args.output_dir / "latest.json", payload)
+    atomic_json(args.output_dir / "status.json", {"state": state, "collectedAt": payload["collectedAt"], "durationSeconds": payload["durationSeconds"], "accounts": outcomes})
+    print(json.dumps({"state": state, **payload["summary"], "accounts": outcomes}, ensure_ascii=False))
+    return 0 if successful else 1
 
 
 if __name__ == "__main__":

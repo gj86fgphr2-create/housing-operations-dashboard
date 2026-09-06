@@ -11,6 +11,9 @@ files=("$data_dir/status.json")
 if [[ -f "$data_dir/latest.json" ]]; then
   files+=("$data_dir/latest.json")
 fi
+if [[ -f "$data_dir/offline-history.json" ]]; then
+  files+=("$data_dir/offline-history.json")
+fi
 
 ssh_options=(
   -i "$identity_file"
@@ -24,6 +27,6 @@ rsync -a -e "ssh -i $identity_file -o BatchMode=yes -o ConnectTimeout=15 -o Stri
   "${files[@]}" "$target:$remote_data_dir/"
 
 ssh "${ssh_options[@]}" "$target" \
-  "/usr/bin/python3 /opt/yuxiaor-automation/app/generate_full_dashboard.py /opt/yuxiaor-automation/data/current /opt/yuxiaor-automation/app/latest-dashboard-template.html /opt/yuxiaor-automation/site/index.html /opt/yuxiaor-automation/site/index.html && /usr/bin/python3 /opt/yuxiaor-automation/app/validate_dashboard_structure.py /opt/yuxiaor-automation/site/index.html && test \"\$(stat -c '%U:%G' /opt/yuxiaor-automation/site/index.html)\" = 'ubuntu:ubuntu'"
+  "/usr/bin/python3 /opt/yuxiaor-automation/app/enqueue_meter_collection.py && /usr/bin/python3 /opt/yuxiaor-automation/app/generate_full_dashboard.py /opt/yuxiaor-automation/data/current /opt/yuxiaor-automation/app/latest-dashboard-template.html /opt/yuxiaor-automation/site/index.html /opt/yuxiaor-automation/site/index.html && /usr/bin/python3 /opt/yuxiaor-automation/app/validate_dashboard_structure.py /opt/yuxiaor-automation/site/index.html && test \"\$(stat -c '%U:%G' /opt/yuxiaor-automation/site/index.html)\" = 'ubuntu:ubuntu'"
 
 printf 'Synchronized sanitized meter-management data to %s:%s\n' "$target" "$remote_data_dir"
