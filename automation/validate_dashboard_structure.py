@@ -132,6 +132,10 @@ REQUIRED = (
     'id="customer-data"',
     'data-dashboard-view="customer-data"',
     'id="customer-data-updated"',
+    'id="customer-xhs-service-daily-table"',
+    'id="customer-xhs-service-daily-summary"',
+    'function renderCustomerXhsServiceDaily()',
+    '"xhsServiceDaily"',
     'id="customer-wechat-trend-chart"',
     'id="customer-wechat-trend-table"',
     'id="customer-visit-trend-chart"',
@@ -544,7 +548,11 @@ def main() -> int:
             return 1
     account_audit = payload.get("xhsAccountAudit", {})
     audit_accounts = account_audit.get("accounts", [])
-    if len(audit_accounts) != 8 or len({row.get("profile") for row in audit_accounts}) != 8:
+    expected_xhs_profiles = {
+        "account-02", "account-03", "account-04", "account-05", "account-06",
+        "account-07", "account-08", "account-09", "account-11",
+    }
+    if {row.get("profile") for row in audit_accounts} != expected_xhs_profiles:
         print(f"XHS account audit coverage invalid: {len(audit_accounts)} rows", file=sys.stderr)
         return 1
     if html.count('data-dashboard-view="xhs-traffic"') < 2:
@@ -627,7 +635,7 @@ def main() -> int:
     if not reading_rows or len(reading_keys) != len(set(reading_keys)):
         print("XHS reading history contains missing or duplicate account-date rows", file=sys.stderr)
         return 1
-    if len(reading_profiles) != 8 or any(row.get("dataStatus") not in allowed_reading_states for row in reading_rows):
+    if reading_profiles != expected_xhs_profiles or any(row.get("dataStatus") not in allowed_reading_states for row in reading_rows):
         print("XHS reading history account coverage or data status invalid", file=sys.stderr)
         return 1
     if any(row.get("readingCount") is None or int(row.get("readingCount")) < 0 for row in reading_rows):
@@ -700,14 +708,16 @@ def main() -> int:
     opened_total = sum(int(target.get("opened", 0)) for target in target_rows)
     copied_total = sum(int(target.get("copied", 0)) for target in target_rows)
     if leads.get("month") == "2026-08":
-        if leads.get("targetMonth") != "2026-08" or len(accounts) != 8 or len(target_rows) != 40:
+        target_profiles = {account.get("profile") for account in accounts if account.get("targets")}
+        expected_target_profiles = expected_xhs_profiles - {"account-11"}
+        if leads.get("targetMonth") != "2026-08" or target_profiles != expected_target_profiles or len(target_rows) != 40:
             print("XHS August target coverage invalid", file=sys.stderr)
             return 1
         if (opened_total, copied_total) != (1735, 1119):
             print(f"XHS August target totals invalid: {(opened_total, copied_total)}", file=sys.stderr)
             return 1
         daily_rows = leads.get("dailyRows", [])
-        if len(daily_rows) != 168 or len({row.get("date") for row in daily_rows}) != 21:
+        if len(daily_rows) < 168 or len({row.get("date") for row in daily_rows}) != 21:
             print(f"XHS 21-day detail coverage invalid: {len(daily_rows)} rows", file=sys.stderr)
             return 1
     ad_flow = payload.get("xhsAdFlow", {})
@@ -728,7 +738,7 @@ def main() -> int:
         try:
             start_text, end_text = ad_flow["periodLabel"].split(" 至 ", 1)
             expected_account_days = (date.fromisoformat(end_text) - date.fromisoformat(start_text)).days + 1
-            expected_account_days *= 8
+            expected_account_days *= len(expected_xhs_profiles)
         except (TypeError, ValueError):
             print(f"XHS ad history period invalid: {ad_flow.get('periodLabel')}", file=sys.stderr)
             return 1
@@ -782,6 +792,32 @@ def main() -> int:
             return 1
         if sum(int(group.get("total") or 0) for group in wechat_trend.get("weeks", [])) != window_total or sum(int(group.get("total") or 0) for group in wechat_trend.get("months", [])) != window_total:
             print("WeChat customer trend WEEK/month bands do not reconcile", file=sys.stderr)
+            return 1
+    xhs_service = customer.get("xhsServiceDaily", {})
+    xhs_service_rows = xhs_service.get("dailyRows", [])
+    if xhs_service_rows:
+        allowed_xhs_service_keys = {"date", "xhsLeads", "wechatAdds", "visits", "deals"}
+        try:
+            dates = [date.fromisoformat(row["date"]) for row in xhs_service_rows]
+        except (KeyError, ValueError):
+            print("XHS customer-service daily table contains invalid dates", file=sys.stderr)
+            return 1
+        if len(xhs_service_rows) != 30 or len(set(dates)) != 30 or any(dates[index] - dates[index + 1] != timedelta(days=1) for index in range(29)):
+            print(f"XHS customer-service daily table 30-day coverage invalid: {dates}", file=sys.stderr)
+            return 1
+        if any(set(row) != allowed_xhs_service_keys for row in xhs_service_rows):
+            print("XHS customer-service daily table contains an unexpected or private field", file=sys.stderr)
+            return 1
+        if xhs_service.get("startDate") != xhs_service_rows[-1]["date"] or xhs_service.get("endDate") != xhs_service_rows[0]["date"]:
+            print("XHS customer-service daily period does not match rows", file=sys.stderr)
+            return 1
+        for field in ("xhsLeads", "wechatAdds", "visits", "deals"):
+            if int(xhs_service.get("totals", {}).get(field) or 0) != sum(int(row.get(field) or 0) for row in xhs_service_rows):
+                print(f"XHS customer-service {field} total does not reconcile", file=sys.stderr)
+                return 1
+        source_counts = xhs_service.get("sourceCounts", {})
+        if int(source_counts.get("matchedVisits") or 0) != int(xhs_service.get("totals", {}).get("visits") or 0) or int(source_counts.get("matchedDeals") or 0) != int(xhs_service.get("totals", {}).get("deals") or 0):
+            print("XHS customer-service matched source counts do not reconcile", file=sys.stderr)
             return 1
     visit_trend = customer.get("visitTrend", {})
     visit_rows = visit_trend.get("dailyRows", [])
