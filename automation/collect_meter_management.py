@@ -262,7 +262,7 @@ def fetch_once(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
-def load_accounts(args: argparse.Namespace) -> list[dict[str, str]]:
+def load_accounts(args: argparse.Namespace) -> list[dict[str, Any]]:
     """Load credentials without ever copying them into generated snapshots."""
     if args.accounts_file.is_file():
         loaded = json.loads(args.accounts_file.read_text(encoding="utf-8"))
@@ -274,7 +274,7 @@ def load_accounts(args: argparse.Namespace) -> list[dict[str, str]]:
             "key": "primary", "name": "原电表账号", "projectId": args.project_id,
             "username": args.username, "password": args.password,
         }]
-    result: list[dict[str, str]] = []
+    result: list[dict[str, Any]] = []
     seen: set[str] = set()
     for index, value in enumerate(accounts, 1):
         if not isinstance(value, dict):
@@ -286,6 +286,14 @@ def load_accounts(args: argparse.Namespace) -> list[dict[str, str]]:
             raise CollectionError(f"Account {index} is missing a required field")
         if not re_fullmatch_key(account["key"]) or account["key"] in seen:
             raise CollectionError(f"Account {index} has an invalid or duplicate key")
+        hours = value.get("collectHours")
+        if hours is not None:
+            if not isinstance(hours, list) or not hours or any(
+                not isinstance(hour, int) or isinstance(hour, bool) or hour < 0 or hour > 23
+                for hour in hours
+            ):
+                raise CollectionError(f"Account {index} has invalid collectHours")
+            account["collectHours"] = sorted(set(hours))
         seen.add(account["key"])
         result.append(account)
     return result
@@ -295,7 +303,7 @@ def re_fullmatch_key(value: str) -> bool:
     return bool(value) and all(character.isalnum() or character in "-_" for character in value)
 
 
-def account_args(args: argparse.Namespace, account: dict[str, str]) -> argparse.Namespace:
+def account_args(args: argparse.Namespace, account: dict[str, Any]) -> argparse.Namespace:
     values = vars(args).copy()
     values.update(username=account["username"], password=account["password"], project_id=account["projectId"])
     return argparse.Namespace(**values)
@@ -303,6 +311,11 @@ def account_args(args: argparse.Namespace, account: dict[str, str]) -> argparse.
 
 def snapshot_path(args: argparse.Namespace, key: str) -> Path:
     return args.output_dir / "accounts" / f"{key}-latest.json"
+
+
+def collection_due(account: dict[str, Any]) -> bool:
+    hours = account.get("collectHours")
+    return hours is None or datetime.now(SHANGHAI).hour in hours
 
 
 def add_offline_counts(args: argparse.Namespace, accounts: list[dict[str, Any]], successful: set[str]) -> None:
@@ -374,21 +387,32 @@ def main() -> int:
     configs = load_accounts(args)
     snapshots: list[dict[str, Any]] = []
     outcomes: list[dict[str, Any]] = []
-    successful: set[str] = set()
+    healthy: set[str] = set()
+    freshly_collected: set[str] = set()
     for config in configs:
         error = ""
         current = None
-        for attempt in range(1, args.attempts + 1):
+        due = collection_due(config) or not snapshot_path(args, config["key"]).is_file()
+        if not due:
             try:
-                current = fetch_once(account_args(args, config))
-                current.update(key=config["key"], name=config["name"], status="ok", stale=False, attemptsUsed=attempt)
-                atomic_json(snapshot_path(args, config["key"]), current)
-                successful.add(config["key"])
-                break
-            except Exception as exc:
-                error = str(exc).replace(config["password"], "***")[:300]
-                if attempt < args.attempts:
-                    time.sleep(args.retry_delay)
+                current = json.loads(snapshot_path(args, config["key"]).read_text(encoding="utf-8"))
+                current.update(key=config["key"], name=config["name"], status="ok", stale=False, attemptsUsed=0)
+                healthy.add(config["key"])
+            except (OSError, json.JSONDecodeError):
+                due = True
+        if due:
+            for attempt in range(1, args.attempts + 1):
+                try:
+                    current = fetch_once(account_args(args, config))
+                    current.update(key=config["key"], name=config["name"], status="ok", stale=False, attemptsUsed=attempt)
+                    atomic_json(snapshot_path(args, config["key"]), current)
+                    healthy.add(config["key"])
+                    freshly_collected.add(config["key"])
+                    break
+                except Exception as exc:
+                    error = str(exc).replace(config["password"], "***")[:300]
+                    if attempt < args.attempts:
+                        time.sleep(args.retry_delay)
         if current is None:
             try:
                 current = json.loads(snapshot_path(args, config["key"]).read_text(encoding="utf-8"))
@@ -396,15 +420,15 @@ def main() -> int:
             except (OSError, json.JSONDecodeError):
                 current = {"key": config["key"], "name": config["name"], "projectId": config["projectId"], "status": "failed", "stale": True, "collectedAt": "", "summary": {"total": 0, "online": 0, "offline": 0, "negative": 0, "keepElectric": 0}, "keepElectricDevices": [], "negativeDevices": [], "offlineDevices": [], "allDevices": []}
         snapshots.append(current)
-        outcomes.append({"key": config["key"], "name": config["name"], "projectId": config["projectId"], "state": current["status"], "stale": current["stale"], "attemptsUsed": current.get("attemptsUsed", args.attempts), **({"error": error} if error else {})})
-    add_offline_counts(args, snapshots, successful)
-    state = "ok" if len(successful) == len(configs) else "partial" if successful else "failed"
+        outcomes.append({"key": config["key"], "name": config["name"], "projectId": config["projectId"], "state": current["status"], "stale": current["stale"], "collectedThisRun": config["key"] in freshly_collected, "attemptsUsed": current.get("attemptsUsed", args.attempts), **({"error": error} if error else {})})
+    add_offline_counts(args, snapshots, freshly_collected)
+    state = "ok" if len(healthy) == len(configs) else "partial" if healthy else "failed"
     payload = merge_accounts(snapshots, state)
     payload["durationSeconds"] = round(time.monotonic() - started, 2)
     atomic_json(args.output_dir / "latest.json", payload)
     atomic_json(args.output_dir / "status.json", {"state": state, "collectedAt": payload["collectedAt"], "durationSeconds": payload["durationSeconds"], "accounts": outcomes})
     print(json.dumps({"state": state, **payload["summary"], "accounts": outcomes}, ensure_ascii=False))
-    return 0 if successful else 1
+    return 0 if healthy else 1
 
 
 if __name__ == "__main__":
