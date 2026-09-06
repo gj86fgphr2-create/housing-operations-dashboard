@@ -8,6 +8,7 @@ import math
 import os
 import subprocess
 import tempfile
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -20,12 +21,17 @@ STATUS_FILE = Path("/opt/yuxiaor-automation/data/meter-management/status.json")
 RUNTIME_DIR = Path("/home/ubuntu/openclaw-weixin-runtime")
 STATE_FILE = RUNTIME_DIR / "state/youmi-weixin-report.json"
 LOG_FILE = RUNTIME_DIR / "logs/youmi-weixin-report.jsonl"
-IMAGE_FILE = RUNTIME_DIR / "reports/youmi-meter-report.png"
+REPORT_DIR = RUNTIME_DIR / "reports"
 OPENCLAW = RUNTIME_DIR / "app/node_modules/.bin/openclaw"
 NODE_BIN = RUNTIME_DIR / "node-v24.20.0-linux-x64/bin"
 FONT_REGULAR = "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
 FONT_BOLD = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
-ACCOUNT_KEY = "youmi-donglian"
+REPORT_ACCOUNTS = {
+    "youmi-donglian": "有米东联店",
+    "laicai-apartment": "来财公寓",
+    "sanlian": "三联",
+    "shangjiangcheng": "上江城",
+}
 RECIPIENTS_FILE = RUNTIME_DIR / "config/youmi-recipients.json"
 
 
@@ -68,7 +74,7 @@ def log_event(payload: dict[str, Any]) -> None:
         handle.write(json.dumps({"time": datetime.now().astimezone().isoformat(timespec="seconds"), **payload}, ensure_ascii=False) + "\n")
 
 
-def render(account: dict[str, Any]) -> None:
+def render(account: dict[str, Any], display_name: str, image_file: Path) -> None:
     offline = sorted(
         account.get("offlineDevices", []),
         key=lambda row: (-int(row.get("offlineCount") or 0), row.get("updatedAt") or "9999", str(row.get("deviceName") or "")),
@@ -87,7 +93,7 @@ def render(account: dict[str, Any]) -> None:
 
     draw.rounded_rectangle((30, 30, 970, 240), 24, fill="#143a4b")
     text(64, 52, "电表设备简报", 22, "#90cbd1")
-    text(64, 90, "有米东联店", 46, "white", True)
+    text(64, 90, display_name, 46, "white", True)
     text(64, 166, "数据采集  " + format_time(account.get("collectedAt")), 24, "#d4e9ee")
     summary = account.get("summary", {})
     text(655, 95, summary.get("total", 0), 48, "white", True)
@@ -128,53 +134,69 @@ def render(account: dict[str, Any]) -> None:
     section("03  欠费设备", negative, "#cc4148")
     text(50, y + 1, "* 离线次数按每次实际采集发现离线累计；跳过的时段不累加。", 19, "#6b8090")
     text(50, y + 34, "余额保留平台原值；负数代表欠费，保电与欠费可能重叠。", 19, "#6b8090")
-    IMAGE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    temporary = IMAGE_FILE.with_suffix(".tmp.png")
+    image_file.parent.mkdir(parents=True, exist_ok=True)
+    temporary = image_file.with_suffix(".tmp.png")
     image.crop((0, 0, 1000, y + 85)).save(temporary)
-    os.replace(temporary, IMAGE_FILE)
+    os.replace(temporary, image_file)
 
 
 def main() -> int:
     latest = load_json(DATA_FILE, {})
     status = load_json(STATUS_FILE, {})
-    outcome = next((item for item in status.get("accounts", []) if item.get("key") == ACCOUNT_KEY), None)
-    if not outcome or not outcome.get("collectedThisRun"):
-        log_event({"event": "skip", "reason": "not-collected-this-run"})
-        return 0
-    if outcome.get("state") != "ok":
-        log_event({"event": "skip", "reason": "collection-failed"})
-        return 0
-    account = next((item for item in latest.get("accounts", []) if item.get("key") == ACCOUNT_KEY), None)
-    if not account:
-        log_event({"event": "error", "reason": "account-snapshot-missing"})
-        return 1
-    collected_at = str(account.get("collectedAt") or "")
     state = load_json(STATE_FILE, {"recipients": {}})
     recipients = load_json(RECIPIENTS_FILE, [])
     if not recipients:
         log_event({"event": "error", "reason": "recipient-config-missing"})
         return 1
-    render(account)
     environment = os.environ.copy()
     environment["PATH"] = str(NODE_BIN) + os.pathsep + environment.get("PATH", "")
     failures = 0
-    for recipient in recipients:
-        name = recipient["name"]
-        channel_account = recipient["account"]
-        target = recipient["target"]
-        if state.get("recipients", {}).get(name) == collected_at:
+    sent_any = False
+    outcomes = {item.get("key"): item for item in status.get("accounts", [])}
+    accounts = {item.get("key"): item for item in latest.get("accounts", [])}
+    for account_key, display_name in REPORT_ACCOUNTS.items():
+        outcome = outcomes.get(account_key)
+        if not outcome or not outcome.get("collectedThisRun"):
             continue
-        result = subprocess.run(
-            [str(OPENCLAW), "message", "send", "--channel", "openclaw-weixin", "--account", channel_account, "--target", target, "--media", str(IMAGE_FILE), "--json"],
-            env=environment, text=True, capture_output=True, timeout=120,
-        )
-        sent = result.returncode == 0
-        log_event({"event": "send", "recipient": name, "collectedAt": collected_at, "sent": sent, "detail": (result.stderr or result.stdout)[-500:]})
-        if sent:
-            state.setdefault("recipients", {})[name] = collected_at
-            atomic_json(STATE_FILE, state)
-        else:
+        if outcome.get("state") != "ok":
+            log_event({"event": "skip", "account": account_key, "reason": "collection-failed"})
+            continue
+        account = accounts.get(account_key)
+        if not account:
+            log_event({"event": "error", "account": account_key, "reason": "account-snapshot-missing"})
             failures += 1
+            continue
+        collected_at = str(account.get("collectedAt") or "")
+        image_file = REPORT_DIR / f"{account_key}-meter-report.png"
+        render(account, display_name, image_file)
+        for recipient in recipients:
+            name = recipient["name"]
+            channel_account = recipient["account"]
+            target = recipient["target"]
+            state_key = f"{account_key}:{name}"
+            if state.get("recipients", {}).get(state_key) == collected_at:
+                continue
+            result = None
+            sent = False
+            for attempt in range(1, 4):
+                result = subprocess.run(
+                    [str(OPENCLAW), "message", "send", "--channel", "openclaw-weixin", "--account", channel_account, "--target", target, "--media", str(image_file), "--json"],
+                    env=environment, text=True, capture_output=True, timeout=120,
+                )
+                sent = result.returncode == 0
+                if sent:
+                    break
+                if attempt < 3:
+                    time.sleep(5)
+            sent_any = sent_any or sent
+            log_event({"event": "send", "account": account_key, "recipient": name, "collectedAt": collected_at, "sent": sent, "attempts": attempt, "detail": (result.stderr or result.stdout)[-500:]})
+            if sent:
+                state.setdefault("recipients", {})[state_key] = collected_at
+                atomic_json(STATE_FILE, state)
+            else:
+                failures += 1
+    if not sent_any and not failures:
+        log_event({"event": "skip", "reason": "no-report-account-collected-this-run"})
     return 1 if failures else 0
 
 

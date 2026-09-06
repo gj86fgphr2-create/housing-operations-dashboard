@@ -375,6 +375,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--page-size", type=int, default=100)
     parser.add_argument("--max-pages", type=int, default=100)
     parser.add_argument("--accounts-file", type=Path, default=Path(os.environ.get("WTYZ_ACCOUNTS_FILE", "/home/ubuntu/wtyz-meter-collector/config/accounts.json")))
+    parser.add_argument("--force", action="store_true", help="Collect every configured account regardless of its schedule")
     return parser.parse_args()
 
 
@@ -392,7 +393,7 @@ def main() -> int:
     for config in configs:
         error = ""
         current = None
-        due = collection_due(config) or not snapshot_path(args, config["key"]).is_file()
+        due = args.force or collection_due(config) or not snapshot_path(args, config["key"]).is_file()
         if not due:
             try:
                 current = json.loads(snapshot_path(args, config["key"]).read_text(encoding="utf-8"))
