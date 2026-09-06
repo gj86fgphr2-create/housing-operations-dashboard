@@ -1113,7 +1113,7 @@ def checkout_trends():
     future_end=as_of+timedelta(days=29)
     past={past_start+timedelta(days=i):0 for i in range(30)}
     past_reasons={day:{"expiryCount":0,"breachCount":0,"renewalCount":0,"otherCount":0} for day in past}
-    future={future_start+timedelta(days=i):0 for i in range(30)}
+    future_contracts=[]
     future_seen=set()
     future_source_counts=defaultdict(int)
     month_seen=set()
@@ -1128,14 +1128,19 @@ def checkout_trends():
             if not contract_id or contract_id in future_seen or not planned_checkout_date: continue
             future_seen.add(contract_id)
             planned_checkout_day=datetime.strptime(planned_checkout_date,"%Y-%m-%d").date()
-            if planned_checkout_day in future:
-                future[planned_checkout_day]+=1
-                future_source_counts[filename]+=1
+            if planned_checkout_day>=future_start:
+                future_contracts.append((planned_checkout_day,filename))
             if contract_id not in month_seen and planned_checkout_date.startswith(f"{as_of.year:04d}-{as_of.month:02d}-"):
                 month_seen.add(contract_id)
                 day=planned_checkout_day.day
                 week_key="w1" if day<=7 else "w2" if day<=14 else "w3" if day<=21 else "w4" if day<=28 else "we"
                 month_week_counts[week_key]+=1
+    if future_contracts:
+        future_end=max(future_end,max(item[0] for item in future_contracts))
+    future={future_start+timedelta(days=i):0 for i in range((future_end-future_start).days+1)}
+    for planned_checkout_day,filename in future_contracts:
+        future[planned_checkout_day]+=1
+        future_source_counts[filename]+=1
     ws=load_workbook(run_dir/"已退租合同.xlsx",read_only=True,data_only=True).active
     headers=[cell.value for cell in ws[3]]
     contract_i,actual_checkout_i,reason_i=idx(headers,"合同编号"),idx(headers,"预退/实退"),idx(headers,"退租原因")
@@ -1250,7 +1255,7 @@ def checkout_trends():
     past_reason_months=reason_summary_ranges(past_reason_rows,"month")
     occupancy_week_counts={period["key"]:sum(int(values.get(period["key"],0)) for values in checkout.values()) for period in periods}
     validation={
-        "thirtyDaysEach":len(past_rows)==30 and len(future_rows)==30,
+        "pastThirtyDaysFutureExtended":len(past_rows)==30 and len(future_rows)>=30,
         "pastNewestFirst":all(past_rows[i]["date"]>past_rows[i+1]["date"] for i in range(len(past_rows)-1)),
         "futureNearestFirst":all(future_rows[i]["date"]<future_rows[i+1]["date"] for i in range(len(future_rows)-1)),
         "pastContinuous":all((datetime.strptime(past_rows[i]["date"],"%Y-%m-%d").date()-datetime.strptime(past_rows[i+1]["date"],"%Y-%m-%d").date()).days==1 for i in range(len(past_rows)-1)),
@@ -1274,12 +1279,13 @@ def checkout_trends():
         "futureRangeTotalsMatched":sum(item["checkoutCount"] for item in future_ranges)==sum(row["checkoutCount"] for row in future_rows),
         "futureMonthCoverage":bool(future_months) and sum(item["dayCount"] for item in future_months)==len(future_rows) and future_months[0]["startDate"]==future_rows[0]["date"] and future_months[-1]["endDate"]==future_rows[-1]["date"],
         "futureMonthTotalsMatched":sum(item["checkoutCount"] for item in future_months)==sum(row["checkoutCount"] for row in future_rows),
+        "futureContractsReconciled":sum(row["checkoutCount"] for row in future_rows)==len(future_contracts)==sum(future_source_counts.values()),
     }
     if not all(validation.values()): raise RuntimeError(f"Checkout trend validation failed: {validation}")
     return {
         "asOfDate":as_of.isoformat(),
         "past":{"startDate":past_start.isoformat(),"endDate":as_of.isoformat(),"sourceFiles":["已退租合同.xlsx"],"dateField":"预退/实退","reasonField":"退租原因","reasonCategories":["到期","违约","续租","其他"],"displayedReasonCategories":["到期","续租","违约"],"rows":past_rows,"reasonRows":past_reason_rows,"ranges":past_ranges,"months":past_months,"reasonRanges":past_reason_ranges,"reasonMonths":past_reason_months},
-        "future":{"startDate":future_start.isoformat(),"endDate":future_end.isoformat(),"sourceFiles":["在租中合同.xlsx","将搬入合同.xlsx"],"dateField":"退租时间","sourceCounts":dict(future_source_counts),"rows":future_rows,"ranges":future_ranges,"months":future_months},
+        "future":{"startDate":future_start.isoformat(),"endDate":future_end.isoformat(),"maxAvailableDate":future_end.isoformat(),"windowDays":30,"sourceFiles":["在租中合同.xlsx","将搬入合同.xlsx"],"dateField":"退租时间","sourceCounts":dict(future_source_counts),"rows":future_rows,"ranges":future_ranges,"months":future_months},
         "occupancyWeekCounts":occupancy_week_counts,
         "validation":validation,
     }
@@ -1961,6 +1967,7 @@ required += ['.contract-net-week-detail{fill:#516074;font-size:13.5px','contract
 required += ['function trendEdgeWeekPadding(','function trendPaddedX(','边缘周不足3天时保留3天宽度','edgePadding=trendEdgeWeekPadding(ranges)','edgePadding=trendEdgeWeekPadding(weeks)','dayCount:group.rows.length']
 required += ['function trendEdgeCenterOffsets(','function trendCenteredX(','edgeOffsets=trendEdgeCenterOffsets(rows,ranges,bandX','edgeOffsets=trendEdgeCenterOffsets(rows,weeks,bandX','trendCenteredX(index,bandX,edgeOffsets)','bandX(group.startIndex-1)+bandX(group.startIndex)']
 required += ['id="checkout-trend-grid"','id="checkout-trend-future-chart"','id="checkout-trend-past-chart"','id="checkout-trend-future-summary"','id="checkout-trend-past-summary"','function renderCheckoutTrends()','function renderCheckoutTrendChart(','"checkoutTrends"','"ranges"','"periodKey"','"week"','"label"','futureNearestFirst','pastNewestFirst','pastRangeCoverage','pastRangeTotalsMatched','futureRangeCoverage','futureRangeTotalsMatched','未来30天','过去30天','checkoutLabelY=Math.max(18,pointY-9)','checkout-trend-range-band','checkout-trend-range-total','compactLabel=compactMonth','天合计']
+required += ['id="future-checkout-controls"','id="future-checkout-slider"','id="future-checkout-window"','id="future-checkout-reset"','id="future-checkout-prev"','id="future-checkout-next"','function summarizeCheckoutBands(','function setupFutureCheckoutControls(','maxAvailableDate','windowDays','futureContractsReconciled','回到最近30天','全部可查看至']
 required += ['function weekKeyFromLabel(','function weekDayBadgeInfo(','function weekHeading(','id="project-checkout-head"','id="building-checkout-head"']
 required += ['id="xhs-reading-decline-grid"','function renderXhsReadingDeclines()','function xhsDeclineSparkline(','"accountDailyReading"','上7个有效采集日平均－近7个有效采集日平均']
 required += ['.xhs-decline-scroll{overflow:visible','.xhs-decline-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))','@media(max-width:900px){.xhs-decline-grid{grid-template-columns:1fr}','xhs-decline-point-value','最近14个有效采集日阅读趋势']

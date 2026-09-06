@@ -117,6 +117,14 @@ REQUIRED = (
     'checkout-trend-month-band',
     'future.months || []',
     'past.months || []',
+    'id="future-checkout-controls"',
+    'id="future-checkout-slider"',
+    'id="future-checkout-window"',
+    'id="future-checkout-reset"',
+    'function summarizeCheckoutBands(',
+    'function setupFutureCheckoutControls(',
+    '回到最近30天',
+    '全部可查看至',
     'checkout-reason-week-rate',
     'past.reasonRanges || []',
     'past.reasonMonths || []',
@@ -395,31 +403,30 @@ def main() -> int:
         return 1
     checkout_trends = payload.get("checkoutTrends", {})
     as_of = date.fromisoformat(payload.get("dataDate"))
-    checkout_specs = (
-        ("past", as_of - timedelta(days=29), as_of, True),
-        ("future", as_of, as_of + timedelta(days=29), False),
-    )
-    for key, start, end, newest_first in checkout_specs:
-        period = checkout_trends.get(key, {})
-        rows = period.get("rows", [])
-        dates = [date.fromisoformat(row.get("date")) for row in rows]
-        expected = [start + timedelta(days=index) for index in range(30)]
-        if newest_first:
-            expected.reverse()
-        if len(rows) != 30 or dates != expected:
-            print(f"Checkout trend date coverage invalid: {key} {len(rows)} rows", file=sys.stderr)
-            return 1
-        if period.get("startDate") != start.isoformat() or period.get("endDate") != end.isoformat():
-            print(f"Checkout trend boundaries invalid: {key}", file=sys.stderr)
-            return 1
-        if any(int(row.get("checkoutCount") or 0) < 0 for row in rows):
-            print(f"Checkout trend contains negative counts: {key}", file=sys.stderr)
-            return 1
+    past_period = checkout_trends.get("past", {})
+    past_rows = past_period.get("rows", [])
+    past_dates = [date.fromisoformat(row.get("date")) for row in past_rows]
+    past_expected = [as_of - timedelta(days=index) for index in range(30)]
+    if len(past_rows) != 30 or past_dates != past_expected or past_period.get("startDate") != (as_of - timedelta(days=29)).isoformat() or past_period.get("endDate") != as_of.isoformat():
+        print(f"Checkout trend date coverage invalid: past {len(past_rows)} rows", file=sys.stderr)
+        return 1
+    future_period = checkout_trends.get("future", {})
+    future_rows = future_period.get("rows", [])
+    future_dates = [date.fromisoformat(row.get("date")) for row in future_rows]
+    future_end = future_dates[-1] if future_dates else None
+    future_expected = [as_of + timedelta(days=index) for index in range(len(future_rows))]
+    if len(future_rows) < 30 or future_dates != future_expected or future_end < as_of + timedelta(days=29):
+        print(f"Checkout trend date coverage invalid: future {len(future_rows)} rows", file=sys.stderr)
+        return 1
+    if future_period.get("startDate") != as_of.isoformat() or future_period.get("endDate") != future_end.isoformat() or future_period.get("maxAvailableDate") != future_end.isoformat() or int(future_period.get("windowDays") or 0) != 30:
+        print("Checkout trend boundaries invalid: future", file=sys.stderr)
+        return 1
+    if any(int(row.get("checkoutCount") or 0) < 0 for row in past_rows + future_rows):
+        print("Checkout trend contains negative counts", file=sys.stderr)
+        return 1
     if checkout_trends.get("asOfDate") != as_of.isoformat() or not all(checkout_trends.get("validation", {}).values()):
         print(f"Checkout trend validation failed: {checkout_trends.get('validation')}", file=sys.stderr)
         return 1
-    future_period = checkout_trends.get("future", {})
-    past_period = checkout_trends.get("past", {})
     if future_period.get("sourceFiles") != ["在租中合同.xlsx", "将搬入合同.xlsx"] or future_period.get("dateField") != "退租时间":
         print(f"Future checkout source regression: {future_period.get('sourceFiles')}/{future_period.get('dateField')}", file=sys.stderr)
         return 1
