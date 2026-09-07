@@ -27,6 +27,10 @@ REPORTS = [
     ("laicai-apartment", "来财公寓"),
     ("sanlian", "三联"),
     ("shangjiangcheng", "上江城"),
+    ("tianyu-apartment", "天寓公寓"),
+    ("houlongshuo", "侯隆硕"),
+    ("miyou-apartment", "米优公寓"),
+    ("luobo-community", "萝卜社区"),
 ]
 
 
@@ -91,7 +95,10 @@ def main() -> int:
             log_event({"event": "ignored", "reason": "unauthorized-account", "messageRow": rowid})
             continue
         outcomes = []
+        allowed_projects = set(recipient.get("projects") or [key for key, _ in REPORTS])
         for key, display_name in REPORTS:
+            if key not in allowed_projects:
+                continue
             image = REPORT_DIR / f"{key}-meter-report.png"
             if not image.exists():
                 outcomes.append({"project": key, "sent": False, "reason": "image-missing"})

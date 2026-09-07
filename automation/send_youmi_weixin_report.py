@@ -25,6 +25,10 @@ REPORT_ACCOUNTS = {
     "laicai-apartment": "来财公寓",
     "sanlian": "三联",
     "shangjiangcheng": "上江城",
+    "tianyu-apartment": "天寓公寓",
+    "houlongshuo": "侯隆硕",
+    "miyou-apartment": "米优公寓",
+    "luobo-community": "萝卜社区",
 }
 
 
