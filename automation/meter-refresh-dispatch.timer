@@ -1,0 +1,11 @@
+[Unit]
+Description=Check for Weixin meter refresh commands
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=15
+AccuracySec=2
+Unit=meter-refresh-dispatch.service
+
+[Install]
+WantedBy=timers.target

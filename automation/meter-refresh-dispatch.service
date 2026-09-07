@@ -1,0 +1,17 @@
+[Unit]
+Description=Dispatch saved meter reports after Weixin refresh command
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+ExecStart=/usr/bin/python3 /opt/yuxiaor-automation/app/dispatch_meter_reports_on_refresh.py
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadOnlyPaths=/home/ubuntu/.openclaw /home/ubuntu/openclaw-weixin-runtime/reports /home/ubuntu/openclaw-weixin-runtime/config
+ReadWritePaths=/home/ubuntu/openclaw-weixin-runtime/state /home/ubuntu/openclaw-weixin-runtime/logs
+
