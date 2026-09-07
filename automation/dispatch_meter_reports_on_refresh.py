@@ -31,6 +31,8 @@ REPORTS = [
     ("houlongshuo", "侯隆硕"),
     ("miyou-apartment", "米优公寓"),
     ("luobo-community", "萝卜社区"),
+    ("suiwo-community", "穗窝社区"),
+    ("xingyu-youth-apartment", "星遇国际青年公寓"),
 ]
 
 
