@@ -7,6 +7,7 @@ import json
 import math
 import os
 import subprocess
+import sys
 import tempfile
 import time
 from datetime import datetime
@@ -24,6 +25,7 @@ LOG_FILE = RUNTIME_DIR / "logs/youmi-weixin-report.jsonl"
 REPORT_DIR = RUNTIME_DIR / "reports"
 OPENCLAW = RUNTIME_DIR / "app/node_modules/.bin/openclaw"
 NODE_BIN = RUNTIME_DIR / "node-v24.20.0-linux-x64/bin"
+CONTEXT_SENDER = RUNTIME_DIR / "bin/send-weixin-media-with-context.mjs"
 FONT_REGULAR = "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
 FONT_BOLD = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
 REPORT_ACCOUNTS = {
@@ -33,6 +35,7 @@ REPORT_ACCOUNTS = {
     "shangjiangcheng": "上江城",
 }
 RECIPIENTS_FILE = RUNTIME_DIR / "config/youmi-recipients.json"
+BATCH_REPORT = REPORT_DIR / "four-project-meter-report.png"
 
 
 def load_json(path: Path, default: Any = None) -> Any:
@@ -140,7 +143,35 @@ def render(account: dict[str, Any], display_name: str, image_file: Path) -> None
     os.replace(temporary, image_file)
 
 
+def render_batch(image_files: list[Path], output: Path, collected_at: str) -> None:
+    """Join all project cards into one WeChat-friendly long image."""
+    source_images = [Image.open(path).convert("RGB") for path in image_files]
+    scale = 0.9
+    cards = [image.resize((900, round(image.height * scale)), Image.Resampling.LANCZOS) for image in source_images]
+    header_height = 190
+    gap = 20
+    height = header_height + sum(image.height for image in cards) + gap * (len(cards) + 1)
+    canvas = Image.new("RGB", (960, height), "#e8eef3")
+    draw = ImageDraw.Draw(canvas)
+    draw.rounded_rectangle((30, 24, 930, 174), 24, fill="#0e3145")
+    draw.text((64, 46), "四项目电表设备简报", font=ImageFont.truetype(FONT_BOLD, 40), fill="white")
+    draw.text((66, 112), "有米东联店 · 来财公寓 · 三联 · 上江城", font=ImageFont.truetype(FONT_REGULAR, 22), fill="#b9d8df")
+    draw.text((655, 112), "采集 " + format_time(collected_at), font=ImageFont.truetype(FONT_REGULAR, 20), fill="#b9d8df")
+    y = header_height + gap
+    for card in cards:
+        canvas.paste(card, (30, y))
+        y += card.height + gap
+    output.parent.mkdir(parents=True, exist_ok=True)
+    temporary = output.with_suffix(".tmp.png")
+    canvas.save(temporary, optimize=True)
+    os.replace(temporary, output)
+    for image in source_images:
+        image.close()
+
+
 def main() -> int:
+    force_report = "--force-report" in sys.argv[1:]
+    render_only = "--render-only" in sys.argv[1:]
     latest = load_json(DATA_FILE, {})
     status = load_json(STATUS_FILE, {})
     state = load_json(STATE_FILE, {"recipients": {}})
@@ -151,12 +182,13 @@ def main() -> int:
     environment = os.environ.copy()
     environment["PATH"] = str(NODE_BIN) + os.pathsep + environment.get("PATH", "")
     failures = 0
-    sent_any = False
     outcomes = {item.get("key"): item for item in status.get("accounts", [])}
     accounts = {item.get("key"): item for item in latest.get("accounts", [])}
+    batch_images: list[Path] = []
+    batch_times: list[str] = []
     for account_key, display_name in REPORT_ACCOUNTS.items():
         outcome = outcomes.get(account_key)
-        if not outcome or not outcome.get("collectedThisRun"):
+        if not outcome or (not force_report and not outcome.get("collectedThisRun")):
             continue
         if outcome.get("state") != "ok":
             log_event({"event": "skip", "account": account_key, "reason": "collection-failed"})
@@ -169,34 +201,45 @@ def main() -> int:
         collected_at = str(account.get("collectedAt") or "")
         image_file = REPORT_DIR / f"{account_key}-meter-report.png"
         render(account, display_name, image_file)
-        for recipient in recipients:
-            name = recipient["name"]
-            channel_account = recipient["account"]
-            target = recipient["target"]
-            state_key = f"{account_key}:{name}"
-            if state.get("recipients", {}).get(state_key) == collected_at:
-                continue
-            result = None
-            sent = False
-            for attempt in range(1, 4):
-                result = subprocess.run(
-                    [str(OPENCLAW), "message", "send", "--channel", "openclaw-weixin", "--account", channel_account, "--target", target, "--media", str(image_file), "--json"],
-                    env=environment, text=True, capture_output=True, timeout=120,
-                )
-                sent = result.returncode == 0
-                if sent:
-                    break
-                if attempt < 3:
-                    time.sleep(5)
-            sent_any = sent_any or sent
-            log_event({"event": "send", "account": account_key, "recipient": name, "collectedAt": collected_at, "sent": sent, "attempts": attempt, "detail": (result.stderr or result.stdout)[-500:]})
-            if sent:
-                state.setdefault("recipients", {})[state_key] = collected_at
-                atomic_json(STATE_FILE, state)
-            else:
-                failures += 1
-    if not sent_any and not failures:
+        batch_images.append(image_file)
+        batch_times.append(collected_at)
+    if not batch_images:
         log_event({"event": "skip", "reason": "no-report-account-collected-this-run"})
+        return 0
+    if len(batch_images) != len(REPORT_ACCOUNTS):
+        log_event({"event": "error", "reason": "incomplete-four-project-batch", "count": len(batch_images)})
+        return 1
+    batch_key = "|".join(batch_times)
+    render_batch(batch_images, BATCH_REPORT, max(batch_times))
+    if render_only:
+        log_event({"event": "render-batch", "collectedAt": max(batch_times), "projects": len(batch_images)})
+        return 0
+    for recipient in recipients:
+        name = recipient["name"]
+        state_key = f"four-project-batch:{name}"
+        if state.get("recipients", {}).get(state_key) == batch_key:
+            continue
+        result = None
+        sent = False
+        for attempt in range(1, 4):
+            result = subprocess.run(
+                [str(NODE_BIN / "node"), str(CONTEXT_SENDER), recipient["account"], recipient["target"], str(BATCH_REPORT)],
+                env=environment, text=True, capture_output=True, timeout=120,
+            )
+            sent = result.returncode == 0
+            if sent:
+                break
+            detail = result.stderr or result.stdout
+            if "ret=-2" in detail or "prepare failed" in detail:
+                break
+            if attempt < 3:
+                time.sleep(5)
+        log_event({"event": "send-batch", "recipient": name, "collectedAt": max(batch_times), "sent": sent, "attempts": attempt, "detail": (result.stderr or result.stdout)[-500:]})
+        if sent:
+            state.setdefault("recipients", {})[state_key] = batch_key
+            atomic_json(STATE_FILE, state)
+        else:
+            failures += 1
     return 1 if failures else 0
 
 
