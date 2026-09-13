@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-13T15:01:20.901342+08:00",
+  "generatedAt": "2026-09-13T16:01:12.303101+08:00",
   "source": "yuxiaor-server-export",
   "snapshotDate": "2026-09-13",
   "dashboardUrl": "https://gj86fgphr2-create.github.io/housing-operations-dashboard/#operations-brief",
@@ -14,9 +14,9 @@
     "comprehensiveRate": 0.819364161849711
   },
   "riskSignals": {
-    "lockCount": 31,
-    "preorderCount": 12,
-    "moveInCount": 4,
+    "lockCount": 32,
+    "preorderCount": 11,
+    "moveInCount": 5,
     "mappedUnknownCount": 0
   },
   "validation": {
@@ -24,8 +24,8 @@
     "reconciliation": {
       "lockMonitoring": {
         "field": "锁房备注",
-        "sourceCount": 31,
-        "dashboardCount": 31,
+        "sourceCount": 32,
+        "dashboardCount": 32,
         "ok": true
       },
       "vacancyMonitoring": {
@@ -42,8 +42,8 @@
       "comprehensiveMonitoring": {
         "definition": "在租中/已出租+空房不可租中的已预订和将搬入",
         "occupiedCount": 551,
-        "preorderCount": 12,
-        "moveInCount": 4,
+        "preorderCount": 11,
+        "moveInCount": 5,
         "dashboardComprehensiveCount": 567,
         "ok": true
       }
@@ -51,7 +51,7 @@
   },
   "performance": {
     "currentMonth": {
-      "newCount": 88,
+      "newCount": 89,
       "renewalCount": 29,
       "actualCheckoutCount": 121,
       "checkoutRenewalCount": 26
@@ -131,20 +131,20 @@
       },
       {
         "date": "2026-09-13",
-        "newCount": 1,
-        "newRevenue": 6600.0,
+        "newCount": 2,
+        "newRevenue": 22200.0,
         "renewalCount": 0,
         "renewalRevenue": 0.0,
         "otherCount": 0,
         "actualCheckoutCount": 1,
-        "reservationCount": 1,
-        "reservationRevenue": 1350.0
+        "reservationCount": 0,
+        "reservationRevenue": 0.0
       }
     ],
     "projects": [
       {
         "name": "北亭项目",
-        "newCount": 7,
+        "newCount": 8,
         "renewalCount": 2,
         "otherCount": 0,
         "actualCheckoutCount": 15
@@ -158,7 +158,7 @@
       },
       {
         "name": "北亭整体项目",
-        "newCount": 4,
+        "newCount": 5,
         "renewalCount": 2,
         "otherCount": 0,
         "actualCheckoutCount": 14
@@ -249,17 +249,17 @@
       }
     ],
     "items": {
-      "new": 1,
+      "new": 2,
       "renewal": 0,
       "actualCheckout": 1,
-      "reservation": 1
+      "reservation": 0
     }
   },
   "today": {
     "date": "2026-09-13",
-    "newCount": 1,
+    "newCount": 2,
     "renewalCount": 0,
     "actualCheckoutCount": 1,
-    "reservationCount": 1
+    "reservationCount": 0
   }
 }
