@@ -1,21 +1,21 @@
 {
-  "generatedAt": "2026-09-16T13:01:19.770441+08:00",
+  "generatedAt": "2026-09-16T14:01:18.272838+08:00",
   "source": "yuxiaor-server-export",
   "snapshotDate": "2026-09-16",
   "dashboardUrl": "https://gj86fgphr2-create.github.io/housing-operations-dashboard/#operations-brief",
   "overview": {
     "rooms": 692,
     "occupied": 549,
-    "comprehensive": 564,
+    "comprehensive": 563,
     "vacancy": 143,
     "rentableVacancy": 122,
     "unrentableVacancy": 21,
     "occupancyRate": 0.7933526011560693,
-    "comprehensiveRate": 0.815028901734104
+    "comprehensiveRate": 0.8135838150289018
   },
   "riskSignals": {
-    "lockCount": 13,
-    "preorderCount": 10,
+    "lockCount": 14,
+    "preorderCount": 9,
     "moveInCount": 5,
     "mappedUnknownCount": 0
   },
@@ -24,8 +24,8 @@
     "reconciliation": {
       "lockMonitoring": {
         "field": "锁房备注",
-        "sourceCount": 13,
-        "dashboardCount": 13,
+        "sourceCount": 14,
+        "dashboardCount": 14,
         "ok": true
       },
       "vacancyMonitoring": {
@@ -42,9 +42,9 @@
       "comprehensiveMonitoring": {
         "definition": "在租中/已出租+空房不可租中的已预订和将搬入",
         "occupiedCount": 549,
-        "preorderCount": 10,
+        "preorderCount": 9,
         "moveInCount": 5,
-        "dashboardComprehensiveCount": 564,
+        "dashboardComprehensiveCount": 563,
         "ok": true
       }
     }
@@ -93,8 +93,8 @@
         "renewalRevenue": 32172.0,
         "otherCount": 0,
         "actualCheckoutCount": 6,
-        "reservationCount": 2,
-        "reservationRevenue": 3600.0
+        "reservationCount": 1,
+        "reservationRevenue": 1400.0
       },
       {
         "date": "2026-09-13",
