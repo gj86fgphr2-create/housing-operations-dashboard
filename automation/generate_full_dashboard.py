@@ -737,6 +737,37 @@ def build_xhs_collection_metadata():
             "ads":ad_time,
             "published":""}
 
+def latest_xhs_contact_card_status():
+    candidates=[]
+    configured=os.environ.get("XHS_CONTACT_CARD_JSON","").strip()
+    if configured: candidates.append(Path(configured))
+    for root in (Path("/home/ubuntu/xhs-account-isolation/data"),Path("/opt/xhs-account-isolation/data")):
+        latest=root / "contact-card-status" / "latest.json"
+        if latest.is_file(): candidates.append(latest)
+    existing=[path for path in candidates if path.is_file()]
+    return max(existing,key=lambda path:path.stat().st_mtime) if existing else None
+
+def xhs_contact_card_statuses(summary):
+    status_path=latest_xhs_contact_card_status()
+    if status_path:
+        content=json.loads(status_path.read_text(encoding="utf-8"))
+        source=content.get("accounts",[])
+    else:
+        source=[]
+        for account in summary.get("accounts",[]):
+            card=account.get("contact_card") or {}
+            source.append({"profile":account.get("profile"),**card})
+    return {
+        str(item.get("profile") or ""):{
+            "status":str(item.get("status") or "unknown"),
+            "label":str(item.get("label") or "状态未知"),
+            "checkedAt":str(item.get("checked_at") or "")[:19].replace("T"," "),
+            "error":str(item.get("error") or ""),
+        }
+        for item in source
+        if isinstance(item,dict) and item.get("profile")
+    }
+
 def build_xhs_account_audit(fallback):
     """Derive login health and per-source collection times from the newest raw batches."""
     summary_path=latest_xhs_lead_summary()
@@ -751,12 +782,23 @@ def build_xhs_account_audit(fallback):
     content_collections=xhs_collection_times(content_summary_path.with_name("latest.json") if content_summary_path else None)
     lead_collections=xhs_collection_times(summary_path.with_name("latest.json"))
     ad_collections=xhs_collection_times(latest_xhs_ad_collection())
+    card_statuses=xhs_contact_card_statuses(summary)
+    fallback_cards={item.get("profile"):item for item in (fallback or {}).get("accounts",[]) if isinstance(item,dict)}
     accounts=[]
     for account in XHS_ACCOUNTS:
         profile=account["profile"]
         ad_collection=ad_collections.get(profile,{})
         lead_collection=lead_collections.get(profile,{})
         note_collection=content_collections.get(profile,{})
+        card_status=card_statuses.get(profile,{})
+        if not card_status:
+            old=fallback_cards.get(profile,{})
+            card_status={
+                "status":old.get("contactCardStatus","unknown"),
+                "label":old.get("contactCardLabel","状态未知"),
+                "checkedAt":old.get("contactCardCheckedAt",""),
+                "error":old.get("contactCardError",""),
+            }
         rows=sorted(rows_by_profile.get(profile,[]),key=lambda row:row.get("date",""))
         latest=rows[-1] if rows else {}
         successful=[row for row in rows if row.get("data_status")=="有数据"]
@@ -786,6 +828,10 @@ def build_xhs_account_audit(fallback):
             "leadCollectedOk":bool(lead_collection.get("success")),
             "noteCollectedAt":note_collection.get("collectedAt",""),
             "noteCollectedOk":bool(note_collection.get("success")),
+            "contactCardStatus":card_status.get("status","unknown"),
+            "contactCardLabel":card_status.get("label","状态未知"),
+            "contactCardCheckedAt":card_status.get("checkedAt",""),
+            "contactCardError":card_status.get("error",""),
             "status":"ok" if ok else "warn",
             "statusLabel":status_label,
             "statusHint":status_hint,
@@ -1929,7 +1975,7 @@ payload["yuxiaorCollectedAt"] = yuxiaor_collection_time(run_dir)
 payload["xhsCollectionTimes"] = build_xhs_collection_metadata()
 payload["stewardActivity"] = build_steward_activity()
 rendered=template[:payload_span[0]]+json.dumps(payload,ensure_ascii=False,separators=(",",":"))+template[payload_span[1]:]
-required=['class="nav desktop-nav"','data-desktop-module="xiaohongshu"','data-desktop-module="yuxiaor"','data-desktop-menu="xiaohongshu"','data-desktop-menu="yuxiaor"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','id="occupancy-ziyin"','ziyin-project-table','function renderZiyinOccupancy()','"ziyinOccupancy"','occupiedOverlap','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','xhs-account-updated','xhs-account-status-list','adCollectedAt','adCollectedOk','leadCollectedAt','leadCollectedOk','noteCollectedAt','noteCollectedOk','function xhsCollectedHour(','function xhsCollectedBadge(','class="xhs-collection-badge ok"','<th>聚光</th><th>留资</th><th>笔记</th>','xhs-note-count-table','xhs-view-count-table','function xhsMetricTotal(account,weeks,field)','<th>汇总</th>','xhs-daily-reading-chart','id="xhs-leads"','xhs-goal-table','xhs-lead-opened-table','xhs-lead-copied-table','function xhsLeadWeekHeading(','xhs-week-day-badge','id="xhs-lead-details"','xhs-lead-detail-account','xhs-lead-detail-table','id="xhs-ad-flow"','xhs-ad-account-table','xhs-ad-note-table','id="xhs-ad-start-date"','id="xhs-ad-end-date"','function xhsAdPrepareDateControls(','id="xhs-ad-team-filter"','id="xhs-ad-account-filter"','id="xhs-ad-matrix-head"','function renderXhsAdChart(','function renderXhsAdFlow()','function renderXhsAccountStatus()','function xhsGoalCell(','function renderXhsLeads()','function renderXhsLeadDetails()','"xhsAccountAudit"','"targetMonth"','"targets"','"dailyRows"','"xhsLeads"','"xhsAdFlow"']
+required=['class="nav desktop-nav"','data-desktop-module="xiaohongshu"','data-desktop-module="yuxiaor"','data-desktop-menu="xiaohongshu"','data-desktop-menu="yuxiaor"','data-dashboard-view="operations-brief"','data-dashboard-view="overview"','data-dashboard-view="performance"','data-dashboard-view="occupancy"','id="occupancy-ziyin"','ziyin-project-table','function renderZiyinOccupancy()','"ziyinOccupancy"','occupiedOverlap','class="mobile-nav-shell"','data-mobile-menu="primary"','data-mobile-module="xiaohongshu"','data-mobile-module="yuxiaor"','data-mobile-menu="xiaohongshu"','data-mobile-menu="yuxiaor"','5%以下绿色','brief-daily-table','brief-project-table','brief-person-table','id="xhs-account"','xhs-account-table','xhs-account-updated','xhs-account-status-list','adCollectedAt','adCollectedOk','leadCollectedAt','leadCollectedOk','noteCollectedAt','noteCollectedOk','contactCardStatus','contactCardCheckedAt','function xhsCollectedHour(','function xhsCollectedBadge(','function xhsContactCardBadge(','class="xhs-collection-badge ok"','<th>名片</th><th>聚光</th><th>留资</th><th>笔记</th>','xhs-note-count-table','xhs-view-count-table','function xhsMetricTotal(account,weeks,field)','<th>汇总</th>','xhs-daily-reading-chart','id="xhs-leads"','xhs-goal-table','xhs-lead-opened-table','xhs-lead-copied-table','function xhsLeadWeekHeading(','xhs-week-day-badge','id="xhs-lead-details"','xhs-lead-detail-account','xhs-lead-detail-table','id="xhs-ad-flow"','xhs-ad-account-table','xhs-ad-note-table','id="xhs-ad-start-date"','id="xhs-ad-end-date"','function xhsAdPrepareDateControls(','id="xhs-ad-team-filter"','id="xhs-ad-account-filter"','id="xhs-ad-matrix-head"','function renderXhsAdChart(','function renderXhsAdFlow()','function renderXhsAccountStatus()','function xhsGoalCell(','function renderXhsLeads()','function renderXhsLeadDetails()','"xhsAccountAudit"','"targetMonth"','"targets"','"dailyRows"','"xhsLeads"','"xhsAdFlow"']
 required=[marker for marker in required if marker not in ('data-dashboard-view="operations-brief"','data-dashboard-view="overview"')]
 required += ['legacy-performance-cards-hidden','aria-hidden="true"','\'#operations-brief\':\'overview-new\'','\'#overview\':\'overview-new\'','yuxiaor:\'overview-new\'']
 required += ['legacy-performance-target-hidden']
@@ -1967,7 +2013,7 @@ required += ['.contract-net-week-detail{fill:#516074;font-size:13.5px','contract
 required += ['function trendEdgeWeekPadding(','function trendPaddedX(','边缘周不足3天时保留3天宽度','edgePadding=trendEdgeWeekPadding(ranges)','edgePadding=trendEdgeWeekPadding(weeks)','dayCount:group.rows.length']
 required += ['function trendEdgeCenterOffsets(','function trendCenteredX(','edgeOffsets=trendEdgeCenterOffsets(rows,ranges,bandX','edgeOffsets=trendEdgeCenterOffsets(rows,weeks,bandX','trendCenteredX(index,bandX,edgeOffsets)','bandX(group.startIndex-1)+bandX(group.startIndex)']
 required += ['id="checkout-trend-grid"','id="checkout-trend-future-chart"','id="checkout-trend-past-chart"','id="checkout-trend-future-summary"','id="checkout-trend-past-summary"','function renderCheckoutTrends()','function renderCheckoutTrendChart(','"checkoutTrends"','"ranges"','"periodKey"','"week"','"label"','futureNearestFirst','pastNewestFirst','pastRangeCoverage','pastRangeTotalsMatched','futureRangeCoverage','futureRangeTotalsMatched','未来30天','过去30天','checkoutLabelY=Math.max(18,pointY-9)','checkout-trend-range-band','checkout-trend-range-total','compactLabel=compactMonth','天合计']
-required += ['id="future-checkout-controls"','id="future-checkout-slider"','id="future-checkout-window"','id="future-checkout-reset"','id="future-checkout-prev"','id="future-checkout-next"','function summarizeCheckoutBands(','function setupFutureCheckoutControls(','maxAvailableDate','windowDays','futureContractsReconciled','回到最近30天','全部可查看至']
+required += ['id="future-checkout-controls"','id="future-checkout-slider"','id="future-checkout-window"','id="future-checkout-reset"','id="future-checkout-prev"','id="future-checkout-next"','function clipCheckoutBands(','fullStartDate','完整周期','function setupFutureCheckoutControls(','maxAvailableDate','windowDays','futureContractsReconciled','回到最近30天','全部可查看至']
 required += ['function weekKeyFromLabel(','function weekDayBadgeInfo(','function weekHeading(','id="project-checkout-head"','id="building-checkout-head"']
 required += ['id="xhs-reading-decline-grid"','function renderXhsReadingDeclines()','function xhsDeclineSparkline(','"accountDailyReading"','上7个有效采集日平均－近7个有效采集日平均']
 required += ['.xhs-decline-scroll{overflow:visible','.xhs-decline-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))','@media(max-width:900px){.xhs-decline-grid{grid-template-columns:1fr}','xhs-decline-point-value','最近14个有效采集日阅读趋势']
