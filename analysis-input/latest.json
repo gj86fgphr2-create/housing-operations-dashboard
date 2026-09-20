@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-20T11:01:30.659233+08:00",
+  "generatedAt": "2026-09-20T12:01:54.362362+08:00",
   "source": "yuxiaor-server-export",
   "snapshotDate": "2026-09-20",
   "dashboardUrl": "https://gj86fgphr2-create.github.io/housing-operations-dashboard/#operations-brief",
@@ -8,8 +8,8 @@
     "occupied": 559,
     "comprehensive": 568,
     "vacancy": 133,
-    "rentableVacancy": 119,
-    "unrentableVacancy": 14,
+    "rentableVacancy": 118,
+    "unrentableVacancy": 15,
     "occupancyRate": 0.8078034682080925,
     "comprehensiveRate": 0.8208092485549133
   },
@@ -30,11 +30,11 @@
       },
       "vacancyMonitoring": {
         "field": "状态",
-        "sourceRentableCount": 119,
-        "sourceUnrentableCount": 14,
+        "sourceRentableCount": 118,
+        "sourceUnrentableCount": 15,
         "sourceMappedUnknownCount": 0,
-        "dashboardRentableCount": 119,
-        "dashboardUnrentableCount": 14,
+        "dashboardRentableCount": 118,
+        "dashboardUnrentableCount": 15,
         "dashboardVacancyCount": 133,
         "mapping": "未知状态计入空房不可租中的其他锁房",
         "ok": true
