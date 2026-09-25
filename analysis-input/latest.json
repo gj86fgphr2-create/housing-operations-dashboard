@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-09-25T23:02:12.301447+08:00",
+  "generatedAt": "2026-09-26T00:02:13.384346+08:00",
   "source": "yuxiaor-server-export",
-  "snapshotDate": "2026-09-25",
+  "snapshotDate": "2026-09-26",
   "dashboardUrl": "https://gj86fgphr2-create.github.io/housing-operations-dashboard/#operations-brief",
   "overview": {
     "rooms": 692,
@@ -63,17 +63,6 @@
       "checkoutRenewalCount": 48
     },
     "last7Days": [
-      {
-        "date": "2026-09-19",
-        "newCount": 6,
-        "newRevenue": 23529.0,
-        "renewalCount": 2,
-        "renewalRevenue": 1840.0,
-        "otherCount": 1,
-        "actualCheckoutCount": 5,
-        "reservationCount": 3,
-        "reservationRevenue": 3998.0
-      },
       {
         "date": "2026-09-20",
         "newCount": 3,
@@ -139,15 +128,26 @@
         "actualCheckoutCount": 2,
         "reservationCount": 1,
         "reservationRevenue": 1900.0
+      },
+      {
+        "date": "2026-09-26",
+        "newCount": 0,
+        "newRevenue": 0.0,
+        "renewalCount": 0,
+        "renewalRevenue": 0.0,
+        "otherCount": 0,
+        "actualCheckoutCount": 0,
+        "reservationCount": 0,
+        "reservationRevenue": 0.0
       }
     ],
     "projects": [
       {
         "name": "北亭项目",
-        "newCount": 8,
-        "renewalCount": 2,
+        "newCount": 5,
+        "renewalCount": 0,
         "otherCount": 3,
-        "actualCheckoutCount": 6
+        "actualCheckoutCount": 4
       },
       {
         "name": "北亭初期项目",
@@ -158,17 +158,17 @@
       },
       {
         "name": "北亭整体项目",
-        "newCount": 7,
-        "renewalCount": 2,
+        "newCount": 4,
+        "renewalCount": 0,
         "otherCount": 3,
-        "actualCheckoutCount": 5
+        "actualCheckoutCount": 3
       },
       {
         "name": "小谷围项目",
-        "newCount": 4,
+        "newCount": 2,
         "renewalCount": 1,
         "otherCount": 0,
-        "actualCheckoutCount": 7
+        "actualCheckoutCount": 5
       },
       {
         "name": "北亭研寓项目",
@@ -179,10 +179,10 @@
       },
       {
         "name": "南亭研寓项目",
-        "newCount": 3,
+        "newCount": 1,
         "renewalCount": 0,
         "otherCount": 0,
-        "actualCheckoutCount": 2
+        "actualCheckoutCount": 0
       },
       {
         "name": "公司自持项目",
@@ -196,7 +196,7 @@
         "newCount": 2,
         "renewalCount": 1,
         "otherCount": 0,
-        "actualCheckoutCount": 3
+        "actualCheckoutCount": 2
       },
       {
         "name": "城北小筑A",
@@ -210,7 +210,7 @@
         "newCount": 0,
         "renewalCount": 0,
         "otherCount": 0,
-        "actualCheckoutCount": 1
+        "actualCheckoutCount": 0
       },
       {
         "name": "城北小筑C",
@@ -235,9 +235,9 @@
       },
       {
         "name": "南亭21座独立项目",
-        "newCount": 1,
+        "newCount": 0,
         "renewalCount": 0,
-        "otherCount": 1,
+        "otherCount": 0,
         "actualCheckoutCount": 0
       },
       {
@@ -249,17 +249,17 @@
       }
     ],
     "items": {
-      "new": 3,
+      "new": 0,
       "renewal": 0,
-      "actualCheckout": 2,
-      "reservation": 1
+      "actualCheckout": 0,
+      "reservation": 0
     }
   },
   "today": {
-    "date": "2026-09-25",
-    "newCount": 3,
+    "date": "2026-09-26",
+    "newCount": 0,
     "renewalCount": 0,
-    "actualCheckoutCount": 2,
-    "reservationCount": 1
+    "actualCheckoutCount": 0,
+    "reservationCount": 0
   }
 }
