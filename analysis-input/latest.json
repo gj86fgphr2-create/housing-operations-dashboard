@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-16T13:01:40.224087+08:00",
+  "generatedAt": "2026-10-16T14:01:29.971531+08:00",
   "source": "yuxiaor-server-export",
   "snapshotDate": "2026-10-16",
   "dashboardUrl": "https://gj86fgphr2-create.github.io/housing-operations-dashboard/#operations-brief",
@@ -8,13 +8,13 @@
     "occupied": 583,
     "comprehensive": 589,
     "vacancy": 109,
-    "rentableVacancy": 99,
-    "unrentableVacancy": 10,
+    "rentableVacancy": 98,
+    "unrentableVacancy": 11,
     "occupancyRate": 0.8424855491329479,
     "comprehensiveRate": 0.8511560693641619
   },
   "riskSignals": {
-    "lockCount": 9,
+    "lockCount": 10,
     "preorderCount": 1,
     "moveInCount": 5,
     "mappedUnknownCount": 1
@@ -24,17 +24,17 @@
     "reconciliation": {
       "lockMonitoring": {
         "field": "锁房备注",
-        "sourceCount": 9,
-        "dashboardCount": 9,
+        "sourceCount": 10,
+        "dashboardCount": 10,
         "ok": true
       },
       "vacancyMonitoring": {
         "field": "状态",
-        "sourceRentableCount": 99,
-        "sourceUnrentableCount": 10,
+        "sourceRentableCount": 98,
+        "sourceUnrentableCount": 11,
         "sourceMappedUnknownCount": 1,
-        "dashboardRentableCount": 99,
-        "dashboardUnrentableCount": 10,
+        "dashboardRentableCount": 98,
+        "dashboardUnrentableCount": 11,
         "dashboardVacancyCount": 109,
         "mapping": "未知状态计入空房不可租中的其他锁房",
         "ok": true
