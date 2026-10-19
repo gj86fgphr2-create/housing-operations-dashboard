@@ -1,22 +1,22 @@
 {
-  "generatedAt": "2026-10-19T11:01:40.220696+08:00",
+  "generatedAt": "2026-10-19T12:02:24.080313+08:00",
   "source": "yuxiaor-server-export",
   "snapshotDate": "2026-10-19",
   "dashboardUrl": "https://gj86fgphr2-create.github.io/housing-operations-dashboard/#operations-brief",
   "overview": {
     "rooms": 692,
-    "occupied": 588,
-    "comprehensive": 598,
-    "vacancy": 104,
-    "rentableVacancy": 91,
-    "unrentableVacancy": 13,
-    "occupancyRate": 0.8497109826589595,
-    "comprehensiveRate": 0.8641618497109826
+    "occupied": 587,
+    "comprehensive": 600,
+    "vacancy": 105,
+    "rentableVacancy": 90,
+    "unrentableVacancy": 15,
+    "occupancyRate": 0.8482658959537572,
+    "comprehensiveRate": 0.8670520231213873
   },
   "riskSignals": {
-    "lockCount": 10,
-    "preorderCount": 6,
-    "moveInCount": 4,
+    "lockCount": 12,
+    "preorderCount": 8,
+    "moveInCount": 5,
     "mappedUnknownCount": 0
   },
   "validation": {
@@ -24,36 +24,36 @@
     "reconciliation": {
       "lockMonitoring": {
         "field": "锁房备注",
-        "sourceCount": 10,
-        "dashboardCount": 10,
+        "sourceCount": 12,
+        "dashboardCount": 12,
         "ok": true
       },
       "vacancyMonitoring": {
         "field": "状态",
-        "sourceRentableCount": 91,
-        "sourceUnrentableCount": 13,
+        "sourceRentableCount": 90,
+        "sourceUnrentableCount": 15,
         "sourceMappedUnknownCount": 0,
-        "dashboardRentableCount": 91,
-        "dashboardUnrentableCount": 13,
-        "dashboardVacancyCount": 104,
+        "dashboardRentableCount": 90,
+        "dashboardUnrentableCount": 15,
+        "dashboardVacancyCount": 105,
         "mapping": "未知状态计入空房不可租中的其他锁房",
         "ok": true
       },
       "comprehensiveMonitoring": {
         "definition": "在租中/已出租+空房不可租中的已预订和将搬入",
-        "occupiedCount": 588,
-        "preorderCount": 6,
-        "moveInCount": 4,
-        "dashboardComprehensiveCount": 598,
+        "occupiedCount": 587,
+        "preorderCount": 8,
+        "moveInCount": 5,
+        "dashboardComprehensiveCount": 600,
         "ok": true
       }
     }
   },
   "performance": {
     "currentMonth": {
-      "newCount": 66,
+      "newCount": 67,
       "renewalCount": 21,
-      "actualCheckoutCount": 54,
+      "actualCheckoutCount": 55,
       "checkoutRenewalCount": 18
     },
     "previousMonth": {
@@ -131,14 +131,14 @@
       },
       {
         "date": "2026-10-19",
-        "newCount": 0,
-        "newRevenue": 0.0,
+        "newCount": 1,
+        "newRevenue": 1633.33,
         "renewalCount": 0,
         "renewalRevenue": 0.0,
         "otherCount": 0,
-        "actualCheckoutCount": 1,
-        "reservationCount": 0,
-        "reservationRevenue": 0.0
+        "actualCheckoutCount": 2,
+        "reservationCount": 2,
+        "reservationRevenue": 2188.0
       }
     ],
     "projects": [
@@ -224,11 +224,11 @@
         "newCount": 0,
         "renewalCount": 0,
         "otherCount": 0,
-        "actualCheckoutCount": 1
+        "actualCheckoutCount": 2
       },
       {
         "name": "南亭18座独立项目",
-        "newCount": 0,
+        "newCount": 1,
         "renewalCount": 0,
         "otherCount": 0,
         "actualCheckoutCount": 0
@@ -249,17 +249,17 @@
       }
     ],
     "items": {
-      "new": 0,
+      "new": 1,
       "renewal": 0,
-      "actualCheckout": 1,
-      "reservation": 0
+      "actualCheckout": 2,
+      "reservation": 2
     }
   },
   "today": {
     "date": "2026-10-19",
-    "newCount": 0,
+    "newCount": 1,
     "renewalCount": 0,
-    "actualCheckoutCount": 1,
-    "reservationCount": 0
+    "actualCheckoutCount": 2,
+    "reservationCount": 2
   }
 }
