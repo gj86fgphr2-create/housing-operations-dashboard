@@ -1,22 +1,22 @@
 {
-  "generatedAt": "2026-10-19T16:01:57.500969+08:00",
+  "generatedAt": "2026-10-26T15:33:53.673745+08:00",
   "source": "yuxiaor-server-export",
-  "snapshotDate": "2026-10-19",
+  "snapshotDate": "2026-10-26",
   "dashboardUrl": "https://gj86fgphr2-create.github.io/housing-operations-dashboard/#operations-brief",
   "overview": {
     "rooms": 692,
-    "occupied": 585,
-    "comprehensive": 598,
-    "vacancy": 107,
-    "rentableVacancy": 90,
-    "unrentableVacancy": 17,
-    "occupancyRate": 0.8453757225433526,
-    "comprehensiveRate": 0.8641618497109826
+    "occupied": 587,
+    "comprehensive": 607,
+    "vacancy": 105,
+    "rentableVacancy": 83,
+    "unrentableVacancy": 22,
+    "occupancyRate": 0.8482658959537572,
+    "comprehensiveRate": 0.8771676300578035
   },
   "riskSignals": {
-    "lockCount": 14,
+    "lockCount": 8,
     "preorderCount": 8,
-    "moveInCount": 5,
+    "moveInCount": 12,
     "mappedUnknownCount": 0
   },
   "validation": {
@@ -24,185 +24,185 @@
     "reconciliation": {
       "lockMonitoring": {
         "field": "锁房备注",
-        "sourceCount": 14,
-        "dashboardCount": 14,
+        "sourceCount": 8,
+        "dashboardCount": 8,
         "ok": true
       },
       "vacancyMonitoring": {
         "field": "状态",
-        "sourceRentableCount": 90,
-        "sourceUnrentableCount": 17,
+        "sourceRentableCount": 83,
+        "sourceUnrentableCount": 22,
         "sourceMappedUnknownCount": 0,
-        "dashboardRentableCount": 90,
-        "dashboardUnrentableCount": 17,
-        "dashboardVacancyCount": 107,
+        "dashboardRentableCount": 83,
+        "dashboardUnrentableCount": 22,
+        "dashboardVacancyCount": 105,
         "mapping": "未知状态计入空房不可租中的其他锁房",
         "ok": true
       },
       "comprehensiveMonitoring": {
         "definition": "在租中/已出租+空房不可租中的已预订和将搬入",
-        "occupiedCount": 585,
+        "occupiedCount": 587,
         "preorderCount": 8,
-        "moveInCount": 5,
-        "dashboardComprehensiveCount": 598,
+        "moveInCount": 12,
+        "dashboardComprehensiveCount": 607,
         "ok": true
       }
     }
   },
   "performance": {
     "currentMonth": {
-      "newCount": 67,
-      "renewalCount": 21,
-      "actualCheckoutCount": 57,
-      "checkoutRenewalCount": 18
+      "newCount": 88,
+      "renewalCount": 32,
+      "actualCheckoutCount": 73,
+      "checkoutRenewalCount": 22
     },
     "previousMonth": {
-      "newCount": 131,
+      "newCount": 130,
       "renewalCount": 54,
       "actualCheckoutCount": 190,
       "checkoutRenewalCount": 57
     },
     "last7Days": [
       {
-        "date": "2026-10-13",
+        "date": "2026-10-20",
         "newCount": 3,
-        "newRevenue": 16142.26,
-        "renewalCount": 1,
-        "renewalRevenue": 1200.0,
-        "otherCount": 1,
-        "actualCheckoutCount": 3,
-        "reservationCount": 0,
-        "reservationRevenue": 0.0
-      },
-      {
-        "date": "2026-10-14",
-        "newCount": 5,
-        "newRevenue": 14797.0,
-        "renewalCount": 0,
-        "renewalRevenue": 0.0,
-        "otherCount": 0,
-        "actualCheckoutCount": 1,
-        "reservationCount": 0,
-        "reservationRevenue": 0.0
-      },
-      {
-        "date": "2026-10-15",
-        "newCount": 3,
-        "newRevenue": 132747.0,
-        "renewalCount": 0,
-        "renewalRevenue": 0.0,
-        "otherCount": 0,
-        "actualCheckoutCount": 1,
-        "reservationCount": 0,
-        "reservationRevenue": 0.0
-      },
-      {
-        "date": "2026-10-16",
-        "newCount": 1,
-        "newRevenue": 1400.0,
+        "newRevenue": 19264.0,
         "renewalCount": 2,
-        "renewalRevenue": 2450.0,
+        "renewalRevenue": 2580.0,
+        "otherCount": 0,
+        "actualCheckoutCount": 6,
+        "reservationCount": 1,
+        "reservationRevenue": 1450.0
+      },
+      {
+        "date": "2026-10-21",
+        "newCount": 2,
+        "newRevenue": 16205.67,
+        "renewalCount": 0,
+        "renewalRevenue": 0.0,
+        "otherCount": 2,
+        "actualCheckoutCount": 1,
+        "reservationCount": 3,
+        "reservationRevenue": 4049.0
+      },
+      {
+        "date": "2026-10-22",
+        "newCount": 2,
+        "newRevenue": 13800.0,
+        "renewalCount": 0,
+        "renewalRevenue": 0.0,
+        "otherCount": 0,
+        "actualCheckoutCount": 4,
+        "reservationCount": 0,
+        "reservationRevenue": 0.0
+      },
+      {
+        "date": "2026-10-23",
+        "newCount": 4,
+        "newRevenue": 11530.0,
+        "renewalCount": 0,
+        "renewalRevenue": 0.0,
+        "otherCount": 1,
+        "actualCheckoutCount": 0,
+        "reservationCount": 0,
+        "reservationRevenue": 0.0
+      },
+      {
+        "date": "2026-10-24",
+        "newCount": 4,
+        "newRevenue": 26100.0,
+        "renewalCount": 1,
+        "renewalRevenue": 5610.0,
         "otherCount": 0,
         "actualCheckoutCount": 2,
         "reservationCount": 0,
         "reservationRevenue": 0.0
       },
       {
-        "date": "2026-10-17",
-        "newCount": 4,
-        "newRevenue": 5969.0,
-        "renewalCount": 2,
-        "renewalRevenue": 11747.0,
+        "date": "2026-10-25",
+        "newCount": 3,
+        "newRevenue": 5375.9,
+        "renewalCount": 5,
+        "renewalRevenue": 7039.0,
         "otherCount": 0,
-        "actualCheckoutCount": 3,
-        "reservationCount": 3,
-        "reservationRevenue": 4200.0
-      },
-      {
-        "date": "2026-10-18",
-        "newCount": 4,
-        "newRevenue": 33300.0,
-        "renewalCount": 1,
-        "renewalRevenue": 1829.0,
-        "otherCount": 1,
         "actualCheckoutCount": 1,
         "reservationCount": 1,
-        "reservationRevenue": 950.0
+        "reservationRevenue": 1499.0
       },
       {
-        "date": "2026-10-19",
-        "newCount": 1,
-        "newRevenue": 1633.33,
-        "renewalCount": 0,
-        "renewalRevenue": 0.0,
+        "date": "2026-10-26",
+        "newCount": 2,
+        "newRevenue": 11088.0,
+        "renewalCount": 1,
+        "renewalRevenue": 2200.0,
         "otherCount": 0,
-        "actualCheckoutCount": 4,
-        "reservationCount": 2,
-        "reservationRevenue": 2188.0
+        "actualCheckoutCount": 0,
+        "reservationCount": 1,
+        "reservationRevenue": 1000.0
       }
     ],
     "projects": [
       {
         "name": "北亭项目",
         "newCount": 6,
-        "renewalCount": 2,
-        "otherCount": 0,
-        "actualCheckoutCount": 6
-      },
-      {
-        "name": "北亭初期项目",
-        "newCount": 1,
-        "renewalCount": 1,
+        "renewalCount": 3,
         "otherCount": 0,
         "actualCheckoutCount": 2
       },
       {
-        "name": "北亭整体项目",
-        "newCount": 5,
-        "renewalCount": 1,
+        "name": "北亭初期项目",
+        "newCount": 0,
+        "renewalCount": 0,
         "otherCount": 0,
-        "actualCheckoutCount": 4
+        "actualCheckoutCount": 0
+      },
+      {
+        "name": "北亭整体项目",
+        "newCount": 6,
+        "renewalCount": 3,
+        "otherCount": 0,
+        "actualCheckoutCount": 2
       },
       {
         "name": "小谷围项目",
-        "newCount": 3,
+        "newCount": 8,
         "renewalCount": 3,
-        "otherCount": 1,
-        "actualCheckoutCount": 4
+        "otherCount": 0,
+        "actualCheckoutCount": 7
       },
       {
         "name": "北亭研寓项目",
-        "newCount": 1,
+        "newCount": 3,
         "renewalCount": 3,
+        "otherCount": 0,
+        "actualCheckoutCount": 2
+      },
+      {
+        "name": "南亭研寓项目",
+        "newCount": 5,
+        "renewalCount": 0,
+        "otherCount": 0,
+        "actualCheckoutCount": 5
+      },
+      {
+        "name": "公司自持项目",
+        "newCount": 3,
+        "renewalCount": 0,
+        "otherCount": 1,
+        "actualCheckoutCount": 0
+      },
+      {
+        "name": "小筑项目",
+        "newCount": 2,
+        "renewalCount": 1,
         "otherCount": 1,
         "actualCheckoutCount": 3
       },
       {
-        "name": "南亭研寓项目",
+        "name": "城北小筑A",
         "newCount": 2,
-        "renewalCount": 0,
-        "otherCount": 0,
-        "actualCheckoutCount": 1
-      },
-      {
-        "name": "公司自持项目",
-        "newCount": 9,
         "renewalCount": 1,
         "otherCount": 1,
-        "actualCheckoutCount": 1
-      },
-      {
-        "name": "小筑项目",
-        "newCount": 1,
-        "renewalCount": 0,
-        "otherCount": 0,
-        "actualCheckoutCount": 2
-      },
-      {
-        "name": "城北小筑A",
-        "newCount": 1,
-        "renewalCount": 0,
-        "otherCount": 0,
         "actualCheckoutCount": 2
       },
       {
@@ -210,7 +210,7 @@
         "newCount": 0,
         "renewalCount": 0,
         "otherCount": 0,
-        "actualCheckoutCount": 0
+        "actualCheckoutCount": 1
       },
       {
         "name": "城北小筑C",
@@ -224,21 +224,21 @@
         "newCount": 0,
         "renewalCount": 0,
         "otherCount": 0,
-        "actualCheckoutCount": 2
+        "actualCheckoutCount": 0
       },
       {
         "name": "南亭18座独立项目",
-        "newCount": 1,
-        "renewalCount": 0,
+        "newCount": 0,
+        "renewalCount": 1,
         "otherCount": 0,
         "actualCheckoutCount": 0
       },
       {
         "name": "南亭21座独立项目",
-        "newCount": 0,
-        "renewalCount": 0,
-        "otherCount": 0,
-        "actualCheckoutCount": 0
+        "newCount": 1,
+        "renewalCount": 1,
+        "otherCount": 1,
+        "actualCheckoutCount": 2
       },
       {
         "name": "城北小筑09座独立项目",
@@ -249,17 +249,17 @@
       }
     ],
     "items": {
-      "new": 1,
-      "renewal": 0,
-      "actualCheckout": 4,
-      "reservation": 2
+      "new": 2,
+      "renewal": 1,
+      "actualCheckout": 0,
+      "reservation": 1
     }
   },
   "today": {
-    "date": "2026-10-19",
-    "newCount": 1,
-    "renewalCount": 0,
-    "actualCheckoutCount": 4,
-    "reservationCount": 2
+    "date": "2026-10-26",
+    "newCount": 2,
+    "renewalCount": 1,
+    "actualCheckoutCount": 0,
+    "reservationCount": 1
   }
 }
