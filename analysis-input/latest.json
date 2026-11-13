@@ -1,22 +1,22 @@
 {
-  "generatedAt": "2026-11-13T16:02:08.351788+08:00",
+  "generatedAt": "2026-11-13T18:02:35.816894+08:00",
   "source": "yuxiaor-server-export",
   "snapshotDate": "2026-11-13",
   "dashboardUrl": "https://gj86fgphr2-create.github.io/housing-operations-dashboard/#operations-brief",
   "overview": {
     "rooms": 692,
-    "occupied": 605,
-    "comprehensive": 612,
-    "vacancy": 87,
+    "occupied": 606,
+    "comprehensive": 614,
+    "vacancy": 86,
     "rentableVacancy": 71,
-    "unrentableVacancy": 16,
-    "occupancyRate": 0.8742774566473989,
-    "comprehensiveRate": 0.884393063583815
+    "unrentableVacancy": 15,
+    "occupancyRate": 0.8757225433526011,
+    "comprehensiveRate": 0.8872832369942196
   },
   "riskSignals": {
     "lockCount": 14,
     "preorderCount": 3,
-    "moveInCount": 4,
+    "moveInCount": 5,
     "mappedUnknownCount": 0
   },
   "validation": {
@@ -31,28 +31,28 @@
       "vacancyMonitoring": {
         "field": "状态",
         "sourceRentableCount": 71,
-        "sourceUnrentableCount": 16,
+        "sourceUnrentableCount": 15,
         "sourceMappedUnknownCount": 0,
         "dashboardRentableCount": 71,
-        "dashboardUnrentableCount": 16,
-        "dashboardVacancyCount": 87,
+        "dashboardUnrentableCount": 15,
+        "dashboardVacancyCount": 86,
         "mapping": "未知状态计入空房不可租中的其他锁房",
         "ok": true
       },
       "comprehensiveMonitoring": {
         "definition": "在租中/已出租+空房不可租中的已预订和将搬入",
-        "occupiedCount": 605,
+        "occupiedCount": 606,
         "preorderCount": 3,
-        "moveInCount": 4,
-        "dashboardComprehensiveCount": 612,
+        "moveInCount": 5,
+        "dashboardComprehensiveCount": 614,
         "ok": true
       }
     }
   },
   "performance": {
     "currentMonth": {
-      "newCount": 33,
-      "renewalCount": 19,
+      "newCount": 35,
+      "renewalCount": 21,
       "actualCheckoutCount": 50,
       "checkoutRenewalCount": 19
     },
@@ -131,10 +131,10 @@
       },
       {
         "date": "2026-11-13",
-        "newCount": 0,
-        "newRevenue": 0.0,
-        "renewalCount": 1,
-        "renewalRevenue": 1800.0,
+        "newCount": 2,
+        "newRevenue": 1998.0,
+        "renewalCount": 3,
+        "renewalRevenue": 4031.0,
         "otherCount": 0,
         "actualCheckoutCount": 1,
         "reservationCount": 0,
@@ -144,8 +144,8 @@
     "projects": [
       {
         "name": "北亭项目",
-        "newCount": 6,
-        "renewalCount": 4,
+        "newCount": 7,
+        "renewalCount": 5,
         "otherCount": 0,
         "actualCheckoutCount": 6
       },
@@ -158,14 +158,14 @@
       },
       {
         "name": "北亭整体项目",
-        "newCount": 6,
-        "renewalCount": 4,
+        "newCount": 7,
+        "renewalCount": 5,
         "otherCount": 0,
         "actualCheckoutCount": 6
       },
       {
         "name": "小谷围项目",
-        "newCount": 3,
+        "newCount": 4,
         "renewalCount": 3,
         "otherCount": 0,
         "actualCheckoutCount": 9
@@ -179,7 +179,7 @@
       },
       {
         "name": "南亭研寓项目",
-        "newCount": 3,
+        "newCount": 4,
         "renewalCount": 0,
         "otherCount": 0,
         "actualCheckoutCount": 3
@@ -187,7 +187,7 @@
       {
         "name": "公司自持项目",
         "newCount": 2,
-        "renewalCount": 0,
+        "renewalCount": 1,
         "otherCount": 0,
         "actualCheckoutCount": 5
       },
@@ -249,16 +249,16 @@
       }
     ],
     "items": {
-      "new": 0,
-      "renewal": 1,
+      "new": 2,
+      "renewal": 3,
       "actualCheckout": 1,
       "reservation": 0
     }
   },
   "today": {
     "date": "2026-11-13",
-    "newCount": 0,
-    "renewalCount": 1,
+    "newCount": 2,
+    "renewalCount": 3,
     "actualCheckoutCount": 1,
     "reservationCount": 0
   }
