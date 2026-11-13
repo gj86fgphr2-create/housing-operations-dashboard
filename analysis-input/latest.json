@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-14T02:01:46.576898+08:00",
+  "generatedAt": "2026-11-14T03:02:04.602146+08:00",
   "source": "yuxiaor-server-export",
   "snapshotDate": "2026-11-14",
   "dashboardUrl": "https://gj86fgphr2-create.github.io/housing-operations-dashboard/#operations-brief",
@@ -14,7 +14,7 @@
     "comprehensiveRate": 0.8872832369942196
   },
   "riskSignals": {
-    "lockCount": 15,
+    "lockCount": 14,
     "preorderCount": 3,
     "moveInCount": 3,
     "mappedUnknownCount": 0
@@ -24,8 +24,8 @@
     "reconciliation": {
       "lockMonitoring": {
         "field": "锁房备注",
-        "sourceCount": 15,
-        "dashboardCount": 15,
+        "sourceCount": 14,
+        "dashboardCount": 14,
         "ok": true
       },
       "vacancyMonitoring": {
@@ -52,9 +52,9 @@
   "performance": {
     "currentMonth": {
       "newCount": 35,
-      "renewalCount": 21,
-      "actualCheckoutCount": 52,
-      "checkoutRenewalCount": 21
+      "renewalCount": 22,
+      "actualCheckoutCount": 53,
+      "checkoutRenewalCount": 22
     },
     "previousMonth": {
       "newCount": 102,
@@ -114,7 +114,7 @@
         "renewalCount": 2,
         "renewalRevenue": 3199.0,
         "otherCount": 0,
-        "actualCheckoutCount": 5,
+        "actualCheckoutCount": 6,
         "reservationCount": 0,
         "reservationRevenue": 0.0
       },
@@ -122,8 +122,8 @@
         "date": "2026-11-13",
         "newCount": 2,
         "newRevenue": 1998.0,
-        "renewalCount": 3,
-        "renewalRevenue": 4031.0,
+        "renewalCount": 4,
+        "renewalRevenue": 5131.0,
         "otherCount": 0,
         "actualCheckoutCount": 3,
         "reservationCount": 0,
@@ -145,9 +145,9 @@
       {
         "name": "北亭项目",
         "newCount": 6,
-        "renewalCount": 4,
+        "renewalCount": 5,
         "otherCount": 0,
-        "actualCheckoutCount": 7
+        "actualCheckoutCount": 8
       },
       {
         "name": "北亭初期项目",
@@ -159,9 +159,9 @@
       {
         "name": "北亭整体项目",
         "newCount": 6,
-        "renewalCount": 4,
+        "renewalCount": 5,
         "otherCount": 0,
-        "actualCheckoutCount": 7
+        "actualCheckoutCount": 8
       },
       {
         "name": "小谷围项目",
