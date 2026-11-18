@@ -1,17 +1,17 @@
 {
-  "generatedAt": "2026-11-18T17:02:01.775047+08:00",
+  "generatedAt": "2026-11-18T18:02:45.135525+08:00",
   "source": "yuxiaor-server-export",
   "snapshotDate": "2026-11-18",
   "dashboardUrl": "https://gj86fgphr2-create.github.io/housing-operations-dashboard/#operations-brief",
   "overview": {
     "rooms": 692,
-    "occupied": 604,
-    "comprehensive": 611,
-    "vacancy": 88,
-    "rentableVacancy": 67,
+    "occupied": 603,
+    "comprehensive": 610,
+    "vacancy": 89,
+    "rentableVacancy": 68,
     "unrentableVacancy": 21,
-    "occupancyRate": 0.8728323699421965,
-    "comprehensiveRate": 0.8829479768786127
+    "occupancyRate": 0.8713872832369942,
+    "comprehensiveRate": 0.8815028901734104
   },
   "riskSignals": {
     "lockCount": 22,
@@ -30,21 +30,21 @@
       },
       "vacancyMonitoring": {
         "field": "状态",
-        "sourceRentableCount": 67,
+        "sourceRentableCount": 68,
         "sourceUnrentableCount": 21,
         "sourceMappedUnknownCount": 0,
-        "dashboardRentableCount": 67,
+        "dashboardRentableCount": 68,
         "dashboardUnrentableCount": 21,
-        "dashboardVacancyCount": 88,
+        "dashboardVacancyCount": 89,
         "mapping": "未知状态计入空房不可租中的其他锁房",
         "ok": true
       },
       "comprehensiveMonitoring": {
         "definition": "在租中/已出租+空房不可租中的已预订和将搬入",
-        "occupiedCount": 604,
+        "occupiedCount": 603,
         "preorderCount": 6,
         "moveInCount": 1,
-        "dashboardComprehensiveCount": 611,
+        "dashboardComprehensiveCount": 610,
         "ok": true
       }
     }
@@ -53,7 +53,7 @@
     "currentMonth": {
       "newCount": 40,
       "renewalCount": 31,
-      "actualCheckoutCount": 71,
+      "actualCheckoutCount": 72,
       "checkoutRenewalCount": 29
     },
     "previousMonth": {
@@ -136,7 +136,7 @@
         "renewalCount": 2,
         "renewalRevenue": 3405.0,
         "otherCount": 0,
-        "actualCheckoutCount": 0,
+        "actualCheckoutCount": 1,
         "reservationCount": 0,
         "reservationRevenue": 0.0
       }
@@ -231,7 +231,7 @@
         "newCount": 0,
         "renewalCount": 0,
         "otherCount": 0,
-        "actualCheckoutCount": 0
+        "actualCheckoutCount": 1
       },
       {
         "name": "南亭21座独立项目",
@@ -251,7 +251,7 @@
     "items": {
       "new": 0,
       "renewal": 2,
-      "actualCheckout": 0,
+      "actualCheckout": 1,
       "reservation": 0
     }
   },
@@ -259,7 +259,7 @@
     "date": "2026-11-18",
     "newCount": 0,
     "renewalCount": 2,
-    "actualCheckoutCount": 0,
+    "actualCheckoutCount": 1,
     "reservationCount": 0
   }
 }
